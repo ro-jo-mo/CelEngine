@@ -11,6 +11,6 @@ namespace Cel {
     PreFixedUpdate,
     FixedUpdate,
     PostFixedUpdate,
-    ScheduleSize
+    SIZE
   };
 }

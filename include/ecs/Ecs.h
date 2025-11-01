@@ -23,7 +23,7 @@ namespace Cel {
     Ecs() : componentsManager(), systemManager(componentsManager) {
       resourceManager.InsertResource(std::make_shared<Time>(1.0f / 60.0f));
       resourceManager.InsertResource(std::make_shared<World>(componentsManager, entityManager));
-      for (std::size_t i; i < Schedule::ScheduleSize; ++i) {
+      for (std::size_t i; i < Schedule::SIZE; ++i) {
         schedules.push_back(ScheduleGraph(systemManager));
       }
     }
@@ -46,5 +46,6 @@ namespace Cel {
   template<typename T> requires std::derived_from<T, Plugin>
   Ecs &Ecs::AddPlugin() {
     T().Build(Scheduler(schedules), resourceManager);
+    return *this;
   }
 }

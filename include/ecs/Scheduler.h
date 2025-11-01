@@ -26,7 +26,7 @@ namespace Cel {
 
         void AddEdges(ScheduleGraph &graph);
 
-        std::array<ScheduleGraph, Schedule::ScheduleSize> &schedules;
+        std::array<ScheduleGraph, Schedule::SIZE> &schedules;
     };
 
     template<typename First, typename Last>
