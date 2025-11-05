@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(namespace "CelEngine")
+
 add_library(${PROJECT_NAME} STATIC)
 
 target_sources(${PROJECT_NAME}
@@ -34,6 +36,7 @@ set(public_headers
         include/ecs/ComponentsManager.h
         include/ecs/Ecs.h
         include/ecs/EntityManager.h
+        include/ecs/IView.h
         include/ecs/Plugin.h
         include/ecs/Resource.h
         include/ecs/ResourceManager.h

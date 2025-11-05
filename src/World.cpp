@@ -5,7 +5,7 @@ using namespace Cel;
 void
 World::Destroy(const Entity entity) const {
   entityManager.DestroyEntity(entity);
-  componentsManager.DestroyEntity(entity);
+  componentsManager->DestroyEntity(entity);
 }
 
 bool
@@ -21,8 +21,7 @@ World::Flush() {
     cmd->Execute();
   }
   for (const auto &ent: toDestroy) {
-    entityManager.DestroyEntity(ent);
-    componentsManager.DestroyEntity(ent);
+    Destroy(ent);
   }
   const auto changesMade = toAdd.size() + toRemove.size() + toDestroy.size() > 0;
   toAdd.clear();

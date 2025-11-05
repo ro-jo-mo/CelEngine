@@ -20,11 +20,11 @@ namespace Cel {
     // Update time
     // Add plugins
   public:
-    Ecs() : componentsManager(), systemManager(componentsManager) {
+    Ecs() : componentsManager(std::make_shared<ComponentsManager>()), systemManager(componentsManager) {
       resourceManager.InsertResource(std::make_shared<Time>(1.0f / 60.0f));
       resourceManager.InsertResource(std::make_shared<World>(componentsManager, entityManager));
-      for (std::size_t i; i < Schedule::SIZE; ++i) {
-        schedules.push_back(ScheduleGraph(systemManager));
+      for (std::size_t i = 0; i < Schedule::SIZE; ++i) {
+        schedules.emplace_back(systemManager);
       }
     }
 
@@ -35,7 +35,7 @@ namespace Cel {
     Ecs &AddPlugin();
 
   private:
-    ComponentsManager componentsManager;
+    std::shared_ptr<ComponentsManager> componentsManager;
     EntityManager entityManager;
     ResourceManager resourceManager;
     SystemManager systemManager;

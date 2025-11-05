@@ -2,14 +2,15 @@
 
 #include "System.h"
 #include "SystemManager.h"
-#include "Types.h"
 #include <memory>
 #include <typeindex>
 #include <unordered_map>
 #include <unordered_set>
-#include <vector>
 
 namespace Cel {
+  template<typename T>
+  concept IsASystem = std::derived_from<T, System> && std::constructible_from<T, SystemManager &>;
+
   class ScheduleGraph {
   public:
     explicit ScheduleGraph(SystemManager &systemManager)
@@ -45,9 +46,7 @@ namespace Cel {
   template<typename T>
   void
   ScheduleGraph::AddNode() {
-    static_assert(std::is_base_of_v<System, T>, "Must be a system type");
-
-    idToSystem[typeid(T)] = T::Create;
+    idToSystem[typeid(T)] = std::make_unique<T>(manager);
   }
 
   template<typename From, typename To>
@@ -57,3 +56,5 @@ namespace Cel {
     requirements[typeid(To)].insert(typeid(From));
   }
 }
+
+

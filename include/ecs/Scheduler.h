@@ -1,6 +1,6 @@
 #pragma once
 
-#include <array>
+#include <vector>
 #include "Schedule.h"
 #include "ScheduleGraph.h"
 
@@ -17,16 +17,14 @@ namespace Cel {
         SystemScheduler<System, System> AddSystem(Schedule schedule);
 
         template<typename First, typename Second, typename... Others>
-        auto Chain(
-            Schedule schedule) -> std::conditional_t<(sizeof...(Others) > 0), SystemScheduler<First,
-            std::tuple_element_t<sizeof...(Others) - 1, std::tuple<Others...> > >, SystemScheduler<First, Second> >;
+        auto Chain(Schedule schedule);
 
     private:
         template<typename First, typename Second, typename... Others>
 
         void AddEdges(ScheduleGraph &graph);
 
-        std::array<ScheduleGraph, Schedule::SIZE> &schedules;
+        std::vector<ScheduleGraph> &schedules;
     };
 
     template<typename First, typename Last>
@@ -50,22 +48,20 @@ namespace Cel {
     Scheduler::SystemScheduler<System, System> Scheduler::AddSystem(const Schedule schedule) {
         auto &graph = schedules[schedule];
         graph.AddNode<System>();
-        return SystemScheduler<System, System>(schedule);
+        return SystemScheduler<System, System>(graph);
     }
 
     template<typename First, typename Second, typename... Others>
     auto Scheduler::Chain(
-        const Schedule schedule) -> std::conditional_t<(sizeof...(Others) > 0), SystemScheduler<First,
-        std::tuple_element_t<
-            sizeof...(Others) - 1, std::tuple<Others...> > >, SystemScheduler<First, Second> > {
+        const Schedule schedule) {
         auto &graph = schedules[schedule];
         graph.AddNode<First>();
         graph.AddNode<Second>();
         (void(graph.AddNode<Others>()), ...);
         graph.AddEdge<First, Second>();
-        if (sizeof...(Others) > 0) {
+        if constexpr (sizeof...(Others) > 0) {
             AddEdges<Second, Others...>(graph);
-            using Last = std::tuple_element_t<sizeof...(Others) - 1, std::tuple<Others...> >;
+            using Last = std::tuple_element_t<(sizeof...(Others) - 1), std::tuple<Others...> >;
             return SystemScheduler<First, Last>(graph);
         }
         return SystemScheduler<First, Second>(graph);

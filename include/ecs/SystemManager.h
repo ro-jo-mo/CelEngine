@@ -1,43 +1,26 @@
 #pragma once
 
 #include "ComponentsManager.h"
-#include "View.h"
-#include <array>
+#include "IView.h"
 #include <memory>
+#include <queue>
 
 namespace Cel {
   class SystemManager {
   public:
-    explicit SystemManager(const ComponentsManager &manager)
+    explicit SystemManager(const std::shared_ptr<ComponentsManager> &manager)
       : componentsManager(manager) {
     }
 
-    template<typename FirstComponent,
-      typename... OtherComponents,
-      typename... ExcludedComponents>
-    std::shared_ptr<
-      View<IncludedComponentList<FirstComponent, OtherComponents...>,
-        ExcludedComponentList<ExcludedComponents...> > >
-    CreateView(ExcludedComponentList<ExcludedComponents...> excluded =
-        ExcludedComponentList{});
-
     void UpdateViews() const;
 
-  private:
-    ComponentsManager componentsManager;
-    std::vector<std::shared_ptr<IView> > views{};
-  };
+    void InitialiseViews();
 
-  template<typename FirstComponent,
-    typename... OtherComponents,
-    typename... ExcludedComponents>
-  inline std::shared_ptr<
-    View<IncludedComponentList<FirstComponent, OtherComponents...>,
-      ExcludedComponentList<ExcludedComponents...> > >
-  SystemManager::CreateView(ExcludedComponentList<ExcludedComponents...> excluded) {
-    auto view = std::make_shared<View<IncludedComponentList<FirstComponent, OtherComponents...>,
-      ExcludedComponentList<ExcludedComponents...> > >(this);
-    views.push_back(view);
-    return view;
-  }
+    static void Queue(const std::shared_ptr<IView> &view);
+
+  private:
+    std::shared_ptr<ComponentsManager> componentsManager;
+    std::vector<std::shared_ptr<IView> > views;
+    static std::queue<std::shared_ptr<IView> > toInitialize;
+  };
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "Types.h"
 #include <array>
 #include <unordered_map>
