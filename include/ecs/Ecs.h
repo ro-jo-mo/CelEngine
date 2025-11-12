@@ -46,6 +46,7 @@ namespace Cel {
   template<typename T> requires std::derived_from<T, Plugin>
   Ecs &Ecs::AddPlugin() {
     T().Build(Scheduler(schedules), resourceManager);
+    systemManager.InitialiseViews();
     return *this;
   }
 }

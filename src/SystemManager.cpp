@@ -10,14 +10,14 @@ SystemManager::UpdateViews() const {
 }
 
 void SystemManager::InitialiseViews() {
-  while (!toInitialize.empty()) {
-    auto &view = toInitialize.front();
-    toInitialize.pop();
+  while (!toInitialise.empty()) {
+    auto &view = toInitialise.front();
+    toInitialise.pop();
     view->Initialise(componentsManager);
     views.push_back(view);
   }
 }
 
 void SystemManager::Queue(const std::shared_ptr<IView> &view) {
-  toInitialize.push(view);
+  toInitialise.push(view);
 }

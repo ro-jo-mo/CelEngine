@@ -1,11 +1,13 @@
 #pragma once
 
+#include "IResourceGroup.h"
 #include "Resource.h"
-#include "Types.h"
 #include <memory>
 #include <tuple>
 #include <typeindex>
+#include <queue>
 #include <unordered_map>
+
 
 namespace Cel {
   class ResourceManager {
@@ -19,8 +21,13 @@ namespace Cel {
     template<typename... Resources>
     std::tuple<std::shared_ptr<Resources>...> GetResources();
 
+    static void Queue(const std::shared_ptr<IResourceGroup> &group);
+
+    void InitialiseGroups();
+
   private:
     std::unordered_map<std::type_index, std::shared_ptr<Resource> > resources;
+    static std::queue<std::shared_ptr<IResourceGroup> > toInitialise;
   };
 
   template<typename T>

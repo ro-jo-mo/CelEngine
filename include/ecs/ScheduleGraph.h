@@ -46,7 +46,7 @@ namespace Cel {
   template<typename T>
   void
   ScheduleGraph::AddNode() {
-    idToSystem[typeid(T)] = std::make_unique<T>(manager);
+    idToSystem[typeid(T)] = std::make_unique<T>();
   }
 
   template<typename From, typename To>

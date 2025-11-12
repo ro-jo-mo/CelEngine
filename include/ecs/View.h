@@ -55,8 +55,7 @@ namespace Cel {
   private:
     explicit View() = default;
 
-    std::tuple<std::shared_ptr<ComponentArray<Include> >...>
-    includedComponentArrays;
+    std::tuple<std::shared_ptr<ComponentArray<Include> >...> includedComponentArrays;
     std::shared_ptr<ComponentsManager> manager;
     std::unordered_set<Entity> included;
   };
@@ -66,7 +65,7 @@ namespace Cel {
   auto View<With<Include...>, Without<Exclude...> >::Create() {
     // Add to queue
     // When ready initialise, set shared pointer to component manager etc
-    // TODO: If this view already exists for another system, simply return that view instead of duplicating
+    // If this view already exists for another system, simply return that view instead of duplicating
     auto view = std::make_shared<View<With<Include...>, Without<Exclude...> > >();
     SystemManager::Queue(view);
     return view;
@@ -141,8 +140,8 @@ namespace Cel {
   inline std::tuple<Include &...>
   View<With<Include...>, Without<Exclude...> >::Get(
     Entity entity) {
-    return std::make_tuple(
-      std::get<Include>(includedComponentArrays)->GetComponent(entity)...);
+    return std::tuple<Include &...>(
+      std::get<std::shared_ptr<ComponentArray<Include> > >(includedComponentArrays)->GetComponent(entity)...);
   }
 
 
@@ -167,7 +166,10 @@ namespace Cel {
       return current != other.current;
     }
 
-    void operator++() { ++current; }
+    Iterator &operator++() {
+      ++current;
+      return *this;
+    }
 
     std::tuple<Include &...> operator*() {
       Entity entity = *current;
@@ -177,19 +179,18 @@ namespace Cel {
   private:
     Iter current;
     Iter end;
-    View<With<Include...>, Without<Exclude...> > &
-    view;
+    View<With<Include...>, Without<Exclude...> > &view;
   };
 
   template<typename... Include, typename... Exclude>
   View<With<Include...>, Without<Exclude...> >::Iterator View<With<Include...>, Without<Exclude
     ...> >::begin() {
-    return Iterator(included.begin(), included.end(), &this);
+    return Iterator(included.begin(), included.end(), *this);
   }
 
   template<typename... Include, typename... Exclude>
   View<With<Include...>, Without<Exclude...> >::Iterator View<With<Include...>, Without<Exclude...> >::end() {
-    return Iterator(included.end(), included.end(), &this);
+    return Iterator(included.end(), included.end(), *this);
   }
 }
 
