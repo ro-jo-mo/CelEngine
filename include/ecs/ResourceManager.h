@@ -27,7 +27,7 @@ namespace Cel {
 
   private:
     std::unordered_map<std::type_index, std::shared_ptr<Resource> > resources;
-    static std::queue<std::shared_ptr<IResourceGroup> > toInitialise;
+    inline static std::queue<std::shared_ptr<IResourceGroup> > toInitialise;
   };
 
   template<typename T>

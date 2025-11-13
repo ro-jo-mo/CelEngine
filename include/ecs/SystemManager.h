@@ -21,7 +21,7 @@ namespace Cel {
   private:
     std::shared_ptr<ComponentsManager> componentsManager;
     std::vector<std::shared_ptr<IView> > views;
-    static std::queue<std::shared_ptr<IView> > toInitialise;
+    inline static std::queue<std::shared_ptr<IView> > toInitialise;
   };
 }
 

@@ -16,6 +16,7 @@ target_sources(${PROJECT_NAME}
         "src/EntityManger.cpp"
         "src/Ecs.cpp"
         "src/ComponentsManager.cpp"
+        "src/ResourceManager.cpp"
         "src/ScheduleGraph.cpp"
         "src/SystemManager.cpp"
         "src/World.cpp"
@@ -36,9 +37,11 @@ set(public_headers
         include/ecs/ComponentsManager.h
         include/ecs/Ecs.h
         include/ecs/EntityManager.h
+        include/ecs/IResourceGroup.h
         include/ecs/IView.h
         include/ecs/Plugin.h
         include/ecs/Resource.h
+        include/ecs/ResourceGroup.h
         include/ecs/ResourceManager.h
         include/ecs/Schedule.h
         include/ecs/ScheduleGraph.h

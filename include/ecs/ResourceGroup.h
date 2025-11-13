@@ -20,14 +20,14 @@ namespace Cel {
 
     template<typename... Resources>
     auto ResourceGroup<Resources...>::Create() {
-        auto group = std::make_shared<ResourceGroup>();
+        auto group = std::shared_ptr<ResourceGroup<Resources...> >(new ResourceGroup<Resources...>());
         ResourceManager::Queue(group);
         return group;
     }
 
     template<typename... Resources>
     void ResourceGroup<Resources...>::Initialise(ResourceManager &resourceManager) {
-        resources = resourceManager.GetResources();
+        resources = resourceManager.GetResources<Resources...>();
     }
 
     template<typename... Resources>
@@ -35,4 +35,3 @@ namespace Cel {
         return resources;
     }
 }
-

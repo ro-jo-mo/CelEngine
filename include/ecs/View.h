@@ -55,6 +55,9 @@ namespace Cel {
   private:
     explicit View() = default;
 
+    template<typename Component>
+    auto &GetComponentHelper(Entity &entity);
+
     std::tuple<std::shared_ptr<ComponentArray<Include> >...> includedComponentArrays;
     std::shared_ptr<ComponentsManager> manager;
     std::unordered_set<Entity> included;
@@ -66,7 +69,8 @@ namespace Cel {
     // Add to queue
     // When ready initialise, set shared pointer to component manager etc
     // If this view already exists for another system, simply return that view instead of duplicating
-    auto view = std::make_shared<View<With<Include...>, Without<Exclude...> > >();
+    auto view = std::shared_ptr<View<With<Include...>, Without<Exclude...> > >(
+      new View<With<Include...>, Without<Exclude...> >());
     SystemManager::Queue(view);
     return view;
   }
@@ -86,8 +90,10 @@ namespace Cel {
   inline void
   View<With<Include...>,
     Without<Exclude...> >::UpdateView() {
-    auto getEntityLists = [](auto &&componentArrays) {
-      return std::array{componentArrays->GetEntityList()};
+    auto getEntityLists = [](auto &&... componentArrays) {
+      return std::array<std::unordered_map<Entity, size_t>, sizeof...(componentArrays)>{
+        componentArrays->GetEntityList()...
+      };
     };
 
     auto entityArrays = std::apply(getEntityLists, includedComponentArrays);
@@ -120,8 +126,8 @@ namespace Cel {
 
     // for each excluded list, does entity exist inside
     // if so, remove
-    auto excludedEntityArrays =
-        std::invoke(getEntityLists, manager->GetComponentArray<Exclude>()...);
+    auto excludedComponentArrays = std::make_tuple(manager->GetComponentArray<Exclude>()...);
+    auto excludedEntityArrays = std::apply(getEntityLists, excludedComponentArrays);
 
     for (auto &entity: included) {
       auto inSet = std::any_of(
@@ -137,13 +143,21 @@ namespace Cel {
 
 
   template<typename... Include, typename... Exclude>
-  inline std::tuple<Include &...>
+  std::tuple<Include &...>
   View<With<Include...>, Without<Exclude...> >::Get(
     Entity entity) {
     return std::tuple<Include &...>(
       std::get<std::shared_ptr<ComponentArray<Include> > >(includedComponentArrays)->GetComponent(entity)...);
-  }
+  } // if constexpr(Include == Entity)
 
+  template<typename... Include, typename... Exclude>
+  template<typename Component>
+  auto &View<With<Include...>, Without<Exclude...> >::GetComponentHelper(Entity &entity) {
+    if constexpr (std::is_same_v<Component, Entity>) {
+      return (entity);
+    }
+    return std::get<std::shared_ptr<ComponentArray<Component> > >(includedComponentArrays)->GetComponent(entity);
+  }
 
   template<typename... Include, typename... Exclude>
   class View<With<Include...>, Without<Exclude...> >::Iterator {
