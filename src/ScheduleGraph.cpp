@@ -13,7 +13,6 @@ ScheduleGraph::Execute() {
 
   for (auto &[id, requirement]: requirements) {
     if (requirement.empty()) {
-      std::cout << "No requirements Executing " << id.name() << "\n";
       ExecuteSystem(id, executed);
     }
   }
@@ -25,7 +24,6 @@ void
 ScheduleGraph::ExecuteSystem(const std::type_index id,
                              std::unordered_set<std::type_index> &executed) {
   // if this node has no requirements, we can start executing it
-  std::cout << "Executing " << id.name() << "\n";
   idToSystem[id]->Execute();
   executed.insert(id);
 
@@ -45,7 +43,6 @@ ScheduleGraph::CheckRequirements(const std::type_index id,
 void
 ScheduleGraph::RecursivelyExecute(std::type_index parentId,
                                   std::unordered_set<std::type_index> &executed) {
-  std::cout << "Recursive execution of " << parentId.name() << "\n";
   for (auto &id: adjacencyList[parentId]) {
     if (CheckRequirements(id, executed)) {
       ExecuteSystem(id, executed);

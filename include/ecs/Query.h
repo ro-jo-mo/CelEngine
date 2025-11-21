@@ -7,11 +7,12 @@
 #include "Types.h"
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <iterator>
 #include <memory>
 #include <tuple>
 #include <unordered_set>
-
+#include <limits>
 
 namespace Cel {
   template<typename T>
@@ -30,12 +31,23 @@ namespace Cel {
   struct Without : TypeList<T...> {
   };
 
+  template<typename Component, typename... Components>
+  consteval size_t GetIndexOfEntityType(const size_t index) {
+    if constexpr (std::is_same_v<Component, Entity>) {
+      return index;
+    }
+    if constexpr (sizeof...(Components) > 0) {
+      return GetIndexOfEntityType<Components...>(index + 1);
+    }
+    return -1;
+  }
+
 
   template<typename, typename>
-  class View;
+  class Query;
 
   template<typename... Include, typename... Exclude>
-  class View<With<Include...>, Without<Exclude...> > final
+  class Query<With<Include...>, Without<Exclude...> > final
       : public IView {
   public:
     static auto Create();
@@ -53,34 +65,28 @@ namespace Cel {
     Iterator end();
 
   private:
-    explicit View() = default;
+    explicit Query() = default;
 
     template<typename Component>
     auto &GetComponentOrEntity(Entity &entity);
 
-    template<typename Component>
-    auto &GetComponentArrays(Entity &entity);
-
-
     std::tuple<std::shared_ptr<ComponentArray<Include> >...> includedComponentArrays;
     std::shared_ptr<ComponentsManager> manager;
     std::unordered_set<Entity> included;
+    size_t entityTypeIndex = GetIndexOfEntityType<Include...>(0);
   };
 
 
   template<typename... Include, typename... Exclude>
-  auto View<With<Include...>, Without<Exclude...> >::Create() {
-    // Add to queue
-    // When ready initialise, set shared pointer to component manager etc
-    // If this view already exists for another system, simply return that view instead of duplicating
-    auto view = std::shared_ptr<View<With<Include...>, Without<Exclude...> > >(
-      new View<With<Include...>, Without<Exclude...> >());
-    SystemManager::Queue(view);
-    return view;
+  auto Query<With<Include...>, Without<Exclude...> >::Create() {
+    auto query = std::shared_ptr<Query<With<Include...>, Without<Exclude...> > >(
+      new Query<With<Include...>, Without<Exclude...> >());
+    SystemManager::Queue(query);
+    return query;
   }
 
   template<typename... Include, typename... Exclude>
-  void View<With<Include...>, Without<Exclude...> >::Initialise(std::shared_ptr<ComponentsManager> mngr) {
+  void Query<With<Include...>, Without<Exclude...> >::Initialise(std::shared_ptr<ComponentsManager> mngr) {
     this->manager = mngr;
 
     includedComponentArrays =
@@ -92,19 +98,23 @@ namespace Cel {
 
   template<typename... Include, typename... Exclude>
   inline void
-  View<With<Include...>,
+  Query<With<Include...>,
     Without<Exclude...> >::UpdateView() {
-    auto getEntityLists = [](auto &&... componentArrays) {
-      return std::array<std::unordered_map<Entity, size_t>, sizeof...(componentArrays)>{
+    auto getEntityLists = [](auto &... componentArrays) {
+      return std::vector<std::unordered_map<Entity, size_t> >{
         componentArrays->GetEntityList()...
       };
     };
 
     auto entityArrays = std::apply(getEntityLists, includedComponentArrays);
 
+    if (entityTypeIndex != -1) {
+      entityArrays.erase(entityArrays.begin() + entityTypeIndex);
+    }
+
     // find smallest array, use it as the base
     size_t smallestIndex = 0;
-    size_t smallestSize = 99999;
+    size_t smallestSize = std::numeric_limits<size_t>::max();
 
     for (int i = 0; i < entityArrays.size(); ++i) {
       if (entityArrays[i].size() < smallestSize) {
@@ -148,15 +158,13 @@ namespace Cel {
 
   template<typename... Include, typename... Exclude>
   std::tuple<Include &...>
-  View<With<Include...>, Without<Exclude...> >::Get(
-    Entity entity) {
-    return std::tuple<Include &...>(
-      std::get<std::shared_ptr<ComponentArray<Include> > >(includedComponentArrays)->GetComponent(entity)...);
+  Query<With<Include...>, Without<Exclude...> >::Get(Entity entity) {
+    return std::tuple<Include &...>(GetComponentOrEntity<Include>(entity)...);
   }
 
   template<typename... Include, typename... Exclude>
   template<typename Component>
-  auto &View<With<Include...>, Without<Exclude...> >::GetComponentOrEntity(Entity &entity) {
+  auto &Query<With<Include...>, Without<Exclude...> >::GetComponentOrEntity(Entity &entity) {
     if constexpr (std::is_same_v<Component, Entity>) {
       return (entity);
     }
@@ -164,20 +172,7 @@ namespace Cel {
   }
 
   template<typename... Include, typename... Exclude>
-  template<typename Component>
-  auto &View<With<Include...>, Without<Exclude...> >::GetComponentArrays(Entity &entity) {
-    if constexpr (std::is_same_v<Component, Entity>) {
-      auto getEntityLists = [](auto &&... componentArrays) {
-        return std::array<std::unordered_map<Entity, size_t>, sizeof...(componentArrays)>{
-          componentArrays->GetEntityList()...
-        };
-      };
-    }
-    return nullptr;
-  }
-
-  template<typename... Include, typename... Exclude>
-  class View<With<Include...>, Without<Exclude...> >::Iterator {
+  class Query<With<Include...>, Without<Exclude...> >::Iterator {
   public:
     using iterator_category = std::forward_iterator_tag;
 
@@ -186,7 +181,7 @@ namespace Cel {
 
     Iterator(Iter currentIter,
              Iter endIter,
-             View<With<Include...>,
+             Query<With<Include...>,
                Without<Exclude...> > &viewRef)
       : current(currentIter)
         , end(endIter)
@@ -203,24 +198,25 @@ namespace Cel {
     }
 
     std::tuple<Include &...> operator*() {
-      Entity entity = *current;
-      return view.Get(entity);
+      ref = *current;
+      return view.Get(ref);
     }
 
   private:
     Iter current;
     Iter end;
-    View<With<Include...>, Without<Exclude...> > &view;
+    Entity ref;
+    Query<With<Include...>, Without<Exclude...> > &view;
   };
 
   template<typename... Include, typename... Exclude>
-  View<With<Include...>, Without<Exclude...> >::Iterator View<With<Include...>, Without<Exclude
+  Query<With<Include...>, Without<Exclude...> >::Iterator Query<With<Include...>, Without<Exclude
     ...> >::begin() {
     return Iterator(included.begin(), included.end(), *this);
   }
 
   template<typename... Include, typename... Exclude>
-  View<With<Include...>, Without<Exclude...> >::Iterator View<With<Include...>, Without<Exclude...> >::end() {
+  Query<With<Include...>, Without<Exclude...> >::Iterator Query<With<Include...>, Without<Exclude...> >::end() {
     return Iterator(included.end(), included.end(), *this);
   }
 }

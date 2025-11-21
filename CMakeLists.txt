@@ -50,7 +50,7 @@ set(public_headers
         include/ecs/SystemManager.h
         include/ecs/Time.h
         include/ecs/Types.h
-        include/ecs/View.h
+        include/ecs/Query.h
         include/ecs/World.h
 )
 
