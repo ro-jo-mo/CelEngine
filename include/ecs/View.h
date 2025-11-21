@@ -56,7 +56,11 @@ namespace Cel {
     explicit View() = default;
 
     template<typename Component>
-    auto &GetComponentHelper(Entity &entity);
+    auto &GetComponentOrEntity(Entity &entity);
+
+    template<typename Component>
+    auto &GetComponentArrays(Entity &entity);
+
 
     std::tuple<std::shared_ptr<ComponentArray<Include> >...> includedComponentArrays;
     std::shared_ptr<ComponentsManager> manager;
@@ -148,15 +152,28 @@ namespace Cel {
     Entity entity) {
     return std::tuple<Include &...>(
       std::get<std::shared_ptr<ComponentArray<Include> > >(includedComponentArrays)->GetComponent(entity)...);
-  } // if constexpr(Include == Entity)
+  }
 
   template<typename... Include, typename... Exclude>
   template<typename Component>
-  auto &View<With<Include...>, Without<Exclude...> >::GetComponentHelper(Entity &entity) {
+  auto &View<With<Include...>, Without<Exclude...> >::GetComponentOrEntity(Entity &entity) {
     if constexpr (std::is_same_v<Component, Entity>) {
       return (entity);
     }
     return std::get<std::shared_ptr<ComponentArray<Component> > >(includedComponentArrays)->GetComponent(entity);
+  }
+
+  template<typename... Include, typename... Exclude>
+  template<typename Component>
+  auto &View<With<Include...>, Without<Exclude...> >::GetComponentArrays(Entity &entity) {
+    if constexpr (std::is_same_v<Component, Entity>) {
+      auto getEntityLists = [](auto &&... componentArrays) {
+        return std::array<std::unordered_map<Entity, size_t>, sizeof...(componentArrays)>{
+          componentArrays->GetEntityList()...
+        };
+      };
+    }
+    return nullptr;
   }
 
   template<typename... Include, typename... Exclude>
