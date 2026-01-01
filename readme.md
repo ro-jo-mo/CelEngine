@@ -20,7 +20,7 @@ add_executable(MyProject ...)
 target_link_libraries(${PROJECT_NAME} PRIVATE CelEngine::CelEngine)
 ```
 ## Requirements
--- Requires an installation of:
+Requires an installation of:
 - Vulkan SDK
 - glfw
 - glm
