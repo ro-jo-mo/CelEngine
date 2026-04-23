@@ -2,11 +2,12 @@
 
 #include "ComponentArray.h"
 #include "ComponentsManager.h"
-#include "IView.h"
-#include "SystemManager.h"
+#include "IQuery.h"
+
 #include "Types.h"
 #include <algorithm>
-#include <functional>
+
+#include <vector>
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -15,6 +16,11 @@
 #include <limits>
 
 namespace Cel {
+  /**
+   * @ingroup Helper types
+   * @{
+   */
+
   template<typename T>
   struct TypeStorage {
   };
@@ -31,6 +37,16 @@ namespace Cel {
   struct Without : TypeList<T...> {
   };
 
+  /**
+   * @}
+   */
+
+
+  /**
+   * @brief A special helper function for getting the index of "Entity" in a query
+   * @param index Starts at 0, recursively searches for entity
+   * @return The index of entity in the query
+   */
   template<typename Component, typename... Components>
   consteval size_t GetIndexOfEntityType(const size_t index) {
     if constexpr (std::is_same_v<Component, Entity>) {
@@ -42,22 +58,40 @@ namespace Cel {
     return -1;
   }
 
-
-  template<typename, typename>
+  /**
+   * Base form of query, no implementation
+   * Always use Query<With<...>,Without<...>>
+   */
+  template<typename...>
   class Query;
 
+  /**
+   * @brief Standard query, requests a filtered set of entities required by a game system
+   * @tparam Include Only include entities with all of these components
+   * @tparam Exclude Exclude all entities with any of these components
+   */
   template<typename... Include, typename... Exclude>
-  class Query<With<Include...>, Without<Exclude...> > final
-      : public IView {
+  class Query<With<Include...>, Without<Exclude...> >
+      : public IQuery {
   public:
-    static auto Create();
+    explicit Query(ComponentsManager &components_manager) : manager(components_manager) {
+      includedComponentArrays =
+          std::make_tuple(manager.GetComponentArray<Include>()...);
+      Query::UpdateQuery();
+    }
 
-    void Initialise(std::shared_ptr<ComponentsManager> mngr) override;
+    void UpdateQuery() override;
 
-    void UpdateView() override;
-
+    /**
+     * @brief Retrieve the queried components of this specific entity
+     * @param entity Entity to retrieve
+     * @return Retrieved entity components
+     */
     std::tuple<Include &...> Get(Entity entity);
 
+    /**
+     * Iterator used for query iteration
+     */
     class Iterator;
 
     Iterator begin();
@@ -65,41 +99,26 @@ namespace Cel {
     Iterator end();
 
   private:
-    explicit Query() = default;
-
+    /**
+     * @brief Special method to retrieve the specified component.
+     * As previously stated entity ids are a special case of components, not stored by the component manager and must be fetched separately
+     * @tparam Component Component to retrieve
+     * @param entity Entity owning this component
+     * @return Retrieved component
+     */
     template<typename Component>
     auto &GetComponentOrEntity(Entity &entity);
 
     std::tuple<std::shared_ptr<ComponentArray<Include> >...> includedComponentArrays;
-    std::shared_ptr<ComponentsManager> manager;
+    ComponentsManager &manager;
     std::unordered_set<Entity> included;
     size_t entityTypeIndex = GetIndexOfEntityType<Include...>(0);
   };
 
-
-  template<typename... Include, typename... Exclude>
-  auto Query<With<Include...>, Without<Exclude...> >::Create() {
-    auto query = std::shared_ptr<Query<With<Include...>, Without<Exclude...> > >(
-      new Query<With<Include...>, Without<Exclude...> >());
-    SystemManager::Queue(query);
-    return query;
-  }
-
-  template<typename... Include, typename... Exclude>
-  void Query<With<Include...>, Without<Exclude...> >::Initialise(std::shared_ptr<ComponentsManager> mngr) {
-    this->manager = mngr;
-
-    includedComponentArrays =
-        std::make_tuple(manager->GetComponentArray<Include>()...);
-
-    UpdateView();
-  }
-
-
   template<typename... Include, typename... Exclude>
   inline void
   Query<With<Include...>,
-    Without<Exclude...> >::UpdateView() {
+    Without<Exclude...> >::UpdateQuery() {
     auto getEntityLists = [](auto &... componentArrays) {
       return std::vector<std::unordered_map<Entity, size_t> >{
         componentArrays->GetEntityList()...
@@ -140,17 +159,20 @@ namespace Cel {
 
     // for each excluded list, does entity exist inside
     // if so, remove
-    auto excludedComponentArrays = std::make_tuple(manager->GetComponentArray<Exclude>()...);
+    auto excludedComponentArrays = std::make_tuple(manager.GetComponentArray<Exclude>()...);
     auto excludedEntityArrays = std::apply(getEntityLists, excludedComponentArrays);
 
-    for (auto &entity: included) {
+    for (auto iter = included.begin(); iter != included.end();) {
+      auto entity = *iter;
       auto inSet = std::any_of(
         excludedEntityArrays.begin(),
         excludedEntityArrays.end(),
         [entity](auto &map) { return map.find(entity) != map.end(); });
 
       if (inSet) {
-        included.erase(entity);
+        iter = included.erase(iter);
+      } else {
+        ++iter;
       }
     }
   }
@@ -205,13 +227,12 @@ namespace Cel {
   private:
     Iter current;
     Iter end;
-    Entity ref;
+    Entity ref{0};
     Query<With<Include...>, Without<Exclude...> > &view;
   };
 
   template<typename... Include, typename... Exclude>
-  Query<With<Include...>, Without<Exclude...> >::Iterator Query<With<Include...>, Without<Exclude
-    ...> >::begin() {
+  Query<With<Include...>, Without<Exclude...> >::Iterator Query<With<Include...>, Without<Exclude...> >::begin() {
     return Iterator(included.begin(), included.end(), *this);
   }
 
@@ -219,6 +240,14 @@ namespace Cel {
   Query<With<Include...>, Without<Exclude...> >::Iterator Query<With<Include...>, Without<Exclude...> >::end() {
     return Iterator(included.end(), included.end(), *this);
   }
+
+  // Additional specialisation for convenience, when there is no without filter
+  template<typename... Include>
+  class Query<With<Include...> > final : public Query<With<Include...>, Without<> > {
+  public:
+    explicit Query(ComponentsManager &components_manager) : Query<With<Include...>, Without<> >(components_manager) {
+    }
+  };
 }
 
 

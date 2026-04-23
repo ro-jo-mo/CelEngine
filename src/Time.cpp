@@ -27,9 +27,9 @@ Time::SwitchToDynamic() {
 }
 
 bool
-Time::FixedUpdateRequired() {
+Time::FixedUpdateRequired() const {
   const auto currentTime = std::chrono::steady_clock::now();
-  std::chrono::duration<float> delta = (nextFixedUpdate - currentTime);
+  const std::chrono::duration<float> delta = (nextFixedUpdate - currentTime);
   return delta.count() < 0;
 }
 

@@ -8,17 +8,19 @@
 using namespace Cel;
 
 void Ecs::Run() {
-    resourceManager.InitialiseGroups();
     // Startup
     schedules[PreStartup].Execute();
     schedules[Startup].Execute();
     schedules[PostStartup].Execute();
 
-    auto [time, world] = resourceManager.GetResources<Time, World>();
+    auto &time = resourceManager.GetResource<Resource<Time> >();
+    auto &world = resourceManager.GetResource<Resource<World> >();
+
     // Update loop
     while (true) {
         // run fixed update first
         time->SwitchToFixed();
+
         while (time->FixedUpdateRequired()) {
             schedules[PreFixedUpdate].Execute();
             schedules[FixedUpdate].Execute();
@@ -35,7 +37,8 @@ void Ecs::Run() {
 
         // update time
         world->Flush();
-        systemManager.UpdateViews();
+        queryManager.UpdateQueries();
+
         time->Tick();
     }
 }

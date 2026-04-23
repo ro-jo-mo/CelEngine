@@ -5,11 +5,23 @@
 #include <unordered_map>
 
 namespace Cel {
+  /**
+   * @brief A dummy interface so component arrays can be stored in a list of the same type.
+   */
   class IComponentArray {
   public:
+    /**
+     * The only command we require to be run on every component array.
+     * Hence why it is located in the interface
+     * @param entity Entity to destroy
+     */
     virtual void DestroyEntity(Entity entity) = 0;
   };
 
+  /**
+   * @brief A container storing components, and mappings of the entity that owns it.
+   * @tparam T The component we're storing.
+   */
   template<typename T>
   class ComponentArray : public IComponentArray {
   public:
@@ -19,10 +31,24 @@ namespace Cel {
       }
     }
 
+    /**
+     * @brief Add a new component to this entity
+     * @param entity The entity owning this component
+     * @param component The component data
+     */
     void AddComponent(Entity entity, T component);
 
+    /**
+     * @brief Remove a component from this entity
+     * @param entity The entity that owns the component.
+     */
     void RemoveComponent(Entity entity);
 
+    /**
+     * @brief Return the component of type T owned by this entity
+     * @param entity The entity owning this component
+     * @return The owned component
+     */
     T &GetComponent(Entity entity);
 
     const std::unordered_map<Entity, size_t> &GetEntityList();

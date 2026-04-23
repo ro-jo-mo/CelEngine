@@ -24,7 +24,7 @@ void
 ScheduleGraph::ExecuteSystem(const std::type_index id,
                              std::unordered_set<std::type_index> &executed) {
   // if this node has no requirements, we can start executing it
-  idToSystem[id]->Execute();
+  idToSystem[id]();
   executed.insert(id);
 
   // additionally execute nodes that require this

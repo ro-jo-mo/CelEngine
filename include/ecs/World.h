@@ -8,11 +8,10 @@
 #include "Resource.h"
 
 namespace Cel {
-  class World : public Resource {
+  class World {
   public:
-    World(const std::shared_ptr<ComponentsManager> &componentMngr, EntityManager &entityMngr) : componentsManager(
-        componentMngr),
-      entityManager(entityMngr) {
+    World(ComponentsManager &components_manager, EntityManager &entity_manager) : componentsManager(components_manager),
+      entityManager(entity_manager) {
     }
 
     template<typename... Components>
@@ -44,7 +43,7 @@ namespace Cel {
 
     void ExecuteDestroy(Entity entity) const;
 
-    std::shared_ptr<ComponentsManager> componentsManager;
+    ComponentsManager &componentsManager;
     EntityManager &entityManager;
     std::vector<std::unique_ptr<Command> > toAdd;
     std::vector<std::unique_ptr<Command> > toRemove;
@@ -107,12 +106,12 @@ namespace Cel {
   template<typename T>
   inline void
   World::AddCommand<T>::Execute() {
-    world.componentsManager->AddComponent(entity, component);
+    world.componentsManager.AddComponent(entity, component);
   }
 
   template<typename T>
   inline void
   World::RemoveCommand<T>::Execute() {
-    world.componentsManager->RemoveComponent<T>(entity);
+    world.componentsManager.RemoveComponent<T>(entity);
   }
 }

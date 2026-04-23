@@ -31,5 +31,5 @@ World::Flush() {
 
 void World::ExecuteDestroy(Entity entity) const {
   entityManager.DestroyEntity(entity);
-  componentsManager->DestroyEntity(entity);
+  componentsManager.DestroyEntity(entity);
 }

@@ -9,6 +9,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(namespace "CelEngine")
 
+find_package(Vulkan REQUIRED)
+find_package(glfw3 3.4 REQUIRED)
+
+
 add_library(${PROJECT_NAME} STATIC)
 
 target_sources(${PROJECT_NAME}
@@ -16,9 +20,8 @@ target_sources(${PROJECT_NAME}
         "src/EntityManger.cpp"
         "src/Ecs.cpp"
         "src/ComponentsManager.cpp"
-        "src/ResourceManager.cpp"
         "src/ScheduleGraph.cpp"
-        "src/SystemManager.cpp"
+        "src/QueryManager.cpp"
         "src/World.cpp"
         "src/Time.cpp"
 )
@@ -37,17 +40,18 @@ set(public_headers
         include/ecs/ComponentsManager.h
         include/ecs/Ecs.h
         include/ecs/EntityManager.h
-        include/ecs/IResourceGroup.h
-        include/ecs/IView.h
+        include/ecs/Helpers.h
+        include/ecs/IQuery.h
+        include/ecs/Locks.h
         include/ecs/Plugin.h
         include/ecs/Resource.h
-        include/ecs/ResourceGroup.h
         include/ecs/ResourceManager.h
         include/ecs/Schedule.h
         include/ecs/ScheduleGraph.h
         include/ecs/Scheduler.h
         include/ecs/System.h
-        include/ecs/SystemManager.h
+        include/ecs/SystemAllocator.h
+        include/ecs/QueryManager.h
         include/ecs/Time.h
         include/ecs/Types.h
         include/ecs/Query.h

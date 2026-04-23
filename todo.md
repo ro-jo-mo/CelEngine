@@ -1,5 +1,7 @@
 # Todo
 
+- Queue system registry instead of instantly registering on add sys
+- Clean up public headers
 - Update schedulers
     - Single
     - Group scheduling
@@ -8,3 +10,4 @@
 - Rendering
 - Physics
 - ...
+- cmake --install cmake-build-debug --prefix install

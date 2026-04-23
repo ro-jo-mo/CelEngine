@@ -5,7 +5,7 @@
 
 
 namespace Cel {
-  class Time : public Resource {
+  class Time {
   public:
     explicit Time(float fixedTimeStep);
 
@@ -15,7 +15,7 @@ namespace Cel {
 
     void SwitchToDynamic();
 
-    bool FixedUpdateRequired();
+    bool FixedUpdateRequired() const;
 
     void Tick();
 
