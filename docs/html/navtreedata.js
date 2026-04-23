@@ -6,7 +6,7 @@
  Copyright (C) 1997-2020 by Dimitri van Heesch
 
  Permission is hereby granted, free of charge, to any person obtaining a copy of this software
- and associated documentation files (the "Software"), to deal in the Software without restriction,
+ and associated docs files (the "Software"), to deal in the Software without restriction,
  including without limitation the rights to use, copy, modify, merge, publish, distribute,
  sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
  furnished to do so, subject to the following conditions:
@@ -23,28 +23,28 @@
  @licend  The above is the entire license notice for the JavaScript code in this file
 */
 var NAVTREE =
-[
-  [ "Cel Engine", "index.html", [
-    [ "Topics", "topics.html", "topics" ],
-    [ "Classes", "annotated.html", [
-      [ "Class List", "annotated.html", "annotated_dup" ],
-      [ "Class Index", "classes.html", null ],
-      [ "Class Hierarchy", "hierarchy.html", "hierarchy" ],
-      [ "Class Members", "functions.html", [
-        [ "All", "functions.html", null ],
-        [ "Functions", "functions_func.html", null ]
-      ] ]
-    ] ],
-    [ "Files", "files.html", [
-      [ "File List", "files.html", "files_dup" ]
-    ] ]
-  ] ]
-];
+    [
+        ["Cel Engine", "index.html", [
+            ["Topics", "topics.html", "topics"],
+            ["Classes", "annotated.html", [
+                ["Class List", "annotated.html", "annotated_dup"],
+                ["Class Index", "classes.html", null],
+                ["Class Hierarchy", "hierarchy.html", "hierarchy"],
+                ["Class Members", "functions.html", [
+                    ["All", "functions.html", null],
+                    ["Functions", "functions_func.html", null]
+                ]]
+            ]],
+            ["Files", "files.html", [
+                ["File List", "files.html", "files_dup"]
+            ]]
+        ]]
+    ];
 
 var NAVTREEINDEX =
-[
-"_component_array_8h_source.html"
-];
+    [
+        "_component_array_8h_source.html"
+    ];
 
 var SYNCONMSG = 'click to disable panel synchronization';
 var SYNCOFFMSG = 'click to enable panel synchronization';
