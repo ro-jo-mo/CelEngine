@@ -1,0 +1,48 @@
+\doxysection{System\+Allocator.\+h}
+\hypertarget{_system_allocator_8h_source}{}\label{_system_allocator_8h_source}\index{include/ecs/SystemAllocator.h@{include/ecs/SystemAllocator.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ "{}Query.h"{}}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ "{}QueryManager.h"{}}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ "{}ResourceManager.h"{}}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}Helpers.h"{}}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ "{}Locks.h"{}}}
+\DoxyCodeLine{00008\ }
+\DoxyCodeLine{00009\ \textcolor{keyword}{namespace\ }Cel\ \{}
+\DoxyCodeLine{00013\ \ \ \ \ \textcolor{keyword}{class\ }SystemAllocator\ \{}
+\DoxyCodeLine{00014\ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00015\ \ \ \ \ \ \ \ \ SystemAllocator(\doxymbox{\hyperlink{class_cel_1_1_resource_manager}{ResourceManager}}\ \&resource\_manager,\ \doxymbox{\hyperlink{class_cel_1_1_query_manager}{QueryManager}}\ \&query\_manager)}
+\DoxyCodeLine{00016\ \ \ \ \ \ \ \ \ \ \ \ \ :\ resourceManager(resource\_manager),}
+\DoxyCodeLine{00017\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ queryManager(query\_manager)\ \{}
+\DoxyCodeLine{00018\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00019\ }
+\DoxyCodeLine{00025\ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00026\ \ \ \ \ \ \ \ \ T\ \&\doxymbox{\hyperlink{class_cel_1_1_system_allocator_a04a629a748bcbf8e3cf64d30354c88a2}{Register}}();}
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00028\ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00029\ \ \ \ \ \ \ \ \ std::vector<std::type\_index>\ registeredResources;}
+\DoxyCodeLine{00030\ \ \ \ \ \ \ \ \ std::vector<std::type\_index>\ registeredQueries;}
+\DoxyCodeLine{00031\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_resource_manager}{ResourceManager}}\ \&resourceManager;}
+\DoxyCodeLine{00032\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_query_manager}{QueryManager}}\ \&queryManager;}
+\DoxyCodeLine{00033\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{class_locks}{Locks}}\ locks;}
+\DoxyCodeLine{00034\ \ \ \ \ \};}
+\DoxyCodeLine{00035\ }
+\DoxyCodeLine{00036\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00037\ \ \ \ \ T\ \&\doxymbox{\hyperlink{class_cel_1_1_system_allocator_a04a629a748bcbf8e3cf64d30354c88a2}{SystemAllocator::Register}}()\ \{}
+\DoxyCodeLine{00038\ \ \ \ \ \ \ \ \ locks.Register<T>();}
+\DoxyCodeLine{00039\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ \textcolor{keyword}{constexpr}\ (\doxymbox{\hyperlink{struct_cel_1_1_is_query}{IsQuery<T>::value}})\ \{}
+\DoxyCodeLine{00040\ \ \ \ \ \ \ \ \ \ \ \ \ registeredQueries.push\_back(std::type\_index(\textcolor{keyword}{typeid}(T)));}
+\DoxyCodeLine{00041\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ queryManager.GetQuery<T>();}
+\DoxyCodeLine{00042\ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \textcolor{keywordflow}{if}\ \textcolor{keyword}{constexpr}\ (\doxymbox{\hyperlink{struct_cel_1_1_is_resource}{IsResource<T>::value}})\ \{}
+\DoxyCodeLine{00043\ \ \ \ \ \ \ \ \ \ \ \ \ registeredResources.push\_back(std::type\_index(\textcolor{keyword}{typeid}(T)));}
+\DoxyCodeLine{00044\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ resourceManager.GetResource<T>();}
+\DoxyCodeLine{00045\ \ \ \ \ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00046\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{static\_assert}(alwaysFalse<T>,\ \textcolor{stringliteral}{"{}A\ system\ can\ only\ request\ resources\ and\ queries!"{}});}
+\DoxyCodeLine{00047\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ T();}
+\DoxyCodeLine{00048\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00049\ \ \ \ \ \}}
+\DoxyCodeLine{00050\ \}}
+
+\end{DoxyCode}

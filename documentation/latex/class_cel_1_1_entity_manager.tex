@@ -1,0 +1,56 @@
+\doxysection{Cel::\+Entity\+Manager Class Reference}
+\hypertarget{class_cel_1_1_entity_manager}{}\label{class_cel_1_1_entity_manager}\index{Cel::EntityManager@{Cel::EntityManager}}
+
+
+Manages the allocation of entity ids A caveat of the current system is that there is a set maximum number of entity ids available Currently components are stored in arrays, hence the restriction At a later point I might consider switching to vectors depending on performance restrictions.  
+
+
+
+
+{\ttfamily \+\#include $<$Entity\+Manager.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+Entity \doxymbox{\hyperlink{class_cel_1_1_entity_manager_a75b61589010123e381706a5f35ac74ca}{Allocate\+Entity}} ()
+\begin{DoxyCompactList}\small\item\em Returns an unused id. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{class_cel_1_1_entity_manager_a69236b0746036486d2f453ee2ca4e695}{Destroy\+Entity}} (Entity entity)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Manages the allocation of entity ids A caveat of the current system is that there is a set maximum number of entity ids available Currently components are stored in arrays, hence the restriction At a later point I might consider switching to vectors depending on performance restrictions. 
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_entity_manager_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_entity_manager_a75b61589010123e381706a5f35ac74ca}\index{Cel::EntityManager@{Cel::EntityManager}!AllocateEntity@{AllocateEntity}}
+\index{AllocateEntity@{AllocateEntity}!Cel::EntityManager@{Cel::EntityManager}}
+\doxysubsubsection{\texorpdfstring{AllocateEntity()}{AllocateEntity()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_entity_manager_a75b61589010123e381706a5f35ac74ca} 
+Entity Entity\+Manager::\+\+Allocate\+Entity (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Returns an unused id. 
+
+\begin{DoxyReturn}{Returns}
+entity id 
+\end{DoxyReturn}
+\Hypertarget{class_cel_1_1_entity_manager_a69236b0746036486d2f453ee2ca4e695}\index{Cel::EntityManager@{Cel::EntityManager}!DestroyEntity@{DestroyEntity}}
+\index{DestroyEntity@{DestroyEntity}!Cel::EntityManager@{Cel::EntityManager}}
+\doxysubsubsection{\texorpdfstring{DestroyEntity()}{DestroyEntity()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_entity_manager_a69236b0746036486d2f453ee2ca4e695} 
+void Entity\+Manager::\+\+Destroy\+Entity (\begin{DoxyParamCaption}\item[{Entity}]{entity}{}\end{DoxyParamCaption})}
+
+Destroys an entity, and allows the id to be reused 
+\begin{DoxyParams}{Parameters}
+{\em entity} & Entity to destroy \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+Entity\+Manager.\+h\item 
+src/\+Entity\+Manger.\+cpp\end{DoxyCompactItemize}

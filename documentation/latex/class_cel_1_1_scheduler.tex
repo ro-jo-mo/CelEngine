@@ -1,0 +1,87 @@
+\doxysection{Cel::\+Scheduler Class Reference}
+\hypertarget{class_cel_1_1_scheduler}{}\label{class_cel_1_1_scheduler}\index{Cel::Scheduler@{Cel::Scheduler}}
+
+
+A class for scheduling new systems.  
+
+
+
+
+{\ttfamily \+\#include $<$Scheduler.\+h$>$}
+
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{System\+Scheduler}}
+\begin{DoxyCompactList}\small\item\em A helper class for chaining scheduling calls. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_cel_1_1_scheduler_a8f6916e95411286bb6c77c3e7ffd2ff1}\label{class_cel_1_1_scheduler_a8f6916e95411286bb6c77c3e7ffd2ff1} 
+{\bfseries Scheduler} (auto \&scdl)
+\item 
+{\footnotesize template$<$typename \doxymbox{\hyperlink{class_cel_1_1_system}{System}}$>$ }\\\doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{System\+Scheduler}}$<$ \doxymbox{\hyperlink{class_cel_1_1_system}{System}}, \doxymbox{\hyperlink{class_cel_1_1_system}{System}} $>$ \doxymbox{\hyperlink{class_cel_1_1_scheduler_afa66c0a24f2aeb1e622e901aba878b27}{Add\+System}} (Schedule schedule)
+\begin{DoxyCompactList}\small\item\em Add a new system to this schedule. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename First, typename Second, typename... Others$>$ }\\auto \doxymbox{\hyperlink{class_cel_1_1_scheduler_a6dfc960800a82ded70c488ae93c6c42d}{Chain}} (Schedule schedule)
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+A class for scheduling new systems. 
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_scheduler_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_scheduler_afa66c0a24f2aeb1e622e901aba878b27}\index{Cel::Scheduler@{Cel::Scheduler}!AddSystem@{AddSystem}}
+\index{AddSystem@{AddSystem}!Cel::Scheduler@{Cel::Scheduler}}
+\doxysubsubsection{\texorpdfstring{AddSystem()}{AddSystem()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_scheduler_afa66c0a24f2aeb1e622e901aba878b27} 
+template$<$typename \doxymbox{\hyperlink{class_cel_1_1_system}{System}}$>$ \\
+\doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{Scheduler::\+\+System\+Scheduler}}$<$ \doxymbox{\hyperlink{class_cel_1_1_system}{System}}, \doxymbox{\hyperlink{class_cel_1_1_system}{System}} $>$ Cel::\+\+Scheduler::\+\+Add\+System (\begin{DoxyParamCaption}\item[{Schedule}]{schedule}{}\end{DoxyParamCaption})}
+
+
+
+Add a new system to this schedule. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em \doxylink{class_cel_1_1_system}{System}} & \doxylink{class_cel_1_1_system}{System} to schedule \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em schedule} & Schedule to add this system to (update, fixed update, ...) \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+A scheduling object for ordering this system relative to others 
+\end{DoxyReturn}
+\Hypertarget{class_cel_1_1_scheduler_a6dfc960800a82ded70c488ae93c6c42d}\index{Cel::Scheduler@{Cel::Scheduler}!Chain@{Chain}}
+\index{Chain@{Chain}!Cel::Scheduler@{Cel::Scheduler}}
+\doxysubsubsection{\texorpdfstring{Chain()}{Chain()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_scheduler_a6dfc960800a82ded70c488ae93c6c42d} 
+template$<$typename First, typename Second, typename... Others$>$ \\
+auto Cel::\+\+Scheduler::\+\+Chain (\begin{DoxyParamCaption}\item[{Schedule}]{schedule}{}\end{DoxyParamCaption})}
+
+FIX ME 
+\begin{DoxyTemplParams}{Template Parameters}
+{\em First} & \\
+\hline
+{\em Second} & \\
+\hline
+{\em Others} & \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em schedule} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+
+\end{DoxyReturn}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+Scheduler.\+h\end{DoxyCompactItemize}

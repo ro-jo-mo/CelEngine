@@ -1,0 +1,80 @@
+\doxysection{Cel::\+System\texorpdfstring{$<$}{<} Parameters \texorpdfstring{$>$}{>} Class Template Reference}
+\hypertarget{class_cel_1_1_system}{}\label{class_cel_1_1_system}\index{Cel::System$<$ Parameters $>$@{Cel::System$<$ Parameters $>$}}
+
+
+Abstract base class for game systems.  
+
+
+
+
+{\ttfamily \+\#include $<$System.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual void \doxymbox{\hyperlink{class_cel_1_1_system_a4a4e1863a68184172b80d6c5a34e85a3}{Run}} (Parameters \&... params)=0
+\begin{DoxyCompactList}\small\item\em Virtual method for running the system. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static std::\+function$<$ void()$>$ \doxymbox{\hyperlink{class_cel_1_1_system_a4f6fb58b23231f3c28eb4f2f96e4c2f8}{Register}} (std::\+shared\+\_\+ptr$<$ \doxymbox{\hyperlink{class_cel_1_1_system}{System}} $>$ system, \doxymbox{\hyperlink{class_cel_1_1_system_allocator}{System\+Allocator}} \&allocator)
+\begin{DoxyCompactList}\small\item\em Registers this system, creating a new function with the required data captured. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename... Parameters$>$\newline
+class Cel::\+\+System$<$ Parameters $>$}
+Abstract base class for game systems. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em Parameters} & A list of queries and resources required by this system \\
+\hline
+\end{DoxyTemplParams}
+
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_system_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_system_a4f6fb58b23231f3c28eb4f2f96e4c2f8}\index{Cel::System$<$ Parameters $>$@{Cel::System$<$ Parameters $>$}!Register@{Register}}
+\index{Register@{Register}!Cel::System$<$ Parameters $>$@{Cel::System$<$ Parameters $>$}}
+\doxysubsubsection{\texorpdfstring{Register()}{Register()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_system_a4f6fb58b23231f3c28eb4f2f96e4c2f8} 
+template$<$typename... Parameters$>$ \\
+std::\+function$<$ void()$>$ \doxymbox{\hyperlink{class_cel_1_1_system}{Cel::\+\+System}}$<$ Parameters $>$::\+\+Register (\begin{DoxyParamCaption}\item[{std::\+shared\+\_\+ptr$<$ \doxymbox{\hyperlink{class_cel_1_1_system}{System}}$<$ Parameters $>$ $>$}]{system}{, }\item[{\doxymbox{\hyperlink{class_cel_1_1_system_allocator}{System\+Allocator}} \&}]{allocator}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [static]}}
+
+
+
+Registers this system, creating a new function with the required data captured. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em system} & A system pointer, required for polymorphism \\
+\hline
+{\em allocator} & \doxylink{class_cel_1_1_resource}{Resource} allocator for system \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+A function that runs this system with its required params. Requires no inputs. 
+\end{DoxyReturn}
+\Hypertarget{class_cel_1_1_system_a4a4e1863a68184172b80d6c5a34e85a3}\index{Cel::System$<$ Parameters $>$@{Cel::System$<$ Parameters $>$}!Run@{Run}}
+\index{Run@{Run}!Cel::System$<$ Parameters $>$@{Cel::System$<$ Parameters $>$}}
+\doxysubsubsection{\texorpdfstring{Run()}{Run()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_system_a4a4e1863a68184172b80d6c5a34e85a3} 
+template$<$typename... Parameters$>$ \\
+virtual void \doxymbox{\hyperlink{class_cel_1_1_system}{Cel::\+\+System}}$<$ Parameters $>$::\+\+Run (\begin{DoxyParamCaption}\item[{Parameters \&...}]{params}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Virtual method for running the system. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em params} & Queries, resources needed to run \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+System.\+h\end{DoxyCompactItemize}

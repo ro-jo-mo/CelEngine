@@ -1,0 +1,158 @@
+\doxysection{Cel::\+Components\+Manager Class Reference}
+\hypertarget{class_cel_1_1_components_manager}{}\label{class_cel_1_1_components_manager}\index{Cel::ComponentsManager@{Cel::ComponentsManager}}
+
+
+The overarching components storage for the entire engine. Stores every component that currently exists.  
+
+
+
+
+{\ttfamily \+\#include $<$Components\+Manager.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename T$>$ }\\void \doxymbox{\hyperlink{class_cel_1_1_components_manager_a4af3fb1b3a1035ad7d7ed7ee8aafb29f}{Register\+Component}} ()
+\begin{DoxyCompactList}\small\item\em Registers a new component type. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\T \& \doxymbox{\hyperlink{class_cel_1_1_components_manager_abd558183f6b7b7d3856c792bce83a689}{Get\+Component}} (Entity entity)
+\begin{DoxyCompactList}\small\item\em Retrieves a compoent of type T owned by the entity. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\void \doxymbox{\hyperlink{class_cel_1_1_components_manager_ae8bed5d55689fb2cc61c22e2e7a5f9f8}{Add\+Component}} (Entity entity, T component)
+\begin{DoxyCompactList}\small\item\em Add a component of type T to the entity. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\void \doxymbox{\hyperlink{class_cel_1_1_components_manager_ae8c0c14327784d7a53b477073b693fcb}{Remove\+Component}} (Entity entity)
+\begin{DoxyCompactList}\small\item\em Remove a component of type T from entity. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\std::\+shared\+\_\+ptr$<$ \doxymbox{\hyperlink{class_cel_1_1_component_array}{Component\+Array}}$<$ T $>$ $>$ \doxymbox{\hyperlink{class_cel_1_1_components_manager_ad25bd41416f4b9b426d8b6190577ea86}{Get\+Component\+Array}} ()
+\begin{DoxyCompactList}\small\item\em Get all components of this type. Require by queries. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{class_cel_1_1_components_manager_a8ef1a8ce1d18da4f8bc1b2b9345f6b3b}{Destroy\+Entity}} (Entity entity)
+\begin{DoxyCompactList}\small\item\em Completely remove all components owned by entity. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+The overarching components storage for the entire engine. Stores every component that currently exists. 
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_components_manager_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_components_manager_ae8bed5d55689fb2cc61c22e2e7a5f9f8}\index{Cel::ComponentsManager@{Cel::ComponentsManager}!AddComponent@{AddComponent}}
+\index{AddComponent@{AddComponent}!Cel::ComponentsManager@{Cel::ComponentsManager}}
+\doxysubsubsection{\texorpdfstring{AddComponent()}{AddComponent()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_components_manager_ae8bed5d55689fb2cc61c22e2e7a5f9f8} 
+template$<$typename T$>$ \\
+void Cel::\+\+Components\+Manager::\+\+Add\+Component (\begin{DoxyParamCaption}\item[{Entity}]{entity}{, }\item[{T}]{component}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Add a component of type T to the entity. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & Component type \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em entity} & Entity to add to \\
+\hline
+{\em component} & Component data to add \\
+\hline
+\end{DoxyParams}
+\Hypertarget{class_cel_1_1_components_manager_a8ef1a8ce1d18da4f8bc1b2b9345f6b3b}\index{Cel::ComponentsManager@{Cel::ComponentsManager}!DestroyEntity@{DestroyEntity}}
+\index{DestroyEntity@{DestroyEntity}!Cel::ComponentsManager@{Cel::ComponentsManager}}
+\doxysubsubsection{\texorpdfstring{DestroyEntity()}{DestroyEntity()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_components_manager_a8ef1a8ce1d18da4f8bc1b2b9345f6b3b} 
+void Components\+Manager::\+\+Destroy\+Entity (\begin{DoxyParamCaption}\item[{Entity}]{entity}{}\end{DoxyParamCaption})}
+
+
+
+Completely remove all components owned by entity. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em entity} & Entity to destroy \\
+\hline
+\end{DoxyParams}
+\Hypertarget{class_cel_1_1_components_manager_abd558183f6b7b7d3856c792bce83a689}\index{Cel::ComponentsManager@{Cel::ComponentsManager}!GetComponent@{GetComponent}}
+\index{GetComponent@{GetComponent}!Cel::ComponentsManager@{Cel::ComponentsManager}}
+\doxysubsubsection{\texorpdfstring{GetComponent()}{GetComponent()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_components_manager_abd558183f6b7b7d3856c792bce83a689} 
+template$<$typename T$>$ \\
+T \& Cel::\+\+Components\+Manager::\+\+Get\+Component (\begin{DoxyParamCaption}\item[{Entity}]{entity}{}\end{DoxyParamCaption})}
+
+
+
+Retrieves a compoent of type T owned by the entity. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & The type of the component \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em entity} & Entity owning component T \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The component 
+\end{DoxyReturn}
+\Hypertarget{class_cel_1_1_components_manager_ad25bd41416f4b9b426d8b6190577ea86}\index{Cel::ComponentsManager@{Cel::ComponentsManager}!GetComponentArray@{GetComponentArray}}
+\index{GetComponentArray@{GetComponentArray}!Cel::ComponentsManager@{Cel::ComponentsManager}}
+\doxysubsubsection{\texorpdfstring{GetComponentArray()}{GetComponentArray()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_components_manager_ad25bd41416f4b9b426d8b6190577ea86} 
+template$<$typename T$>$ \\
+std::\+shared\+\_\+ptr$<$ \doxymbox{\hyperlink{class_cel_1_1_component_array}{Component\+Array}}$<$ T $>$ $>$ Cel::\+\+Components\+Manager::\+\+Get\+Component\+Array (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Get all components of this type. Require by queries. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & Component type \\
+\hline
+\end{DoxyTemplParams}
+\begin{DoxyReturn}{Returns}
+the component array 
+\end{DoxyReturn}
+\Hypertarget{class_cel_1_1_components_manager_a4af3fb1b3a1035ad7d7ed7ee8aafb29f}\index{Cel::ComponentsManager@{Cel::ComponentsManager}!RegisterComponent@{RegisterComponent}}
+\index{RegisterComponent@{RegisterComponent}!Cel::ComponentsManager@{Cel::ComponentsManager}}
+\doxysubsubsection{\texorpdfstring{RegisterComponent()}{RegisterComponent()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_components_manager_a4af3fb1b3a1035ad7d7ed7ee8aafb29f} 
+template$<$typename T$>$ \\
+void Cel::\+\+Components\+Manager::\+\+Register\+Component (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Registers a new component type. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & The component type to register \\
+\hline
+\end{DoxyTemplParams}
+\Hypertarget{class_cel_1_1_components_manager_ae8c0c14327784d7a53b477073b693fcb}\index{Cel::ComponentsManager@{Cel::ComponentsManager}!RemoveComponent@{RemoveComponent}}
+\index{RemoveComponent@{RemoveComponent}!Cel::ComponentsManager@{Cel::ComponentsManager}}
+\doxysubsubsection{\texorpdfstring{RemoveComponent()}{RemoveComponent()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_components_manager_ae8c0c14327784d7a53b477073b693fcb} 
+template$<$typename T$>$ \\
+void Cel::\+\+Components\+Manager::\+\+Remove\+Component (\begin{DoxyParamCaption}\item[{Entity}]{entity}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Remove a component of type T from entity. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & Component type \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em entity} & Entity to remove from \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+Components\+Manager.\+h\item 
+src/\+Components\+Manager.\+cpp\end{DoxyCompactItemize}

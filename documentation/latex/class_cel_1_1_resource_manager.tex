@@ -1,0 +1,73 @@
+\doxysection{Cel::\+Resource\+Manager Class Reference}
+\hypertarget{class_cel_1_1_resource_manager}{}\label{class_cel_1_1_resource_manager}\index{Cel::ResourceManager@{Cel::ResourceManager}}
+
+
+Stores and retrieves resources In this engine resources are treated as singleton instances of an object. Currently they\textquotesingle{}re assumed to be thread safe (lazy me) At a later date I will likely change this?  
+
+
+
+
+{\ttfamily \+\#include $<$Resource\+Manager.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$typename T, typename... Args$>$ }\\void \doxymbox{\hyperlink{class_cel_1_1_resource_manager_a34b0b8bb7d2e73347380aa80f6ea8574}{Insert\+Resource}} (Args \&\&... args)
+\begin{DoxyCompactList}\small\item\em Initialise a new resource. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T$>$ }\\auto \& \doxymbox{\hyperlink{class_cel_1_1_resource_manager_afefc4b82c939b42678172fd7cec863c5}{Get\+Resource}} ()
+\begin{DoxyCompactList}\small\item\em Return resource. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Stores and retrieves resources In this engine resources are treated as singleton instances of an object. Currently they\textquotesingle{}re assumed to be thread safe (lazy me) At a later date I will likely change this? 
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_resource_manager_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_resource_manager_afefc4b82c939b42678172fd7cec863c5}\index{Cel::ResourceManager@{Cel::ResourceManager}!GetResource@{GetResource}}
+\index{GetResource@{GetResource}!Cel::ResourceManager@{Cel::ResourceManager}}
+\doxysubsubsection{\texorpdfstring{GetResource()}{GetResource()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_resource_manager_afefc4b82c939b42678172fd7cec863c5} 
+template$<$typename T$>$ \\
+auto \& Cel::\+\+Resource\+Manager::\+\+Get\+Resource (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Return resource. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & \doxylink{class_cel_1_1_resource}{Resource} type \\
+\hline
+\end{DoxyTemplParams}
+\begin{DoxyReturn}{Returns}
+The resource 
+\end{DoxyReturn}
+\Hypertarget{class_cel_1_1_resource_manager_a34b0b8bb7d2e73347380aa80f6ea8574}\index{Cel::ResourceManager@{Cel::ResourceManager}!InsertResource@{InsertResource}}
+\index{InsertResource@{InsertResource}!Cel::ResourceManager@{Cel::ResourceManager}}
+\doxysubsubsection{\texorpdfstring{InsertResource()}{InsertResource()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_resource_manager_a34b0b8bb7d2e73347380aa80f6ea8574} 
+template$<$typename T, typename... Args$>$ \\
+void Cel::\+\+Resource\+Manager::\+\+Insert\+Resource (\begin{DoxyParamCaption}\item[{Args \&\&...}]{args}{}\end{DoxyParamCaption})}
+
+
+
+Initialise a new resource. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & \doxylink{class_cel_1_1_resource}{Resource} type \\
+\hline
+{\em Args} & Argument types \\
+\hline
+\end{DoxyTemplParams}
+
+\begin{DoxyParams}{Parameters}
+{\em args} & Arguments to initialise resource with \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+Resource\+Manager.\+h\end{DoxyCompactItemize}

@@ -1,0 +1,96 @@
+\doxysection{Cel::\+Query\texorpdfstring{$<$}{<} With\texorpdfstring{$<$}{<} Include... \texorpdfstring{$>$}{>}, Without\texorpdfstring{$<$}{<} Exclude... \texorpdfstring{$>$}{>} \texorpdfstring{$>$}{>} Class Template Reference}
+\hypertarget{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4}{}\label{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4}\index{Cel::Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$@{Cel::Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$}}
+
+
+Standard query, requests a filtered set of entities required by a game system.  
+
+
+
+
+{\ttfamily \+\#include $<$Query.\+h$>$}
+
+Inheritance diagram for Cel::\+Query\texorpdfstring{$<$}{<} With\texorpdfstring{$<$}{<} Include... \texorpdfstring{$>$}{>}, Without\texorpdfstring{$<$}{<} Exclude... \texorpdfstring{$>$}{>} \texorpdfstring{$>$}{>}:\+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \doxymbox{\hyperlink{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_1_1_iterator}{Iterator}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_a204ace470b9faa910124fe005fd224d2}\label{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_a204ace470b9faa910124fe005fd224d2} 
+{\bfseries Query} (\doxymbox{\hyperlink{class_cel_1_1_components_manager}{Components\+Manager}} \&components\+\_\+manager)
+\item 
+void \doxymbox{\hyperlink{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_a0097c110aadfeffe9d69ae179d78f5a9}{Update\+Query}} () override
+\begin{DoxyCompactList}\small\item\em A method to update the set of entities this query accesses. \end{DoxyCompactList}\item 
+std::\+tuple$<$ Include \&... $>$ \doxymbox{\hyperlink{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_a56ee338152ac75ff53535c6cf6fccbaf}{Get}} (Entity entity)
+\begin{DoxyCompactList}\small\item\em Retrieve the queried components of this specific entity. \end{DoxyCompactList}\item 
+\Hypertarget{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_a048136124e68f5e60e974d9895d5869b}\label{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_a048136124e68f5e60e974d9895d5869b} 
+\doxymbox{\hyperlink{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_1_1_iterator}{Iterator}} {\bfseries begin} ()
+\item 
+\Hypertarget{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_addf06a6de5bb3527b295354207271062}\label{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_addf06a6de5bb3527b295354207271062} 
+\doxymbox{\hyperlink{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_1_1_iterator}{Iterator}} {\bfseries end} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename... Include, typename... Exclude$>$\newline
+class Cel::\+\+Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$}
+Standard query, requests a filtered set of entities required by a game system. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em Include} & Only include entities with all of these components \\
+\hline
+{\em Exclude} & Exclude all entities with any of these components \\
+\hline
+\end{DoxyTemplParams}
+
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_a56ee338152ac75ff53535c6cf6fccbaf}\index{Cel::Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$@{Cel::Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$}!Get@{Get}}
+\index{Get@{Get}!Cel::Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$@{Cel::Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$}}
+\doxysubsubsection{\texorpdfstring{Get()}{Get()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_a56ee338152ac75ff53535c6cf6fccbaf} 
+template$<$typename... Include, typename... Exclude$>$ \\
+std::\+tuple$<$ Include \&... $>$ \doxymbox{\hyperlink{class_cel_1_1_query}{Cel::\+\+Query}}$<$ \doxymbox{\hyperlink{struct_cel_1_1_with}{With}}$<$ Include... $>$, \doxymbox{\hyperlink{struct_cel_1_1_without}{Without}}$<$ Exclude... $>$ $>$::\+\+Get (\begin{DoxyParamCaption}\item[{Entity}]{entity}{}\end{DoxyParamCaption})}
+
+
+
+Retrieve the queried components of this specific entity. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em entity} & Entity to retrieve \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+Retrieved entity components 
+\end{DoxyReturn}
+\Hypertarget{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_a0097c110aadfeffe9d69ae179d78f5a9}\index{Cel::Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$@{Cel::Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$}!UpdateQuery@{UpdateQuery}}
+\index{UpdateQuery@{UpdateQuery}!Cel::Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$@{Cel::Query$<$ With$<$ Include... $>$, Without$<$ Exclude... $>$ $>$}}
+\doxysubsubsection{\texorpdfstring{UpdateQuery()}{UpdateQuery()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_query_3_01_with_3_01_include_8_8_8_01_4_00_01_without_3_01_exclude_8_8_8_01_4_01_4_a0097c110aadfeffe9d69ae179d78f5a9} 
+template$<$typename... Include, typename... Exclude$>$ \\
+void \doxymbox{\hyperlink{class_cel_1_1_query}{Cel::\+\+Query}}$<$ \doxymbox{\hyperlink{struct_cel_1_1_with}{With}}$<$ Include... $>$, \doxymbox{\hyperlink{struct_cel_1_1_without}{Without}}$<$ Exclude... $>$ $>$::\+\+Update\+Query (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [override]}, {\ttfamily [virtual]}}
+
+
+
+A method to update the set of entities this query accesses. 
+
+
+
+Implements \doxymbox{\hyperlink{class_cel_1_1_i_query_ad816baf8dac7cd974656bf6cc24d2bf2}{Cel::\+\+IQuery}}.
+
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+Query.\+h\end{DoxyCompactItemize}

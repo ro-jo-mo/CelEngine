@@ -41,6 +41,7 @@ set(public_headers
         include/ecs/Ecs.h
         include/ecs/EntityManager.h
         include/ecs/Helpers.h
+        include/ecs/IResource.h
         include/ecs/IQuery.h
         include/ecs/Locks.h
         include/ecs/Plugin.h

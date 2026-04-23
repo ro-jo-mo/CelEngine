@@ -5,23 +5,44 @@
 #include "ScheduleGraph.h"
 
 namespace Cel {
+    /**
+     * @brief A class for scheduling new systems
+     */
     class Scheduler {
     public:
         explicit Scheduler(auto &scdl) : schedules(scdl) {
         }
 
+        /**
+         * @brief A helper class for chaining scheduling calls
+         * @tparam First FIX ME
+         * @tparam Last FIX ME
+         */
         template<typename First, typename Last>
         class SystemScheduler;
 
+        /**
+         * @brief Add a new system to this schedule
+         * @tparam System System to schedule
+         * @param schedule Schedule to add this system to (update, fixed update, ...)
+         * @return A scheduling object for ordering this system relative to others
+         */
         template<typename System>
         SystemScheduler<System, System> AddSystem(Schedule schedule);
 
+        /**
+         * FIX ME
+         * @tparam First
+         * @tparam Second
+         * @tparam Others
+         * @param schedule
+         * @return
+         */
         template<typename First, typename Second, typename... Others>
         auto Chain(Schedule schedule);
 
     private:
         template<typename First, typename Second, typename... Others>
-
         void AddEdges(ScheduleGraph &graph);
 
         std::vector<ScheduleGraph> &schedules;

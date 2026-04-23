@@ -1,0 +1,30 @@
+\doxysection{Locks.\+h}
+\hypertarget{_locks_8h_source}{}\label{_locks_8h_source}\index{include/ecs/Locks.h@{include/ecs/Locks.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ \textcolor{preprocessor}{\#include\ <typeindex>}}
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <unordered\_set>}}
+\DoxyCodeLine{00004\ }
+\DoxyCodeLine{00005\ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_locks}{Locks}}\ \{}
+\DoxyCodeLine{00006\ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00007\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00008\ \ \ \ \ \textcolor{keywordtype}{void}\ Register();}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00011\ \ \ \ \ \textcolor{keywordtype}{bool}\ worldAccessed\ =\ \textcolor{keyword}{false};}
+\DoxyCodeLine{00012\ \ \ \ \ std::unordered\_set<std::type\_index>\ write;}
+\DoxyCodeLine{00013\ \ \ \ \ std::unordered\_set<std::type\_index>\ read;}
+\DoxyCodeLine{00014\ \};}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00016\ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00017\ \textcolor{keywordtype}{void}\ Locks::Register()\ \{}
+\DoxyCodeLine{00018\ \ \ \ \ \textcolor{comment}{//\ Iterate\ over\ With<...>\ in\ queries}}
+\DoxyCodeLine{00019\ \ \ \ \ \textcolor{comment}{//\ Special\ bool\ for\ world\ access}}
+\DoxyCodeLine{00020\ \ \ \ \ \textcolor{keywordflow}{if}\ (std::is\_const\_v<T>)\ \{}
+\DoxyCodeLine{00021\ \ \ \ \ \ \ \ \ read.insert(std::type\_index(\textcolor{keyword}{typeid}(T)));}
+\DoxyCodeLine{00022\ \ \ \ \ \}\ \textcolor{keywordflow}{else}\ \{}
+\DoxyCodeLine{00023\ \ \ \ \ \}}
+\DoxyCodeLine{00024\ \}}
+
+\end{DoxyCode}

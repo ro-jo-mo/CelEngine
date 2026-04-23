@@ -1,0 +1,122 @@
+\doxysection{Cel::\+Component\+Array\texorpdfstring{$<$}{<} T \texorpdfstring{$>$}{>} Class Template Reference}
+\hypertarget{class_cel_1_1_component_array}{}\label{class_cel_1_1_component_array}\index{Cel::ComponentArray$<$ T $>$@{Cel::ComponentArray$<$ T $>$}}
+
+
+A container storing components, and mappings of the entity that owns it.  
+
+
+
+
+{\ttfamily \+\#include $<$Component\+Array.\+h$>$}
+
+Inheritance diagram for Cel::\+Component\+Array\texorpdfstring{$<$}{<} T \texorpdfstring{$>$}{>}:\+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{class_cel_1_1_component_array}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \doxymbox{\hyperlink{class_cel_1_1_component_array_afdaf9c3088e84055ac92a54bfc3b574e}{Destroy\+Entity}} (const Entity entity) override
+\item 
+void \doxymbox{\hyperlink{class_cel_1_1_component_array_a47e2e331f6426e676ddd4d9d51f91475}{Add\+Component}} (Entity entity, T component)
+\begin{DoxyCompactList}\small\item\em Add a new component to this entity. \end{DoxyCompactList}\item 
+void \doxymbox{\hyperlink{class_cel_1_1_component_array_a4a3e189bf6910b570866303a00192c35}{Remove\+Component}} (Entity entity)
+\begin{DoxyCompactList}\small\item\em Remove a component from this entity. \end{DoxyCompactList}\item 
+T \& \doxymbox{\hyperlink{class_cel_1_1_component_array_a0a528742ba0f74916356c18b558ad26f}{Get\+Component}} (Entity entity)
+\begin{DoxyCompactList}\small\item\em Return the component of type T owned by this entity. \end{DoxyCompactList}\item 
+\Hypertarget{class_cel_1_1_component_array_aa5a47cbfce9b8d74bc8b65809a14a396}\label{class_cel_1_1_component_array_aa5a47cbfce9b8d74bc8b65809a14a396} 
+const std::\+unordered\+\_\+map$<$ Entity, size\+\_\+t $>$ \& {\bfseries Get\+Entity\+List} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$\newline
+class Cel::\+\+Component\+Array$<$ T $>$}
+A container storing components, and mappings of the entity that owns it. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & The component we\textquotesingle{}re storing. \\
+\hline
+\end{DoxyTemplParams}
+
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_component_array_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_component_array_a47e2e331f6426e676ddd4d9d51f91475}\index{Cel::ComponentArray$<$ T $>$@{Cel::ComponentArray$<$ T $>$}!AddComponent@{AddComponent}}
+\index{AddComponent@{AddComponent}!Cel::ComponentArray$<$ T $>$@{Cel::ComponentArray$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{AddComponent()}{AddComponent()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_component_array_a47e2e331f6426e676ddd4d9d51f91475} 
+template$<$typename T$>$ \\
+void \doxymbox{\hyperlink{class_cel_1_1_component_array}{Cel::\+\+Component\+Array}}$<$ T $>$::\+\+Add\+Component (\begin{DoxyParamCaption}\item[{Entity}]{entity}{, }\item[{T}]{component}{}\end{DoxyParamCaption})}
+
+
+
+Add a new component to this entity. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em entity} & The entity owning this component \\
+\hline
+{\em component} & The component data \\
+\hline
+\end{DoxyParams}
+\Hypertarget{class_cel_1_1_component_array_afdaf9c3088e84055ac92a54bfc3b574e}\index{Cel::ComponentArray$<$ T $>$@{Cel::ComponentArray$<$ T $>$}!DestroyEntity@{DestroyEntity}}
+\index{DestroyEntity@{DestroyEntity}!Cel::ComponentArray$<$ T $>$@{Cel::ComponentArray$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{DestroyEntity()}{DestroyEntity()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_component_array_afdaf9c3088e84055ac92a54bfc3b574e} 
+template$<$typename T$>$ \\
+void \doxymbox{\hyperlink{class_cel_1_1_component_array}{Cel::\+\+Component\+Array}}$<$ T $>$::\+\+Destroy\+Entity (\begin{DoxyParamCaption}\item[{const Entity}]{entity}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [override]}, {\ttfamily [virtual]}}
+
+The only command we require to be run on every component array. Hence why it is located in the interface 
+\begin{DoxyParams}{Parameters}
+{\em entity} & Entity to destroy \\
+\hline
+\end{DoxyParams}
+
+
+Implements \doxymbox{\hyperlink{class_cel_1_1_i_component_array_a3ca1e66d60c5c5211ff5bd3f9b79f4ad}{Cel::\+\+IComponent\+Array}}.
+
+\Hypertarget{class_cel_1_1_component_array_a0a528742ba0f74916356c18b558ad26f}\index{Cel::ComponentArray$<$ T $>$@{Cel::ComponentArray$<$ T $>$}!GetComponent@{GetComponent}}
+\index{GetComponent@{GetComponent}!Cel::ComponentArray$<$ T $>$@{Cel::ComponentArray$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{GetComponent()}{GetComponent()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_component_array_a0a528742ba0f74916356c18b558ad26f} 
+template$<$typename T$>$ \\
+T \& \doxymbox{\hyperlink{class_cel_1_1_component_array}{Cel::\+\+Component\+Array}}$<$ T $>$::\+\+Get\+Component (\begin{DoxyParamCaption}\item[{Entity}]{entity}{}\end{DoxyParamCaption})}
+
+
+
+Return the component of type T owned by this entity. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em entity} & The entity owning this component \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+The owned component 
+\end{DoxyReturn}
+\Hypertarget{class_cel_1_1_component_array_a4a3e189bf6910b570866303a00192c35}\index{Cel::ComponentArray$<$ T $>$@{Cel::ComponentArray$<$ T $>$}!RemoveComponent@{RemoveComponent}}
+\index{RemoveComponent@{RemoveComponent}!Cel::ComponentArray$<$ T $>$@{Cel::ComponentArray$<$ T $>$}}
+\doxysubsubsection{\texorpdfstring{RemoveComponent()}{RemoveComponent()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_component_array_a4a3e189bf6910b570866303a00192c35} 
+template$<$typename T$>$ \\
+void \doxymbox{\hyperlink{class_cel_1_1_component_array}{Cel::\+\+Component\+Array}}$<$ T $>$::\+\+Remove\+Component (\begin{DoxyParamCaption}\item[{Entity}]{entity}{}\end{DoxyParamCaption})}
+
+
+
+Remove a component from this entity. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em entity} & The entity that owns the component. \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+Component\+Array.\+h\end{DoxyCompactItemize}

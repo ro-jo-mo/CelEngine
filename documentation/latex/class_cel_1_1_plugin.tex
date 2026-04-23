@@ -1,0 +1,46 @@
+\doxysection{Cel::\+Plugin Class Reference}
+\hypertarget{class_cel_1_1_plugin}{}\label{class_cel_1_1_plugin}\index{Cel::Plugin@{Cel::Plugin}}
+
+
+Required interface for plugins Includes methods for the setup of plugin resources and systems.  
+
+
+
+
+{\ttfamily \+\#include $<$Plugin.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual void \doxymbox{\hyperlink{class_cel_1_1_plugin_a28ad9fce33cf66f891921f0c08454333}{Build}} (\doxymbox{\hyperlink{class_cel_1_1_scheduler}{Scheduler}} scheduler, \doxymbox{\hyperlink{class_cel_1_1_resource_manager}{Resource\+Manager}} \&resource\+Manager)=0
+\begin{DoxyCompactList}\small\item\em Adds the plugin to the ECS. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Required interface for plugins Includes methods for the setup of plugin resources and systems. 
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_plugin_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_plugin_a28ad9fce33cf66f891921f0c08454333}\index{Cel::Plugin@{Cel::Plugin}!Build@{Build}}
+\index{Build@{Build}!Cel::Plugin@{Cel::Plugin}}
+\doxysubsubsection{\texorpdfstring{Build()}{Build()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_plugin_a28ad9fce33cf66f891921f0c08454333} 
+virtual void Cel::\+\+Plugin::\+\+Build (\begin{DoxyParamCaption}\item[{\doxymbox{\hyperlink{class_cel_1_1_scheduler}{Scheduler}}}]{scheduler}{, }\item[{\doxymbox{\hyperlink{class_cel_1_1_resource_manager}{Resource\+Manager}} \&}]{resource\+Manager}{}\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [pure virtual]}}
+
+
+
+Adds the plugin to the ECS. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em scheduler} & Use to schedule game systems \\
+\hline
+{\em resource\+Manager} & Use to initialise resources \\
+\hline
+\end{DoxyParams}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+Plugin.\+h\end{DoxyCompactItemize}

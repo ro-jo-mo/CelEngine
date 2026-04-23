@@ -1,0 +1,76 @@
+\doxysection{Component\+Array.\+h}
+\hypertarget{_component_array_8h_source}{}\label{_component_array_8h_source}\index{include/ecs/ComponentArray.h@{include/ecs/ComponentArray.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ "{}Types.h"{}}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <array>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <unordered\_map>}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{keyword}{namespace\ }Cel\ \{}
+\DoxyCodeLine{00011\ \ \ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_cel_1_1_i_component_array}{IComponentArray}}\ \{}
+\DoxyCodeLine{00012\ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00018\ \ \ \ \ \textcolor{keyword}{virtual}\ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_i_component_array_a3ca1e66d60c5c5211ff5bd3f9b79f4ad}{DestroyEntity}}(Entity\ entity)\ =\ 0;}
+\DoxyCodeLine{00019\ \ \ \};}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00025\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00026\ \ \ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_cel_1_1_component_array}{ComponentArray}}\ :\ \textcolor{keyword}{public}\ \doxymbox{\hyperlink{class_cel_1_1_i_component_array}{IComponentArray}}\ \{}
+\DoxyCodeLine{00027\ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00028\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_component_array_afdaf9c3088e84055ac92a54bfc3b574e}{DestroyEntity}}(\textcolor{keyword}{const}\ Entity\ entity)\textcolor{keyword}{\ override\ }\{}
+\DoxyCodeLine{00029\ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (entityToComponent.contains(entity))\ \{}
+\DoxyCodeLine{00030\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_component_array_a4a3e189bf6910b570866303a00192c35}{RemoveComponent}}(entity);}
+\DoxyCodeLine{00031\ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00032\ \ \ \ \ \}}
+\DoxyCodeLine{00033\ }
+\DoxyCodeLine{00039\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_component_array_a47e2e331f6426e676ddd4d9d51f91475}{AddComponent}}(Entity\ entity,\ T\ component);}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00045\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_component_array_a4a3e189bf6910b570866303a00192c35}{RemoveComponent}}(Entity\ entity);}
+\DoxyCodeLine{00046\ }
+\DoxyCodeLine{00052\ \ \ \ \ T\ \&\doxymbox{\hyperlink{class_cel_1_1_component_array_a0a528742ba0f74916356c18b558ad26f}{GetComponent}}(Entity\ entity);}
+\DoxyCodeLine{00053\ }
+\DoxyCodeLine{00054\ \ \ \ \ \textcolor{keyword}{const}\ std::unordered\_map<Entity,\ size\_t>\ \&GetEntityList();}
+\DoxyCodeLine{00055\ }
+\DoxyCodeLine{00056\ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00057\ \ \ \ \ std::array<T,\ MAX\_ENTITIES>\ components;}
+\DoxyCodeLine{00058\ \ \ \ \ std::unordered\_map<Entity,\ size\_t>\ entityToComponent;}
+\DoxyCodeLine{00059\ \ \ \ \ std::unordered\_map<size\_t,\ Entity>\ componentToEntity;}
+\DoxyCodeLine{00060\ \ \ \ \ Entity\ totalComponents;}
+\DoxyCodeLine{00061\ \ \ \};}
+\DoxyCodeLine{00062\ }
+\DoxyCodeLine{00063\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00064\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00065\ \ \ \doxymbox{\hyperlink{class_cel_1_1_component_array_a47e2e331f6426e676ddd4d9d51f91475}{ComponentArray<T>::AddComponent}}(\textcolor{keyword}{const}\ Entity\ entity,\ T\ component)\ \{}
+\DoxyCodeLine{00066\ \ \ \ \ components[totalComponents]\ =\ component;}
+\DoxyCodeLine{00067\ \ \ \ \ entityToComponent[entity]\ =\ totalComponents;}
+\DoxyCodeLine{00068\ \ \ \ \ componentToEntity[totalComponents]\ =\ entity;}
+\DoxyCodeLine{00069\ \ \ \ \ totalComponents++;}
+\DoxyCodeLine{00070\ \ \ \}}
+\DoxyCodeLine{00071\ }
+\DoxyCodeLine{00072\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00073\ \ \ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00074\ \ \ \doxymbox{\hyperlink{class_cel_1_1_component_array_a4a3e189bf6910b570866303a00192c35}{ComponentArray<T>::RemoveComponent}}(\textcolor{keyword}{const}\ Entity\ entity)\ \{}
+\DoxyCodeLine{00075\ \ \ \ \ \textcolor{keyword}{auto}\ index\ =\ entityToComponent[entity];}
+\DoxyCodeLine{00076\ }
+\DoxyCodeLine{00077\ \ \ \ \ \textcolor{keyword}{auto}\ last\ =\ -\/-\/totalComponents;}
+\DoxyCodeLine{00078\ \ \ \ \ components[index]\ =\ components[last];}
+\DoxyCodeLine{00079\ }
+\DoxyCodeLine{00080\ \ \ \ \ componentToEntity.erase(index);}
+\DoxyCodeLine{00081\ \ \ \ \ entityToComponent.erase(entity);}
+\DoxyCodeLine{00082\ \ \ \}}
+\DoxyCodeLine{00083\ }
+\DoxyCodeLine{00084\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00085\ \ \ T\ \&}
+\DoxyCodeLine{00086\ \ \ \doxymbox{\hyperlink{class_cel_1_1_component_array_a0a528742ba0f74916356c18b558ad26f}{ComponentArray<T>::GetComponent}}(\textcolor{keyword}{const}\ Entity\ entity)\ \{}
+\DoxyCodeLine{00087\ \ \ \ \ \textcolor{keyword}{auto}\ index\ =\ entityToComponent[entity];}
+\DoxyCodeLine{00088\ \ \ \ \ \textcolor{keywordflow}{return}\ components[index];}
+\DoxyCodeLine{00089\ \ \ \}}
+\DoxyCodeLine{00090\ }
+\DoxyCodeLine{00091\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00092\ \ \ \textcolor{keyword}{const}\ std::unordered\_map<Entity,\ size\_t>\ \&}
+\DoxyCodeLine{00093\ \ \ ComponentArray<T>::GetEntityList()\ \{}
+\DoxyCodeLine{00094\ \ \ \ \ \textcolor{keywordflow}{return}\ entityToComponent;}
+\DoxyCodeLine{00095\ \ \ \}}
+\DoxyCodeLine{00096\ \}}
+
+\end{DoxyCode}

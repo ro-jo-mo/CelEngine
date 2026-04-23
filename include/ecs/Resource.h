@@ -1,5 +1,5 @@
 #pragma once
-
+#include "IResource.h"
 
 namespace Cel {
     /**
@@ -7,7 +7,7 @@ namespace Cel {
      * @tparam T Resource type
      */
     template<typename T>
-    class Resource {
+    class Resource : IResource {
     public:
         template<typename... Args>
         explicit Resource(Args &&... args) : resource(T(std::forward<Args>(args)...)) {

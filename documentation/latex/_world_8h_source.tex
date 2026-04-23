@@ -1,0 +1,123 @@
+\doxysection{World.\+h}
+\hypertarget{_world_8h_source}{}\label{_world_8h_source}\index{include/ecs/World.h@{include/ecs/World.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ "{}ComponentsManager.h"{}}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ "{}EntityManager.h"{}}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ "{}Types.h"{}}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{00007\ }
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ "{}Resource.h"{}}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{keyword}{namespace\ }Cel\ \{}
+\DoxyCodeLine{00015\ \ \ \textcolor{keyword}{class\ }World\ \{}
+\DoxyCodeLine{00016\ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00017\ \ \ \ \ World(\doxymbox{\hyperlink{class_cel_1_1_components_manager}{ComponentsManager}}\ \&components\_manager,\ \doxymbox{\hyperlink{class_cel_1_1_entity_manager}{EntityManager}}\ \&entity\_manager)\ :\ componentsManager(components\_manager),}
+\DoxyCodeLine{00018\ \ \ \ \ \ \ entityManager(entity\_manager)\ \{}
+\DoxyCodeLine{00019\ \ \ \ \ \}}
+\DoxyCodeLine{00020\ }
+\DoxyCodeLine{00027\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}...\ Components>}
+\DoxyCodeLine{00028\ \ \ \ \ Entity\ \doxymbox{\hyperlink{class_cel_1_1_world_a6911fd8e97dd6eb27d0d7ef529f46ec1}{Spawn}}(Components...\ components);}
+\DoxyCodeLine{00029\ }
+\DoxyCodeLine{00034\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_world_a025792ffc7e3ad288ed32f8cc57eb448}{Destroy}}(Entity\ entity);}
+\DoxyCodeLine{00035\ }
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ Component>}
+\DoxyCodeLine{00043\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_world_a7127343ea2f01b986241c84e9b476df2}{AddComponent}}(Entity\ entity,\ Component\ component);}
+\DoxyCodeLine{00044\ }
+\DoxyCodeLine{00050\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ Component>}
+\DoxyCodeLine{00051\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_world_a4c63966f55b3d93c6c1448123923380d}{RemoveComponent}}(Entity\ entity);}
+\DoxyCodeLine{00052\ }
+\DoxyCodeLine{00057\ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{class_cel_1_1_world_a060fc015f338e4fd5b666a4a15470839}{Flush}}();}
+\DoxyCodeLine{00058\ }
+\DoxyCodeLine{00059\ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00060\ \ \ \ \ \textcolor{keyword}{class\ }Command\ \{}
+\DoxyCodeLine{00061\ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00062\ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \string~Command()\ =\ \textcolor{keywordflow}{default};}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ \ \ \ \ \ \ \textcolor{keyword}{virtual}\ \textcolor{keywordtype}{void}\ Execute()\ =\ 0;}
+\DoxyCodeLine{00065\ \ \ \ \ \};}
+\DoxyCodeLine{00066\ }
+\DoxyCodeLine{00067\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00068\ \ \ \ \ \textcolor{keyword}{class\ }AddCommand;}
+\DoxyCodeLine{00069\ }
+\DoxyCodeLine{00070\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00071\ \ \ \ \ \textcolor{keyword}{class\ }RemoveCommand;}
+\DoxyCodeLine{00072\ }
+\DoxyCodeLine{00073\ \ \ \ \ \textcolor{keywordtype}{void}\ ExecuteDestroy(Entity\ entity)\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00074\ }
+\DoxyCodeLine{00075\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_components_manager}{ComponentsManager}}\ \&componentsManager;}
+\DoxyCodeLine{00076\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_entity_manager}{EntityManager}}\ \&entityManager;}
+\DoxyCodeLine{00077\ \ \ \ \ std::vector<std::unique\_ptr<Command>\ >\ toAdd;}
+\DoxyCodeLine{00078\ \ \ \ \ std::vector<std::unique\_ptr<Command>\ >\ toRemove;}
+\DoxyCodeLine{00079\ \ \ \ \ std::vector<Entity>\ toDestroy;}
+\DoxyCodeLine{00080\ \ \ \};}
+\DoxyCodeLine{00081\ }
+\DoxyCodeLine{00082\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00083\ \ \ \textcolor{keyword}{class\ }World::AddCommand\ final\ :\ \textcolor{keyword}{public}\ World::Command\ \{}
+\DoxyCodeLine{00084\ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00085\ \ \ \ \ AddCommand(\textcolor{keyword}{const}\ Entity\ ent,\ T\ comp,\ \doxymbox{\hyperlink{class_cel_1_1_world}{World}}\ \&wld)}
+\DoxyCodeLine{00086\ \ \ \ \ \ \ :\ entity(ent)}
+\DoxyCodeLine{00087\ \ \ \ \ \ \ \ \ ,\ component(comp)}
+\DoxyCodeLine{00088\ \ \ \ \ \ \ \ \ ,\ world(wld)\ \{}
+\DoxyCodeLine{00089\ \ \ \ \ \};}
+\DoxyCodeLine{00090\ }
+\DoxyCodeLine{00091\ \ \ \ \ \textcolor{keywordtype}{void}\ Execute()\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00092\ }
+\DoxyCodeLine{00093\ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00094\ \ \ \ \ Entity\ entity;}
+\DoxyCodeLine{00095\ \ \ \ \ T\ component;}
+\DoxyCodeLine{00096\ \ \ \ \ World\ \&world;}
+\DoxyCodeLine{00097\ \ \ \};}
+\DoxyCodeLine{00098\ }
+\DoxyCodeLine{00099\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00100\ \ \ \textcolor{keyword}{class\ }World::RemoveCommand\ final\ :\ \textcolor{keyword}{public}\ World::Command\ \{}
+\DoxyCodeLine{00101\ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00102\ \ \ \ \ RemoveCommand(\textcolor{keyword}{const}\ Entity\ ent,\ World\ \&wld)}
+\DoxyCodeLine{00103\ \ \ \ \ \ \ :\ entity(ent)}
+\DoxyCodeLine{00104\ \ \ \ \ \ \ \ \ ,\ world(wld)\ \{}
+\DoxyCodeLine{00105\ \ \ \ \ \};}
+\DoxyCodeLine{00106\ }
+\DoxyCodeLine{00107\ \ \ \ \ \textcolor{keywordtype}{void}\ Execute()\ \textcolor{keyword}{override};}
+\DoxyCodeLine{00108\ }
+\DoxyCodeLine{00109\ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00110\ \ \ \ \ Entity\ entity;}
+\DoxyCodeLine{00111\ \ \ \ \ World\ \&world;}
+\DoxyCodeLine{00112\ \ \ \};}
+\DoxyCodeLine{00113\ }
+\DoxyCodeLine{00114\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}...\ Components>}
+\DoxyCodeLine{00115\ \ \ \textcolor{keyword}{inline}\ Entity}
+\DoxyCodeLine{00116\ \ \ \doxymbox{\hyperlink{class_cel_1_1_world_a6911fd8e97dd6eb27d0d7ef529f46ec1}{World::Spawn}}(Components...\ components)\ \{}
+\DoxyCodeLine{00117\ \ \ \ \ \textcolor{keyword}{auto}\ \textcolor{keywordtype}{id}\ =\ entityManager.AllocateEntity();}
+\DoxyCodeLine{00118\ \ \ \ \ ((void)\ \doxymbox{\hyperlink{class_cel_1_1_world_a7127343ea2f01b986241c84e9b476df2}{AddComponent}}(\textcolor{keywordtype}{id},\ components),\ ...);}
+\DoxyCodeLine{00119\ \ \ \ \ \textcolor{keywordflow}{return}\ id;}
+\DoxyCodeLine{00120\ \ \ \}}
+\DoxyCodeLine{00121\ }
+\DoxyCodeLine{00122\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ Component>}
+\DoxyCodeLine{00123\ \ \ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00124\ \ \ \doxymbox{\hyperlink{class_cel_1_1_world_a7127343ea2f01b986241c84e9b476df2}{World::AddComponent}}(Entity\ entity,\ Component\ component)\ \{}
+\DoxyCodeLine{00125\ \ \ \ \ toAdd.push\_back(}
+\DoxyCodeLine{00126\ \ \ \ \ \ \ std::make\_unique<AddCommand<Component>\ >(entity,\ component,\ *\textcolor{keyword}{this}));}
+\DoxyCodeLine{00127\ \ \ \}}
+\DoxyCodeLine{00128\ }
+\DoxyCodeLine{00129\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ Component>}
+\DoxyCodeLine{00130\ \ \ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00131\ \ \ \doxymbox{\hyperlink{class_cel_1_1_world_a4c63966f55b3d93c6c1448123923380d}{World::RemoveComponent}}(Entity\ entity)\ \{}
+\DoxyCodeLine{00132\ \ \ \ \ toRemove.push\_back(std::make\_unique<RemoveCommand<Component>\ >(entity,\ *\textcolor{keyword}{this}));}
+\DoxyCodeLine{00133\ \ \ \}}
+\DoxyCodeLine{00134\ }
+\DoxyCodeLine{00135\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00136\ \ \ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00137\ \ \ World::AddCommand<T>::Execute()\ \{}
+\DoxyCodeLine{00138\ \ \ \ \ world.componentsManager.AddComponent(entity,\ component);}
+\DoxyCodeLine{00139\ \ \ \}}
+\DoxyCodeLine{00140\ }
+\DoxyCodeLine{00141\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00142\ \ \ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00143\ \ \ World::RemoveCommand<T>::Execute()\ \{}
+\DoxyCodeLine{00144\ \ \ \ \ world.componentsManager.RemoveComponent<T>(entity);}
+\DoxyCodeLine{00145\ \ \ \}}
+\DoxyCodeLine{00146\ \}}
+
+\end{DoxyCode}

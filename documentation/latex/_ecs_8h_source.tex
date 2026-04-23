@@ -1,0 +1,54 @@
+\doxysection{Ecs.\+h}
+\hypertarget{_ecs_8h_source}{}\label{_ecs_8h_source}\index{include/ecs/Ecs.h@{include/ecs/Ecs.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ "{}ComponentsManager.h"{}}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ "{}EntityManager.h"{}}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ "{}ResourceManager.h"{}}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ "{}QueryManager.h"{}}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <concepts>}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ "{}Plugin.h"{}}}
+\DoxyCodeLine{00009\ \textcolor{preprocessor}{\#include\ "{}ScheduleGraph.h"{}}}
+\DoxyCodeLine{00010\ \textcolor{preprocessor}{\#include\ "{}Time.h"{}}}
+\DoxyCodeLine{00011\ \textcolor{preprocessor}{\#include\ "{}World.h"{}}}
+\DoxyCodeLine{00012\ \textcolor{preprocessor}{\#include\ "{}Schedule.h"{}}}
+\DoxyCodeLine{00013\ \textcolor{preprocessor}{\#include\ "{}Scheduler.h"{}}}
+\DoxyCodeLine{00014\ }
+\DoxyCodeLine{00015\ \textcolor{keyword}{namespace\ }Cel\ \{}
+\DoxyCodeLine{00020\ \ \ \textcolor{keyword}{class\ }Ecs\ \{}
+\DoxyCodeLine{00021\ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00022\ \ \ \ \ Ecs()\ :\ componentsManager(\doxymbox{\hyperlink{class_cel_1_1_components_manager}{ComponentsManager}}()),}
+\DoxyCodeLine{00023\ \ \ \ \ \ \ \ \ \ \ \ \ queryManager(componentsManager),}
+\DoxyCodeLine{00024\ \ \ \ \ \ \ \ \ \ \ \ \ systemAllocator(resourceManager,\ queryManager)\ \{}
+\DoxyCodeLine{00025\ \ \ \ \ \ \ resourceManager.InsertResource<\doxymbox{\hyperlink{class_cel_1_1_time}{Time}}>(1.0f\ /\ 60.0f);}
+\DoxyCodeLine{00026\ \ \ \ \ \ \ resourceManager.InsertResource<\doxymbox{\hyperlink{class_cel_1_1_world}{World}}>(componentsManager,\ entityManager);}
+\DoxyCodeLine{00027\ \ \ \ \ \ \ \textcolor{keywordflow}{for}\ (std::size\_t\ i\ =\ 0;\ i\ <\ Schedule::SIZE;\ ++i)\ \{}
+\DoxyCodeLine{00028\ \ \ \ \ \ \ \ \ schedules.emplace\_back(systemAllocator);}
+\DoxyCodeLine{00029\ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00030\ \ \ \ \ \}}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00035\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_ecs_a64a3775db3e64ea92c2c91d1752aec48}{Run}}();}
+\DoxyCodeLine{00036\ }
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00043\ \ \ \ \ \ \ \textcolor{keyword}{requires}\ std::derived\_from<T,\ Plugin>}
+\DoxyCodeLine{00044\ \ \ \ \ Ecs\ \&\doxymbox{\hyperlink{class_cel_1_1_ecs_ad4ac54ddfb8ba0a7b23c7153cfb828f1}{AddPlugin}}();}
+\DoxyCodeLine{00045\ }
+\DoxyCodeLine{00046\ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00047\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_components_manager}{ComponentsManager}}\ componentsManager;}
+\DoxyCodeLine{00048\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_entity_manager}{EntityManager}}\ entityManager;}
+\DoxyCodeLine{00049\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_resource_manager}{ResourceManager}}\ resourceManager;}
+\DoxyCodeLine{00050\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_query_manager}{QueryManager}}\ queryManager;}
+\DoxyCodeLine{00051\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_system_allocator}{SystemAllocator}}\ systemAllocator;}
+\DoxyCodeLine{00052\ \ \ \ \ std::vector<ScheduleGraph>\ schedules;}
+\DoxyCodeLine{00053\ \ \ \};}
+\DoxyCodeLine{00054\ }
+\DoxyCodeLine{00055\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>\ \textcolor{keyword}{requires}\ std::derived\_from<T,\ Plugin>}
+\DoxyCodeLine{00056\ \ \ Ecs\ \&\doxymbox{\hyperlink{class_cel_1_1_ecs_ad4ac54ddfb8ba0a7b23c7153cfb828f1}{Ecs::AddPlugin}}()\ \{}
+\DoxyCodeLine{00057\ \ \ \ \ T().Build(\doxymbox{\hyperlink{class_cel_1_1_scheduler}{Scheduler}}(schedules),\ resourceManager);}
+\DoxyCodeLine{00058\ \ \ \ \ \textcolor{keywordflow}{return}\ *\textcolor{keyword}{this};}
+\DoxyCodeLine{00059\ \ \ \}}
+\DoxyCodeLine{00060\ \}}
+
+\end{DoxyCode}

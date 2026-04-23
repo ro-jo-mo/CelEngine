@@ -1,0 +1,97 @@
+\doxysection{Scheduler.\+h}
+\hypertarget{_scheduler_8h_source}{}\label{_scheduler_8h_source}\index{include/ecs/Scheduler.h@{include/ecs/Scheduler.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ <vector>}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ "{}Schedule.h"{}}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ "{}ScheduleGraph.h"{}}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{keyword}{namespace\ }Cel\ \{}
+\DoxyCodeLine{00011\ \ \ \ \ \textcolor{keyword}{class\ }Scheduler\ \{}
+\DoxyCodeLine{00012\ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00013\ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ Scheduler(\textcolor{keyword}{auto}\ \&scdl)\ :\ schedules(scdl)\ \{}
+\DoxyCodeLine{00014\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00021\ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ First,\ \textcolor{keyword}{typename}\ Last>}
+\DoxyCodeLine{00022\ \ \ \ \ \ \ \ \ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{SystemScheduler}};}
+\DoxyCodeLine{00023\ }
+\DoxyCodeLine{00030\ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ System>}
+\DoxyCodeLine{00031\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{SystemScheduler<System,\ System>}}\ \doxymbox{\hyperlink{class_cel_1_1_scheduler_afa66c0a24f2aeb1e622e901aba878b27}{AddSystem}}(Schedule\ schedule);}
+\DoxyCodeLine{00032\ }
+\DoxyCodeLine{00041\ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ First,\ \textcolor{keyword}{typename}\ Second,\ \textcolor{keyword}{typename}...\ Others>}
+\DoxyCodeLine{00042\ \ \ \ \ \ \ \ \ \textcolor{keyword}{auto}\ \doxymbox{\hyperlink{class_cel_1_1_scheduler_a6dfc960800a82ded70c488ae93c6c42d}{Chain}}(Schedule\ schedule);}
+\DoxyCodeLine{00043\ }
+\DoxyCodeLine{00044\ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00045\ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ First,\ \textcolor{keyword}{typename}\ Second,\ \textcolor{keyword}{typename}...\ Others>}
+\DoxyCodeLine{00046\ \ \ \ \ \ \ \ \ \textcolor{keywordtype}{void}\ AddEdges(\doxymbox{\hyperlink{class_cel_1_1_schedule_graph}{ScheduleGraph}}\ \&graph);}
+\DoxyCodeLine{00047\ }
+\DoxyCodeLine{00048\ \ \ \ \ \ \ \ \ std::vector<ScheduleGraph>\ \&schedules;}
+\DoxyCodeLine{00049\ \ \ \ \ \};}
+\DoxyCodeLine{00050\ }
+\DoxyCodeLine{00051\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ First,\ \textcolor{keyword}{typename}\ Last>}
+\DoxyCodeLine{00052\ \ \ \ \ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{Scheduler::SystemScheduler}}\ \{}
+\DoxyCodeLine{00053\ \ \ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00054\ \ \ \ \ \ \ \ \ \textcolor{keyword}{explicit}\ SystemScheduler}
+\DoxyCodeLine{00055\ \ \ \ \ \ \ \ \ (\doxymbox{\hyperlink{class_cel_1_1_schedule_graph}{ScheduleGraph}}\ \&scdl)\ :\ schedule(scdl)\ \{}
+\DoxyCodeLine{00056\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00057\ }
+\DoxyCodeLine{00058\ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00059\ \ \ \ \ \ \ \ \ SystemScheduler\ After();}
+\DoxyCodeLine{00060\ }
+\DoxyCodeLine{00061\ \ \ \ \ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00062\ \ \ \ \ \ \ \ \ SystemScheduler\ Before();}
+\DoxyCodeLine{00063\ }
+\DoxyCodeLine{00064\ \ \ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00065\ \ \ \ \ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_schedule_graph}{ScheduleGraph}}\ \&schedule;}
+\DoxyCodeLine{00066\ \ \ \ \ \};}
+\DoxyCodeLine{00067\ }
+\DoxyCodeLine{00068\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ System>}
+\DoxyCodeLine{00069\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{Scheduler::SystemScheduler<System,\ System>}}\ \doxymbox{\hyperlink{class_cel_1_1_scheduler_afa66c0a24f2aeb1e622e901aba878b27}{Scheduler::AddSystem}}(\textcolor{keyword}{const}\ Schedule\ schedule)\ \{}
+\DoxyCodeLine{00070\ \ \ \ \ \ \ \ \ \textcolor{keyword}{auto}\ \&graph\ =\ schedules[schedule];}
+\DoxyCodeLine{00071\ \ \ \ \ \ \ \ \ graph.AddNode<\doxymbox{\hyperlink{class_cel_1_1_system}{System}}>();}
+\DoxyCodeLine{00072\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{SystemScheduler<System,\ System>}}(graph);}
+\DoxyCodeLine{00073\ \ \ \ \ \}}
+\DoxyCodeLine{00074\ }
+\DoxyCodeLine{00075\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ First,\ \textcolor{keyword}{typename}\ Second,\ \textcolor{keyword}{typename}...\ Others>}
+\DoxyCodeLine{00076\ \ \ \ \ \textcolor{keyword}{auto}\ \doxymbox{\hyperlink{class_cel_1_1_scheduler_a6dfc960800a82ded70c488ae93c6c42d}{Scheduler::Chain}}(}
+\DoxyCodeLine{00077\ \ \ \ \ \ \ \ \ \textcolor{keyword}{const}\ Schedule\ schedule)\ \{}
+\DoxyCodeLine{00078\ \ \ \ \ \ \ \ \ \textcolor{keyword}{auto}\ \&graph\ =\ schedules[schedule];}
+\DoxyCodeLine{00079\ \ \ \ \ \ \ \ \ graph.AddNode<First>();}
+\DoxyCodeLine{00080\ \ \ \ \ \ \ \ \ graph.AddNode<Second>();}
+\DoxyCodeLine{00081\ \ \ \ \ \ \ \ \ (void(graph.AddNode<Others>()),\ ...);}
+\DoxyCodeLine{00082\ \ \ \ \ \ \ \ \ graph.AddEdge<First,\ Second>();}
+\DoxyCodeLine{00083\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ \textcolor{keyword}{constexpr}\ (\textcolor{keyword}{sizeof}...(Others)\ >\ 0)\ \{}
+\DoxyCodeLine{00084\ \ \ \ \ \ \ \ \ \ \ \ \ AddEdges<Second,\ Others...>(graph);}
+\DoxyCodeLine{00085\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keyword}{using\ }Last\ =\ std::tuple\_element\_t<(\textcolor{keyword}{sizeof}...(Others)\ -\/\ 1),\ std::tuple<Others...>\ >;}
+\DoxyCodeLine{00086\ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{SystemScheduler<First,\ Last>}}(graph);}
+\DoxyCodeLine{00087\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00088\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ \doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{SystemScheduler<First,\ Second>}}(graph);}
+\DoxyCodeLine{00089\ \ \ \ \ \}}
+\DoxyCodeLine{00090\ }
+\DoxyCodeLine{00091\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ First,\ \textcolor{keyword}{typename}\ Second,\ \textcolor{keyword}{typename}...\ Others>}
+\DoxyCodeLine{00092\ \ \ \ \ \textcolor{keywordtype}{void}\ Scheduler::AddEdges(\doxymbox{\hyperlink{class_cel_1_1_schedule_graph}{ScheduleGraph}}\ \&graph)\ \{}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ \ \ graph.\doxymbox{\hyperlink{class_cel_1_1_schedule_graph_a24377ae44a23dcbd6e0ef9ab86b5b08a}{AddEdge}}<First,\ Second>();}
+\DoxyCodeLine{00094\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ (\textcolor{keyword}{sizeof}...(Others)\ >\ 0)\ \{}
+\DoxyCodeLine{00095\ \ \ \ \ \ \ \ \ \ \ \ \ AddEdges<Second,\ Others...>(graph);}
+\DoxyCodeLine{00096\ \ \ \ \ \ \ \ \ \}}
+\DoxyCodeLine{00097\ \ \ \ \ \}}
+\DoxyCodeLine{00098\ }
+\DoxyCodeLine{00099\ }
+\DoxyCodeLine{00100\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ First,\ \textcolor{keyword}{typename}\ Last>}
+\DoxyCodeLine{00101\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00102\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{Scheduler::SystemScheduler<First,\ Last>}}\ Scheduler::SystemScheduler<First,\ Last>::After()\ \{}
+\DoxyCodeLine{00103\ \ \ \ \ \ \ \ \ schedule.AddEdge<T,\ First>();}
+\DoxyCodeLine{00104\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ *\textcolor{keyword}{this};}
+\DoxyCodeLine{00105\ \ \ \ \ \}}
+\DoxyCodeLine{00106\ }
+\DoxyCodeLine{00107\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ First,\ \textcolor{keyword}{typename}\ Last>}
+\DoxyCodeLine{00108\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00109\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_scheduler_1_1_system_scheduler}{Scheduler::SystemScheduler<First,\ Last>}}\ Scheduler::SystemScheduler<First,\ Last>::Before()\ \{}
+\DoxyCodeLine{00110\ \ \ \ \ \ \ \ \ schedule.AddEdge<Last,\ T>();}
+\DoxyCodeLine{00111\ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{return}\ *\textcolor{keyword}{this};}
+\DoxyCodeLine{00112\ \ \ \ \ \}}
+\DoxyCodeLine{00113\ \}}
+
+\end{DoxyCode}

@@ -1,0 +1,51 @@
+\doxysection{Cel::\+System\+Allocator Class Reference}
+\hypertarget{class_cel_1_1_system_allocator}{}\label{class_cel_1_1_system_allocator}\index{Cel::SystemAllocator@{Cel::SystemAllocator}}
+
+
+Allocates resources and queries to systems.  
+
+
+
+
+{\ttfamily \+\#include $<$System\+Allocator.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_cel_1_1_system_allocator_a73e39dae1dfa8883bb2e0397bb4a8b4e}\label{class_cel_1_1_system_allocator_a73e39dae1dfa8883bb2e0397bb4a8b4e} 
+{\bfseries System\+Allocator} (\doxymbox{\hyperlink{class_cel_1_1_resource_manager}{Resource\+Manager}} \&resource\+\_\+manager, \doxymbox{\hyperlink{class_cel_1_1_query_manager}{Query\+Manager}} \&query\+\_\+manager)
+\item 
+{\footnotesize template$<$typename T$>$ }\\T \& \doxymbox{\hyperlink{class_cel_1_1_system_allocator_a04a629a748bcbf8e3cf64d30354c88a2}{Register}} ()
+\begin{DoxyCompactList}\small\item\em Registers a resource /\+ query to the system, and returns the actual data. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Allocates resources and queries to systems. 
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_system_allocator_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_system_allocator_a04a629a748bcbf8e3cf64d30354c88a2}\index{Cel::SystemAllocator@{Cel::SystemAllocator}!Register@{Register}}
+\index{Register@{Register}!Cel::SystemAllocator@{Cel::SystemAllocator}}
+\doxysubsubsection{\texorpdfstring{Register()}{Register()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_system_allocator_a04a629a748bcbf8e3cf64d30354c88a2} 
+template$<$typename T$>$ \\
+T \& Cel::\+\+System\+Allocator::\+\+Register (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Registers a resource /\+ query to the system, and returns the actual data. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & \doxylink{class_cel_1_1_resource}{Resource} /\+ query type \\
+\hline
+\end{DoxyTemplParams}
+\begin{DoxyReturn}{Returns}
+The actual \doxylink{class_cel_1_1_resource}{Resource} /\+ query 
+\end{DoxyReturn}
+
+
+The documentation for this class was generated from the following file:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+System\+Allocator.\+h\end{DoxyCompactItemize}

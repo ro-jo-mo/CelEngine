@@ -1,0 +1,24 @@
+\doxysection{Entity\+Manager.\+h}
+\hypertarget{_entity_manager_8h_source}{}\label{_entity_manager_8h_source}\index{include/ecs/EntityManager.h@{include/ecs/EntityManager.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ "{}Types.h"{}}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <array>}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <queue>}}
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{keyword}{namespace\ }Cel\ \{}
+\DoxyCodeLine{00014\ \ \ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_cel_1_1_entity_manager}{EntityManager}}\ \{}
+\DoxyCodeLine{00015\ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00020\ \ \ \ \ Entity\ \doxymbox{\hyperlink{class_cel_1_1_entity_manager_a75b61589010123e381706a5f35ac74ca}{AllocateEntity}}();}
+\DoxyCodeLine{00021\ }
+\DoxyCodeLine{00026\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_entity_manager_a69236b0746036486d2f453ee2ca4e695}{DestroyEntity}}(Entity\ entity);}
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00028\ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00029\ \ \ \ \ std::queue<Entity>\ toReuse;}
+\DoxyCodeLine{00030\ \ \ \ \ Entity\ entityCounter\ =\ 0;}
+\DoxyCodeLine{00031\ \ \ \};}
+\DoxyCodeLine{00032\ \}}
+
+\end{DoxyCode}

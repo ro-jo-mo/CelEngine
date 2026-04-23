@@ -1,0 +1,72 @@
+\doxysection{Cel::\+Schedule\+Graph Class Reference}
+\hypertarget{class_cel_1_1_schedule_graph}{}\label{class_cel_1_1_schedule_graph}\index{Cel::ScheduleGraph@{Cel::ScheduleGraph}}
+
+
+A directed acyclic graph representing a partial ordering of systems.  
+
+
+
+
+{\ttfamily \+\#include $<$Schedule\+Graph.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_cel_1_1_schedule_graph_ad50394a63e7347a49825399f1b018ac6}\label{class_cel_1_1_schedule_graph_ad50394a63e7347a49825399f1b018ac6} 
+{\bfseries Schedule\+Graph} (\doxymbox{\hyperlink{class_cel_1_1_system_allocator}{System\+Allocator}} \&system\+\_\+allocator)
+\item 
+{\footnotesize template$<$typename T$>$ }\\void \doxymbox{\hyperlink{class_cel_1_1_schedule_graph_a6e22c34f80f97d5e2473260fad334717}{Add\+Node}} ()
+\begin{DoxyCompactList}\small\item\em Add a new system to the graph, with no edges. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename From, typename To$>$ }\\void \doxymbox{\hyperlink{class_cel_1_1_schedule_graph_a24377ae44a23dcbd6e0ef9ab86b5b08a}{Add\+Edge}} ()
+\begin{DoxyCompactList}\small\item\em Introduce a new edge between to systems (From -\/\texorpdfstring{$>$}{>} To). \end{DoxyCompactList}\item 
+\Hypertarget{class_cel_1_1_schedule_graph_ad89e4980381bfd296441d288f018f0b7}\label{class_cel_1_1_schedule_graph_ad89e4980381bfd296441d288f018f0b7} 
+void {\bfseries Execute} ()
+\begin{DoxyCompactList}\small\item\em Serial execution of this DAG. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+A directed acyclic graph representing a partial ordering of systems. 
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_schedule_graph_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_schedule_graph_a24377ae44a23dcbd6e0ef9ab86b5b08a}\index{Cel::ScheduleGraph@{Cel::ScheduleGraph}!AddEdge@{AddEdge}}
+\index{AddEdge@{AddEdge}!Cel::ScheduleGraph@{Cel::ScheduleGraph}}
+\doxysubsubsection{\texorpdfstring{AddEdge()}{AddEdge()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_schedule_graph_a24377ae44a23dcbd6e0ef9ab86b5b08a} 
+template$<$typename From, typename To$>$ \\
+void Cel::\+\+Schedule\+Graph::\+\+Add\+Edge (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Introduce a new edge between to systems (From -\/\texorpdfstring{$>$}{>} To). 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em From} & \doxylink{class_cel_1_1_system}{System} type \\
+\hline
+{\em To} & \doxylink{class_cel_1_1_system}{System} type \\
+\hline
+\end{DoxyTemplParams}
+\Hypertarget{class_cel_1_1_schedule_graph_a6e22c34f80f97d5e2473260fad334717}\index{Cel::ScheduleGraph@{Cel::ScheduleGraph}!AddNode@{AddNode}}
+\index{AddNode@{AddNode}!Cel::ScheduleGraph@{Cel::ScheduleGraph}}
+\doxysubsubsection{\texorpdfstring{AddNode()}{AddNode()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_schedule_graph_a6e22c34f80f97d5e2473260fad334717} 
+template$<$typename T$>$ \\
+void Cel::\+\+Schedule\+Graph::\+\+Add\+Node (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+
+
+Add a new system to the graph, with no edges. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & \doxylink{class_cel_1_1_system}{System} type \\
+\hline
+\end{DoxyTemplParams}
+
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+Schedule\+Graph.\+h\item 
+src/\+Schedule\+Graph.\+cpp\end{DoxyCompactItemize}

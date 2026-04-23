@@ -1,0 +1,79 @@
+\doxysection{Cel::\+Time Class Reference}
+\hypertarget{class_cel_1_1_time}{}\label{class_cel_1_1_time}\index{Cel::Time@{Cel::Time}}
+
+
+\doxylink{class_cel_1_1_resource}{Resource} for time management Automatically switches between fixed and dynamic time based on the current schedule running.  
+
+
+
+
+{\ttfamily \+\#include $<$Time.\+h$>$}
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\Hypertarget{class_cel_1_1_time_aadee800e2787c2bd07a27505681715bc}\label{class_cel_1_1_time_aadee800e2787c2bd07a27505681715bc} 
+{\bfseries Time} (float fixed\+Time\+Step)
+\item 
+float \doxymbox{\hyperlink{class_cel_1_1_time_a78e5562ebd8ed74fc59a3cb3bdcc5fa4}{Delta\+Time}} () const
+\begin{DoxyCompactList}\small\item\em Get the current frame time in ms. This will automatically switch between dynamic and fixed time steps based on the current schedule running. \end{DoxyCompactList}\item 
+\Hypertarget{class_cel_1_1_time_a17cc3b56ef8b207a9812853a4a4ba655}\label{class_cel_1_1_time_a17cc3b56ef8b207a9812853a4a4ba655} 
+void {\bfseries Switch\+To\+Fixed} ()
+\begin{DoxyCompactList}\small\item\em Switch to fixed timestep. \end{DoxyCompactList}\item 
+\Hypertarget{class_cel_1_1_time_a87368d1b6b596ae4c63473e1b68774e9}\label{class_cel_1_1_time_a87368d1b6b596ae4c63473e1b68774e9} 
+void {\bfseries Switch\+To\+Dynamic} ()
+\begin{DoxyCompactList}\small\item\em Switch to dynamic timestep. \end{DoxyCompactList}\item 
+bool \doxymbox{\hyperlink{class_cel_1_1_time_a328a59adb095727ac0c7e992931edc06}{Fixed\+Update\+Required}} () const
+\item 
+void \doxymbox{\hyperlink{class_cel_1_1_time_a51a58b26e8a407ce539bbd3b5fac0310}{Tick}} ()
+\item 
+void \doxymbox{\hyperlink{class_cel_1_1_time_a6ec446b48136654ce68a5e03f0e9cdd0}{Fixed\+Tick}} ()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\doxylink{class_cel_1_1_resource}{Resource} for time management Automatically switches between fixed and dynamic time based on the current schedule running. 
+
+\label{doc-func-members}
+\Hypertarget{class_cel_1_1_time_doc-func-members}
+\doxysubsection{Member Function Documentation}
+\Hypertarget{class_cel_1_1_time_a78e5562ebd8ed74fc59a3cb3bdcc5fa4}\index{Cel::Time@{Cel::Time}!DeltaTime@{DeltaTime}}
+\index{DeltaTime@{DeltaTime}!Cel::Time@{Cel::Time}}
+\doxysubsubsection{\texorpdfstring{DeltaTime()}{DeltaTime()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_time_a78e5562ebd8ed74fc59a3cb3bdcc5fa4} 
+float Time::\+\+Delta\+Time (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const}
+
+
+
+Get the current frame time in ms. This will automatically switch between dynamic and fixed time steps based on the current schedule running. 
+
+\begin{DoxyReturn}{Returns}
+
+\end{DoxyReturn}
+\Hypertarget{class_cel_1_1_time_a6ec446b48136654ce68a5e03f0e9cdd0}\index{Cel::Time@{Cel::Time}!FixedTick@{FixedTick}}
+\index{FixedTick@{FixedTick}!Cel::Time@{Cel::Time}}
+\doxysubsubsection{\texorpdfstring{FixedTick()}{FixedTick()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_time_a6ec446b48136654ce68a5e03f0e9cdd0} 
+void Time::\+\+Fixed\+Tick (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+Tick the fixed update clock \Hypertarget{class_cel_1_1_time_a328a59adb095727ac0c7e992931edc06}\index{Cel::Time@{Cel::Time}!FixedUpdateRequired@{FixedUpdateRequired}}
+\index{FixedUpdateRequired@{FixedUpdateRequired}!Cel::Time@{Cel::Time}}
+\doxysubsubsection{\texorpdfstring{FixedUpdateRequired()}{FixedUpdateRequired()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_time_a328a59adb095727ac0c7e992931edc06} 
+bool Time::\+\+Fixed\+Update\+Required (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption}) const}
+
+Check if a fixed update cycle is required \begin{DoxyReturn}{Returns}
+True if we need to run fixed update 
+\end{DoxyReturn}
+\Hypertarget{class_cel_1_1_time_a51a58b26e8a407ce539bbd3b5fac0310}\index{Cel::Time@{Cel::Time}!Tick@{Tick}}
+\index{Tick@{Tick}!Cel::Time@{Cel::Time}}
+\doxysubsubsection{\texorpdfstring{Tick()}{Tick()}}
+{\footnotesize\ttfamily \label{class_cel_1_1_time_a51a58b26e8a407ce539bbd3b5fac0310} 
+void Time::\+\+Tick (\begin{DoxyParamCaption}{}{}\end{DoxyParamCaption})}
+
+Tick the dynamic clock 
+
+The documentation for this class was generated from the following files:\+\begin{DoxyCompactItemize}
+\item 
+include/\+ecs/\+Time.\+h\item 
+src/\+Time.\+cpp\end{DoxyCompactItemize}

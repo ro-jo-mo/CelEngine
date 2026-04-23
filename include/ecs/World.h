@@ -8,23 +8,52 @@
 #include "Resource.h"
 
 namespace Cel {
+  /**
+   * @brief Manager of the game world state
+   * Responsible for creating new entities, components, deletion ...
+   */
   class World {
   public:
     World(ComponentsManager &components_manager, EntityManager &entity_manager) : componentsManager(components_manager),
       entityManager(entity_manager) {
     }
 
+    /**
+     * @brief Create a new entity with these components
+     * @tparam Components Component types
+     * @param components Components to add to this entity
+     * @return New entity id
+     */
     template<typename... Components>
     Entity Spawn(Components... components);
 
+    /**
+     * @brief Destroy this entity
+     * @param entity Entity to destroy
+     */
     void Destroy(Entity entity);
 
+    /**
+     * @brief Add a new component to this entity
+     * @tparam Component Component type
+     * @param entity Entity to add to
+     * @param component Component to add
+     */
     template<typename Component>
     void AddComponent(Entity entity, Component component);
 
+    /**
+     * Remove a component of this type from entity
+     * @tparam Component Component type to remove
+     * @param entity Entity id
+     */
     template<typename Component>
     void RemoveComponent(Entity entity);
 
+    /**
+     * @brief Flush changes to the world state
+     * @return A checking whether any changes were made by the last system
+     */
     bool Flush();
 
   private:

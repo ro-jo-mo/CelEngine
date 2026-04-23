@@ -1,0 +1,29 @@
+\chapter{Cel Engine }
+\hypertarget{md_readme}{}\label{md_readme}\index{Cel Engine@{Cel Engine}}
+\label{md_readme_autotoc_md0}%
+\Hypertarget{md_readme_autotoc_md0}%
+
+
+A fully custom built game engine in C++, implementing an efficient ECS and auto parallelism. The design of the engine is primarily based on this \href{https://austinmorlan.com/posts/entity_component_system/}{\texttt{blog}} by Austin Morlan, as well as the \href{https://github.com/skypjack/entt}{\texttt{En\+TT Framework}}, with a \href{https://bevy.org/}{\texttt{Bevy}} inspired API. \hypertarget{md_readme_autotoc_md1}{}\doxysection{\texorpdfstring{Build \& Install}{Build \& Install}}\label{md_readme_autotoc_md1}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{mkdir\ build}
+\DoxyCodeLine{cmake\ CMakeLists.txt}
+\DoxyCodeLine{cmake\ -\/-\/build\ build/}
+\DoxyCodeLine{cmake\ -\/-\/install\ build/\ -\/-\/prefix\ install}
+
+\end{DoxyCode}
+
+
+Then in a cmake file:\+
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{find\_package(CelEngine\ CONFIG\ REQUIRED)}
+\DoxyCodeLine{}
+\DoxyCodeLine{add\_executable(MyProject\ ...)}
+\DoxyCodeLine{}
+\DoxyCodeLine{target\_link\_libraries(\$\{PROJECT\_NAME\}\ PRIVATE\ CelEngine::CelEngine)}
+
+\end{DoxyCode}
+ 

@@ -1,0 +1,37 @@
+\doxysection{Time.\+h}
+\hypertarget{_time_8h_source}{}\label{_time_8h_source}\index{include/ecs/Time.h@{include/ecs/Time.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ "{}Resource.h"{}}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ <chrono>}}
+\DoxyCodeLine{00005\ }
+\DoxyCodeLine{00006\ }
+\DoxyCodeLine{00007\ \textcolor{keyword}{namespace\ }Cel\ \{}
+\DoxyCodeLine{00012\ \ \ \textcolor{keyword}{class\ }Time\ \{}
+\DoxyCodeLine{00013\ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00014\ \ \ \ \ \textcolor{keyword}{explicit}\ Time(\textcolor{keywordtype}{float}\ fixedTimeStep);}
+\DoxyCodeLine{00015\ }
+\DoxyCodeLine{00021\ \ \ \ \ \textcolor{keywordtype}{float}\ \doxymbox{\hyperlink{class_cel_1_1_time_a78e5562ebd8ed74fc59a3cb3bdcc5fa4}{DeltaTime}}()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00026\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_time_a17cc3b56ef8b207a9812853a4a4ba655}{SwitchToFixed}}();}
+\DoxyCodeLine{00027\ }
+\DoxyCodeLine{00031\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_time_a87368d1b6b596ae4c63473e1b68774e9}{SwitchToDynamic}}();}
+\DoxyCodeLine{00032\ }
+\DoxyCodeLine{00037\ \ \ \ \ \textcolor{keywordtype}{bool}\ \doxymbox{\hyperlink{class_cel_1_1_time_a328a59adb095727ac0c7e992931edc06}{FixedUpdateRequired}}()\ \textcolor{keyword}{const};}
+\DoxyCodeLine{00038\ }
+\DoxyCodeLine{00042\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_time_a51a58b26e8a407ce539bbd3b5fac0310}{Tick}}();}
+\DoxyCodeLine{00043\ }
+\DoxyCodeLine{00047\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_time_a6ec446b48136654ce68a5e03f0e9cdd0}{FixedTick}}();}
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00049\ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00050\ \ \ \ \ \textcolor{keywordtype}{float}\ dynamicDeltaTime;}
+\DoxyCodeLine{00051\ \ \ \ \ \textcolor{keywordtype}{float}\ fixedDeltaTime;}
+\DoxyCodeLine{00052\ \ \ \ \ \textcolor{keywordtype}{float}\ currentDelta;}
+\DoxyCodeLine{00053\ \ \ \ \ std::chrono::steady\_clock::time\_point\ nextFixedUpdate;}
+\DoxyCodeLine{00054\ \ \ \ \ std::chrono::steady\_clock::time\_point\ lastUpdate;}
+\DoxyCodeLine{00055\ \ \ \};}
+\DoxyCodeLine{00056\ \}}
+
+\end{DoxyCode}

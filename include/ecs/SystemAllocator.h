@@ -7,6 +7,9 @@
 #include "Locks.h"
 
 namespace Cel {
+    /**
+     * @brief Allocates resources and queries to systems.
+     */
     class SystemAllocator {
     public:
         SystemAllocator(ResourceManager &resource_manager, QueryManager &query_manager)
@@ -14,6 +17,11 @@ namespace Cel {
               queryManager(query_manager) {
         }
 
+        /**
+         * @brief Registers a resource / query to the system, and returns the actual data.
+         * @tparam T Resource / query type
+         * @return The actual Resource / query
+         */
         template<typename T>
         T &Register();
 

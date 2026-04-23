@@ -1,0 +1,68 @@
+\doxysection{Components\+Manager.\+h}
+\hypertarget{_components_manager_8h_source}{}\label{_components_manager_8h_source}\index{include/ecs/ComponentsManager.h@{include/ecs/ComponentsManager.h}}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ \textcolor{preprocessor}{\#pragma\ once}}
+\DoxyCodeLine{00002\ }
+\DoxyCodeLine{00003\ \textcolor{preprocessor}{\#include\ "{}ComponentArray.h"{}}}
+\DoxyCodeLine{00004\ \textcolor{preprocessor}{\#include\ "{}Types.h"{}}}
+\DoxyCodeLine{00005\ \textcolor{preprocessor}{\#include\ <array>}}
+\DoxyCodeLine{00006\ \textcolor{preprocessor}{\#include\ <memory>}}
+\DoxyCodeLine{00007\ \textcolor{preprocessor}{\#include\ <typeindex>}}
+\DoxyCodeLine{00008\ \textcolor{preprocessor}{\#include\ <unordered\_map>}}
+\DoxyCodeLine{00009\ }
+\DoxyCodeLine{00010\ \textcolor{keyword}{namespace\ }Cel\ \{}
+\DoxyCodeLine{00014\ \ \ \textcolor{keyword}{class\ }\doxymbox{\hyperlink{class_cel_1_1_components_manager}{ComponentsManager}}\ \{}
+\DoxyCodeLine{00015\ \ \ \textcolor{keyword}{public}:}
+\DoxyCodeLine{00020\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00021\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_components_manager_a4af3fb1b3a1035ad7d7ed7ee8aafb29f}{RegisterComponent}}();}
+\DoxyCodeLine{00022\ }
+\DoxyCodeLine{00029\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00030\ \ \ \ \ T\ \&\doxymbox{\hyperlink{class_cel_1_1_components_manager_abd558183f6b7b7d3856c792bce83a689}{GetComponent}}(Entity\ entity);}
+\DoxyCodeLine{00031\ }
+\DoxyCodeLine{00038\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00039\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_components_manager_ae8bed5d55689fb2cc61c22e2e7a5f9f8}{AddComponent}}(Entity\ entity,\ T\ component);}
+\DoxyCodeLine{00040\ }
+\DoxyCodeLine{00046\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00047\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_components_manager_ae8c0c14327784d7a53b477073b693fcb}{RemoveComponent}}(Entity\ entity);}
+\DoxyCodeLine{00048\ }
+\DoxyCodeLine{00054\ \ \ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00055\ \ \ \ \ std::shared\_ptr<ComponentArray<T>\ >\ \doxymbox{\hyperlink{class_cel_1_1_components_manager_ad25bd41416f4b9b426d8b6190577ea86}{GetComponentArray}}();}
+\DoxyCodeLine{00056\ }
+\DoxyCodeLine{00061\ \ \ \ \ \textcolor{keywordtype}{void}\ \doxymbox{\hyperlink{class_cel_1_1_components_manager_a8ef1a8ce1d18da4f8bc1b2b9345f6b3b}{DestroyEntity}}(Entity\ entity);}
+\DoxyCodeLine{00062\ }
+\DoxyCodeLine{00063\ \ \ \textcolor{keyword}{private}:}
+\DoxyCodeLine{00064\ \ \ \ \ std::unordered\_map<std::type\_index,\ std::shared\_ptr<IComponentArray>\ >\ componentArrays;}
+\DoxyCodeLine{00065\ \ \ \};}
+\DoxyCodeLine{00066\ }
+\DoxyCodeLine{00067\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00068\ \ \ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00069\ \ \ \doxymbox{\hyperlink{class_cel_1_1_components_manager_a4af3fb1b3a1035ad7d7ed7ee8aafb29f}{ComponentsManager::RegisterComponent}}()\ \{}
+\DoxyCodeLine{00070\ \ \ \ \ \textcolor{keywordflow}{if}\ (componentArrays.contains(\textcolor{keyword}{typeid}(T)))\ \{}
+\DoxyCodeLine{00071\ \ \ \ \ \ \ \textcolor{keywordflow}{return};}
+\DoxyCodeLine{00072\ \ \ \ \ \}}
+\DoxyCodeLine{00073\ \ \ \ \ componentArrays[\textcolor{keyword}{typeid}(T)]\ =\ std::make\_shared<\doxymbox{\hyperlink{class_cel_1_1_component_array}{ComponentArray<T>}}\ >();}
+\DoxyCodeLine{00074\ \ \ \}}
+\DoxyCodeLine{00075\ }
+\DoxyCodeLine{00076\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00077\ \ \ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00078\ \ \ \doxymbox{\hyperlink{class_cel_1_1_components_manager_ae8bed5d55689fb2cc61c22e2e7a5f9f8}{ComponentsManager::AddComponent}}(Entity\ entity,\ T\ component)\ \{}
+\DoxyCodeLine{00079\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_components_manager_ad25bd41416f4b9b426d8b6190577ea86}{GetComponentArray<T>}}()-\/>AddComponent(entity,\ component);}
+\DoxyCodeLine{00080\ \ \ \}}
+\DoxyCodeLine{00081\ }
+\DoxyCodeLine{00082\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00083\ \ \ \textcolor{keyword}{inline}\ \textcolor{keywordtype}{void}}
+\DoxyCodeLine{00084\ \ \ \doxymbox{\hyperlink{class_cel_1_1_components_manager_ae8c0c14327784d7a53b477073b693fcb}{ComponentsManager::RemoveComponent}}(Entity\ entity)\ \{}
+\DoxyCodeLine{00085\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_components_manager_ad25bd41416f4b9b426d8b6190577ea86}{GetComponentArray<T>}}()-\/>RemoveComponent(entity);}
+\DoxyCodeLine{00086\ \ \ \}}
+\DoxyCodeLine{00087\ }
+\DoxyCodeLine{00088\ \ \ \textcolor{keyword}{template}<\textcolor{keyword}{typename}\ T>}
+\DoxyCodeLine{00089\ \ \ \textcolor{keyword}{inline}\ std::shared\_ptr<ComponentArray<T>\ >}
+\DoxyCodeLine{00090\ \ \ \doxymbox{\hyperlink{class_cel_1_1_components_manager_ad25bd41416f4b9b426d8b6190577ea86}{ComponentsManager::GetComponentArray}}()\ \{}
+\DoxyCodeLine{00091\ \ \ \ \ \doxymbox{\hyperlink{class_cel_1_1_components_manager_a4af3fb1b3a1035ad7d7ed7ee8aafb29f}{RegisterComponent<T>}}();}
+\DoxyCodeLine{00092\ \ \ \ \ \textcolor{keywordflow}{return}\ std::static\_pointer\_cast<ComponentArray<T>\ >(}
+\DoxyCodeLine{00093\ \ \ \ \ \ \ componentArrays[\textcolor{keyword}{typeid}(T)]);}
+\DoxyCodeLine{00094\ \ \ \}}
+\DoxyCodeLine{00095\ \}}
+
+\end{DoxyCode}
