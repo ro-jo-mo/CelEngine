@@ -11,19 +11,21 @@ set(namespace "CelEngine")
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3 3.4 REQUIRED)
-
+find_package(glm REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC)
 
+target_link_libraries(${PROJECT_NAME} PUBLIC glm::glm)
+
 target_sources(${PROJECT_NAME}
         PRIVATE
-        "src/EntityManger.cpp"
-        "src/Ecs.cpp"
-        "src/ComponentsManager.cpp"
-        "src/ScheduleGraph.cpp"
-        "src/QueryManager.cpp"
-        "src/World.cpp"
-        "src/Time.cpp"
+        "src/ecs/EntityManger.cpp"
+        "src/ecs/Ecs.cpp"
+        "src/ecs/ComponentsManager.cpp"
+        "src/ecs/ScheduleGraph.cpp"
+        "src/ecs/QueryManager.cpp"
+        "src/ecs/World.cpp"
+        "src/ecs/Time.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -57,6 +59,7 @@ set(public_headers
         include/ecs/Types.h
         include/ecs/Query.h
         include/ecs/World.h
+        include/core/Transform.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

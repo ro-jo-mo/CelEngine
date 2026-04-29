@@ -3,15 +3,17 @@
 #include "ComponentsManager.h"
 #include "EntityManager.h"
 #include "Types.h"
+#include "core/Transform.h"
 #include <vector>
 
-#include "Resource.h"
 
 namespace Cel {
   /**
    * @brief Manager of the game world state
    * Responsible for creating new entities, components, deletion ...
    */
+
+
   class World {
   public:
     World(ComponentsManager &components_manager, EntityManager &entity_manager) : componentsManager(components_manager),
@@ -114,16 +116,32 @@ namespace Cel {
   template<typename... Components>
   inline Entity
   World::Spawn(Components... components) {
-    auto id = entityManager.AllocateEntity();
-    ((void) AddComponent(id, components), ...);
-    return id;
+    auto entity = entityManager.AllocateEntity();
+    ((void) AddComponent(entity, std::forward<Components>(components)), ...);
+
+    // lastly check for transform components, add if not already there
+    constexpr bool hasPosition = (std::is_same_v<Position, Components> || ...);
+    constexpr bool hasRotation = (std::is_same_v<Rotation, Components> || ...);
+    constexpr bool hasScale = (std::is_same_v<Scale, Components> || ...);
+
+    if (!hasPosition) {
+      AddComponent(entity, Position{});
+    }
+    if (!hasRotation) {
+      AddComponent(entity, Rotation{});
+    }
+    if (!hasScale) {
+      AddComponent(entity, Scale{});
+    }
+
+    return entity;
   }
 
   template<typename Component>
   inline void
   World::AddComponent(Entity entity, Component component) {
     toAdd.push_back(
-      std::make_unique<AddCommand<Component> >(entity, component, *this));
+      std::make_unique<AddCommand<Component> >(entity, std::forward<Component>(component), *this));
   }
 
   template<typename Component>

@@ -241,7 +241,10 @@ namespace Cel {
     return Iterator(included.end(), included.end(), *this);
   }
 
-  // Additional specialisation for convenience, when there is no without filter
+  /**
+   * @brief Convenient specialisation for when there is no without filter
+   * @tparam Include Only include entities with these components
+   */
   template<typename... Include>
   class Query<With<Include...> > final : public Query<With<Include...>, Without<> > {
   public:
