@@ -7,14 +7,16 @@
 
 using namespace Cel;
 
-void Ecs::Run() {
+void
+Ecs::Run()
+{
     // Startup
     schedules[PreStartup].Execute();
     schedules[Startup].Execute();
     schedules[PostStartup].Execute();
 
-    auto &time = resourceManager.GetResource<Resource<Time> >();
-    auto &world = resourceManager.GetResource<Resource<World> >();
+    auto& time = resourceManager.GetResource<Resource<Time>>();
+    auto& world = resourceManager.GetResource<Resource<World>>();
 
     // Update loop
     while (true) {
@@ -33,7 +35,9 @@ void Ecs::Run() {
         schedules[PreUpdate].Execute();
         schedules[Update].Execute();
         schedules[PostUpdate].Execute();
-        // lastly render
+        schedules[FinalUpdate].Execute();
+
+        schedules[Render].Execute();
 
         // update time
         world->Flush();
@@ -42,5 +46,3 @@ void Ecs::Run() {
         time->Tick();
     }
 }
-
-

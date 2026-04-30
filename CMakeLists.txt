@@ -19,13 +19,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC glm::glm)
 
 target_sources(${PROJECT_NAME}
         PRIVATE
-        "src/ecs/EntityManger.cpp"
+        "src/ecs/EntityManager.cpp"
         "src/ecs/Ecs.cpp"
         "src/ecs/ComponentsManager.cpp"
         "src/ecs/ScheduleGraph.cpp"
         "src/ecs/QueryManager.cpp"
         "src/ecs/World.cpp"
         "src/ecs/Time.cpp"
+        "src/core/Transform.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -60,6 +61,8 @@ set(public_headers
         include/ecs/Query.h
         include/ecs/World.h
         include/core/Transform.h
+        include/core/Hierarchy.h
+        include/core/CorePlugin.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")
@@ -84,7 +87,7 @@ include(CMakePackageConfigHelpers)
 
 write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-        VERSION "${version}"
+        VERSION " ${version} "
         COMPATIBILITY AnyNewerVersion
 )
 
@@ -94,7 +97,7 @@ configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
 )
 
 install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
         DESTINATION cmake
 )

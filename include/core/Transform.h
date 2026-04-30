@@ -1,103 +1,128 @@
 #pragma once
 
+#include "Hierarchy.h"
+#include "ecs/System.h"
+
 #include <glm/gtc/quaternion.hpp>
-#include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
+#include <glm/vec3.hpp>
 
 namespace Cel {
-    struct Position {
-        glm::vec3 position;
+struct Position
+{
+    glm::vec3 position;
 
-        Position() : position(0.0f) {
-        }
+    Position()
+        : position(0.0f)
+    {
+    }
 
-        explicit Position(const glm::vec3 v) : position(v) {
-        }
+    explicit Position(const glm::vec3 v)
+        : position(v)
+    {
+    }
 
-        Position(const float x, const float y, const float z) : position(x, y, z) {
-        }
-    };
+    Position(const float x, const float y, const float z)
+        : position(x, y, z)
+    {
+    }
+};
 
+struct Rotation
+{
+    glm::quat rotation;
+    // identity quaternion
+    Rotation()
+        : rotation(1.0f, 0.0f, 0.0f, 0.0f)
+    {
+    }
 
-    struct Rotation {
-        glm::quat rotation;
+    explicit Rotation(const glm::quat quat)
+        : rotation(quat)
+    {
+    }
 
-        Rotation() : rotation(1.0f, 0.0f, 0.0f, 0.0f) {
-        } // identity quaternion
+    explicit Rotation(const glm::vec3 eulerRadians)
+        : rotation(eulerRadians)
+    {
+    }
 
-        explicit Rotation(const glm::quat quat) : rotation(quat) {
-        }
+    Rotation(const float pitch, const float yaw, const float roll)
+        : rotation(glm::vec3(pitch, yaw, roll))
+    {
+    }
+};
 
-        explicit Rotation(const glm::vec3 eulerRadians) : rotation(eulerRadians) {
-        }
+struct Scale
+{
+    glm::vec3 scale;
 
-        Rotation(const float pitch, const float yaw, const float roll) : rotation(glm::vec3(pitch, yaw, roll)) {
-        }
-    };
+    Scale()
+        : scale(1.0f)
+    {
+    }
 
+    explicit Scale(const glm::vec3 v)
+        : scale(v)
+    {
+    }
 
-    struct Scale {
-        glm::vec3 scale;
+    Scale(const float x, const float y, const float z)
+        : scale(x, y, z)
+    {
+    }
 
-        Scale() : scale(1.0f) {
-        }
+    Scale(const float uniform)
+        : scale(uniform)
+    {
+    }
+};
 
-        explicit Scale(const glm::vec3 v) : scale(v) {
-        }
+struct GlobalTransform
+{
+    glm::mat4 transform;
 
-        Scale(const float x, const float y, const float z) : scale(x, y, z) {
-        }
+    glm::vec3 GetTranslation();
 
-        Scale(const float uniform) : scale(uniform) {
-        }
-    };
+    glm::quat GetRotation();
 
-    struct LocalPosition {
-        glm::vec3 position;
+    glm::vec3 GetScale();
 
-        LocalPosition() : position(0.0f) {
-        }
+    void TransformPropagation(const GlobalTransform& parent,
+                              const Position& localPosition,
+                              const Rotation& localRotation,
+                              const Scale& localScale);
 
-        explicit LocalPosition(const glm::vec3 v) : position(v) {
-        }
+    static glm::mat4 TransformFromLocal(const Position& localPosition,
+                                        const Rotation& localRotation,
+                                        const Scale& localScale);
+};
 
-        LocalPosition(const float x, const float y, const float z) : position(x, y, z) {
-        }
-    };
+class HierarchyPropagation final
+    : public System<Query<With<GlobalTransform,
+                               const Position,
+                               const Rotation,
+                               const Scale,
+                               const Parent>,
+                          Without<Child>>,
+                    Query<With<const Parent>>,
+                    Query<With<GlobalTransform,
+                               const Position,
+                               const Rotation,
+                               const Scale>>>
+{
 
-
-    struct LocalRotation {
-        glm::quat rotation;
-
-        LocalRotation() : rotation(1.0f, 0.0f, 0.0f, 0.0f) {
-        } // identity quaternion
-
-        explicit LocalRotation(const glm::quat quat) : rotation(quat) {
-        }
-
-        explicit LocalRotation(const glm::vec3 eulerRadians) : rotation(eulerRadians) {
-        }
-
-        LocalRotation(const float pitch, const float yaw, const float roll) : rotation(glm::vec3(pitch, yaw, roll)) {
-        }
-    };
-
-
-    struct LocalScale {
-        glm::vec3 scale;
-
-        LocalScale() : scale(1.0f) {
-        }
-
-        explicit LocalScale(const glm::vec3 v) : scale(v) {
-        }
-
-        LocalScale(const float x, const float y, const float z) : scale(x, y, z) {
-        }
-
-        LocalScale(const float uniform) : scale(uniform) {
-        }
-    };
-
-    glm::mat4x4 ConstructTransformMatrix(Position position, Rotation rotation, Scale scale);
+  public:
+    void Run(
+        Query<With<GlobalTransform,
+                   const Position,
+                   const Rotation,
+                   const Scale,
+                   const Parent>,
+              Without<Child>>& rootParentQuery,
+        Query<With<const Parent>>& parentQuery,
+        Query<
+            With<GlobalTransform, const Position, const Rotation, const Scale>>&
+            childQuery) override;
+};
 }
