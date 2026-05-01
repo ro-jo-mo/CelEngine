@@ -1,14 +1,16 @@
 #pragma once
-#include <vector>
 
 #include "ecs/Types.h"
+#include <unordered_set>
 
 namespace Cel {
-    struct Parent {
-        std::vector<Entity> children;
-    };
+struct Parent
+{
+    std::unordered_set<Entity> children;
+};
 
-    struct Child {
-        Entity parent;
-    };
+struct Child
+{
+    Entity parent;
+};
 }

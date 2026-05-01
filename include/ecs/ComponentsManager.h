@@ -8,10 +8,12 @@
 #include <unordered_map>
 
 namespace Cel {
-  /**
-   * @brief The overarching components storage for the entire engine. Stores every component that currently exists.
-   */
-  class ComponentsManager {
+/**
+ * @brief The overarching components storage for the entire engine. Stores every
+ * component that currently exists.
+ */
+class ComponentsManager
+{
   public:
     /**
      * @brief Registers a new component type.
@@ -27,7 +29,7 @@ namespace Cel {
      * @return The component
      */
     template<typename T>
-    T &GetComponent(Entity entity);
+    T& GetComponent(Entity entity);
 
     /**
      * @brief Add a component of type T to the entity
@@ -38,6 +40,8 @@ namespace Cel {
     template<typename T>
     void AddComponent(Entity entity, T component);
 
+    template<typename T>
+    bool HasComponent(Entity entity);
     /**
      * @brief Remove a component of type T from entity
      * @tparam T Component type
@@ -47,12 +51,12 @@ namespace Cel {
     void RemoveComponent(Entity entity);
 
     /**
-     * @brief Get all components of this type. Require by queries.
+     * @brief Get all components of this type. Required by queries.
      * @tparam T Component type
      * @return the component array
      */
     template<typename T>
-    std::shared_ptr<ComponentArray<T> > GetComponentArray();
+    std::shared_ptr<ComponentArray<T>> GetComponentArray();
 
     /**
      * @brief Completely remove all components owned by entity
@@ -61,35 +65,53 @@ namespace Cel {
     void DestroyEntity(Entity entity);
 
   private:
-    std::unordered_map<std::type_index, std::shared_ptr<IComponentArray> > componentArrays;
-  };
+    std::unordered_map<std::type_index, std::shared_ptr<IComponentArray>>
+        componentArrays;
+};
 
-  template<typename T>
-  inline void
-  ComponentsManager::RegisterComponent() {
+template<typename T>
+inline void
+ComponentsManager::RegisterComponent()
+{
     if (componentArrays.contains(typeid(T))) {
-      return;
+        return;
     }
-    componentArrays[typeid(T)] = std::make_shared<ComponentArray<T> >();
-  }
+    componentArrays[typeid(T)] = std::make_shared<ComponentArray<T>>();
+}
+template<typename T>
+T&
+ComponentsManager::GetComponent(Entity entity)
+{
+    return GetComponentArray<T>()->GetComponent(entity);
+}
 
-  template<typename T>
-  inline void
-  ComponentsManager::AddComponent(Entity entity, T component) {
+template<typename T>
+bool
+ComponentsManager::HasComponent(Entity entity)
+{
+    return GetComponentArray<T>()->HasComponent(entity);
+}
+
+template<typename T>
+inline void
+ComponentsManager::AddComponent(Entity entity, T component)
+{
     GetComponentArray<T>()->AddComponent(entity, component);
-  }
+}
 
-  template<typename T>
-  inline void
-  ComponentsManager::RemoveComponent(Entity entity) {
+template<typename T>
+inline void
+ComponentsManager::RemoveComponent(Entity entity)
+{
     GetComponentArray<T>()->RemoveComponent(entity);
-  }
+}
 
-  template<typename T>
-  inline std::shared_ptr<ComponentArray<T> >
-  ComponentsManager::GetComponentArray() {
+template<typename T>
+inline std::shared_ptr<ComponentArray<T>>
+ComponentsManager::GetComponentArray()
+{
     RegisterComponent<T>();
-    return std::static_pointer_cast<ComponentArray<T> >(
-      componentArrays[typeid(T)]);
-  }
+    return std::static_pointer_cast<ComponentArray<T>>(
+        componentArrays[typeid(T)]);
+}
 }

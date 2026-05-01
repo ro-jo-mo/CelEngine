@@ -54,11 +54,20 @@ class World
     void RemoveComponent(Entity entity);
 
     /**
-     *
-     * @param parent
-     * @param child
+     * @brief Add "parent" as a parent entity to "child", and "child" as a child
+     * object to "parent"
+     * @param parent parent entity id
+     * @param child child entity id
      */
     void AddChild(Entity parent, Entity child);
+
+    /**
+     * @brief Remove child's parent component, and remove child from parent's
+     * children list
+     * @param parent parent entity id
+     * @param child child entity id
+     */
+    void RemoveChild(Entity parent, Entity child);
 
     /**
      * @brief Flush changes to the world state
@@ -81,13 +90,49 @@ class World
     template<typename T>
     class RemoveCommand;
 
+    class AddChildCommand;
+
+    class RemoveChildCommand;
+
     void ExecuteDestroy(Entity entity) const;
 
     ComponentsManager& componentsManager;
     EntityManager& entityManager;
     std::vector<std::unique_ptr<Command>> toAdd;
     std::vector<std::unique_ptr<Command>> toRemove;
+    std::vector<AddChildCommand> toAddChild;
+    std::vector<RemoveChildCommand> toRemoveChild;
     std::vector<Entity> toDestroy;
+};
+
+class World::AddChildCommand
+{
+  public:
+    AddChildCommand(const Entity parent, const Entity child, World& world)
+        : parent(parent)
+        , child(child)
+        , world(world) {};
+    void Execute() const;
+
+  private:
+    Entity parent;
+    Entity child;
+    World& world;
+};
+
+class World::RemoveChildCommand
+{
+  public:
+    RemoveChildCommand(const Entity parent, const Entity child, World& world)
+        : parent(parent)
+        , child(child)
+        , world(world) {};
+    void Execute() const;
+
+  private:
+    Entity parent;
+    Entity child;
+    World& world;
 };
 
 template<typename T>
@@ -130,10 +175,11 @@ World::Spawn(Components... components)
     ((void)AddComponent(entity, std::forward<Components>(components)), ...);
 
     // lastly check for core components, add if not already there
-
     constexpr bool hasPosition = HasTypeT<Position, Components...>();
     constexpr bool hasRotation = HasTypeT<Rotation, Components...>();
     constexpr bool hasScale = HasTypeT<Scale, Components...>();
+    constexpr bool hasGlobalTransform =
+        HasTypeT<GlobalTransform, Components...>();
 
     if (!hasPosition) {
         AddComponent(entity, Position{});
@@ -143,6 +189,9 @@ World::Spawn(Components... components)
     }
     if (!hasScale) {
         AddComponent(entity, Scale{});
+    }
+    if (!hasGlobalTransform) {
+        AddComponent(entity, GlobalTransform{});
     }
 
     return entity;
