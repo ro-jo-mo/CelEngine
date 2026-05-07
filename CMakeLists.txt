@@ -10,12 +10,27 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(namespace "CelEngine")
 
 find_package(Vulkan REQUIRED)
-find_package(glfw3 3.4 REQUIRED)
+find_package(SDL3 CONFIG REQUIRED)
 find_package(glm REQUIRED)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+find_package(vk-bootstrap CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC)
+add_subdirectory(examples)
 
-target_link_libraries(${PROJECT_NAME} PUBLIC glm::glm)
+target_link_libraries(${PROJECT_NAME}
+        PUBLIC
+        glm::glm
+        Vulkan::Vulkan
+        GPUOpen::VulkanMemoryAllocator
+)
+
+target_link_libraries(${PROJECT_NAME}
+        PRIVATE
+        SDL3::SDL3
+        vk-bootstrap::vk-bootstrap
+)
+
 
 target_sources(${PROJECT_NAME}
         PRIVATE
@@ -27,6 +42,10 @@ target_sources(${PROJECT_NAME}
         "src/ecs/World.cpp"
         "src/ecs/Time.cpp"
         "src/core/Transform.cpp"
+        "src/core/CorePlugin.cpp"
+        "src/renderer/Vma.cpp"
+        "src/renderer/RenderPlugin.cpp"
+        "src/renderer/Window.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -37,6 +56,7 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 
 )
+
 
 set(public_headers
         include/ecs/ComponentArray.h
@@ -56,13 +76,21 @@ set(public_headers
         include/ecs/System.h
         include/ecs/SystemAllocator.h
         include/ecs/QueryManager.h
-        include/ecs/Time.h
         include/ecs/Types.h
         include/ecs/Query.h
         include/ecs/World.h
+        include/ecs/Time.h
+
         include/core/Transform.h
         include/core/Hierarchy.h
         include/core/CorePlugin.h
+        include/ecs/Running.h
+
+        include/renderer/AssetServer.h
+        include/renderer/RenderPlugin.h
+        include/renderer/VulkanEngine.h
+        include/renderer/RendererTypes.h
+        include/renderer/Window.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

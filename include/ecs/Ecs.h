@@ -2,31 +2,37 @@
 
 #include "ComponentsManager.h"
 #include "EntityManager.h"
-#include "ResourceManager.h"
-#include "QueryManager.h"
-#include <concepts>
 #include "Plugin.h"
+#include "QueryManager.h"
+#include "ResourceManager.h"
+#include "Running.h"
+#include "Schedule.h"
 #include "ScheduleGraph.h"
+#include "Scheduler.h"
 #include "Time.h"
 #include "World.h"
-#include "Schedule.h"
-#include "Scheduler.h"
+#include <concepts>
 
 namespace Cel {
-  /**
-   * @brief The primary entry point for the ecs API
-   * Handles plugins, entity & resource & component storage, system scheduling.
-   */
-  class Ecs {
+/**
+ * @brief The primary entry point for the ecs API
+ * Handles plugins, entity & resource & component storage, system scheduling.
+ */
+class Ecs
+{
   public:
-    Ecs() : componentsManager(ComponentsManager()),
-            queryManager(componentsManager),
-            systemAllocator(resourceManager, queryManager) {
-      resourceManager.InsertResource<Time>(1.0f / 60.0f);
-      resourceManager.InsertResource<World>(componentsManager, entityManager);
-      for (std::size_t i = 0; i < Schedule::SIZE; ++i) {
-        schedules.emplace_back(systemAllocator);
-      }
+    Ecs()
+        : componentsManager(ComponentsManager())
+        , queryManager(componentsManager)
+        , systemAllocator(resourceManager, queryManager)
+    {
+        resourceManager.InsertResource<Time>(1.0f / 60.0f);
+        resourceManager.InsertResource<World>(componentsManager, entityManager);
+        resourceManager.InsertResource<Running>();
+
+        for (std::size_t i = 0; i < Schedule::SIZE; ++i) {
+            schedules.emplace_back(systemAllocator);
+        }
     }
 
     /**
@@ -40,8 +46,8 @@ namespace Cel {
      * @return A reference to this ecs, for chaining calls
      */
     template<typename T>
-      requires std::derived_from<T, Plugin>
-    Ecs &AddPlugin();
+        requires std::derived_from<T, Plugin>
+    Ecs& AddPlugin();
 
   private:
     ComponentsManager componentsManager;
@@ -50,11 +56,14 @@ namespace Cel {
     QueryManager queryManager;
     SystemAllocator systemAllocator;
     std::vector<ScheduleGraph> schedules;
-  };
+};
 
-  template<typename T> requires std::derived_from<T, Plugin>
-  Ecs &Ecs::AddPlugin() {
+template<typename T>
+    requires std::derived_from<T, Plugin>
+Ecs&
+Ecs::AddPlugin()
+{
     T().Build(Scheduler(schedules), resourceManager);
     return *this;
-  }
+}
 }

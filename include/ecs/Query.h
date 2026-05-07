@@ -79,8 +79,8 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
     explicit Query(ComponentsManager& components_manager)
         : manager(components_manager)
     {
-        includedComponentArrays =
-            std::make_tuple(manager.GetComponentArray<Include>()...);
+        includedComponentArrays = std::make_tuple(
+            manager.GetComponentArray<std::remove_const_t<Include>>()...);
         Query::UpdateQuery();
     }
 
@@ -120,9 +120,9 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
      * @return Retrieved component
      */
     template<typename Component>
-    auto& GetComponentOrEntity(Entity& entity);
+    Component& GetComponentOrEntity(Entity& entity);
 
-    std::tuple<std::shared_ptr<ComponentArray<Include>>...>
+    std::tuple<std::shared_ptr<ComponentArray<std::remove_const_t<Include>>>...>
         includedComponentArrays;
     ComponentsManager& manager;
     std::unordered_set<Entity> included;
@@ -209,14 +209,15 @@ Query<With<Include...>, Without<Exclude...>>::Has(const Entity entity) const
 
 template<typename... Include, typename... Exclude>
 template<typename Component>
-auto&
+Component&
 Query<With<Include...>, Without<Exclude...>>::GetComponentOrEntity(
     Entity& entity)
 {
     if constexpr (std::is_same_v<Component, Entity>) {
         return (entity);
     }
-    return std::get<std::shared_ptr<ComponentArray<Component>>>(
+    return std::get<
+               std::shared_ptr<ComponentArray<std::remove_const_t<Component>>>>(
                includedComponentArrays)
         ->GetComponent(entity);
 }

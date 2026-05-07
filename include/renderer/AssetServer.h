@@ -1,9 +1,10 @@
 #pragma once
-namespace Cel {
-    class AssetHandle;
+namespace Cel::Renderer {
+class AssetHandle;
 
-    class AssetServer {
-    public:
-        AssetHandle LoadAsset(const char *path);
-    };
+class AssetServer
+{
+  public:
+    AssetHandle LoadAsset(const char* path);
+};
 }

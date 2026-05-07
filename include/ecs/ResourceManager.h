@@ -1,20 +1,20 @@
 #pragma once
 
-#include <any>
 #include "Resource.h"
+#include <any>
 #include <memory>
 #include <typeindex>
 #include <unordered_map>
 
-
 namespace Cel {
-  /**
-   * @brief Stores and retrieves resources
-   * In this engine resources are treated as singleton instances of an object.
-   * Currently they're assumed to be thread safe (lazy me)
-   * At a later date I will likely change this?
-   */
-  class ResourceManager {
+/**
+ * @brief Stores and retrieves resources
+ * In this engine resources are treated as singleton instances of an object.
+ * Currently they're assumed to be thread safe (lazy me)
+ * At a later date I will likely change this?
+ */
+class ResourceManager
+{
   public:
     /**
      * @brief Initialise a new resource
@@ -23,7 +23,7 @@ namespace Cel {
      * @param args Arguments to initialise resource with
      */
     template<typename T, typename... Args>
-    void InsertResource(Args &&... args);
+    Resource<T>& InsertResource(Args&&... args);
 
     /**
      * @brief Return resource
@@ -31,20 +31,26 @@ namespace Cel {
      * @return The resource
      */
     template<typename T>
-    auto &GetResource();
+    Resource<T>& GetResource();
 
   private:
-    std::unordered_map<std::type_index, std::unique_ptr<IResource> > resources;
-  };
+    std::unordered_map<std::type_index, std::unique_ptr<IResource>> resources;
+};
 
-  template<typename T, typename... Args>
-  void ResourceManager::InsertResource(Args &&... args) {
-    resources[typeid(Resource<T>)] = std::make_unique<Resource<T> >(std::forward<Args>(args)...);
-  }
+template<typename T, typename... Args>
+Resource<T>&
+ResourceManager::InsertResource(Args&&... args)
+{
+    resources[typeid(Resource<T>)] =
+        std::make_unique<Resource<T>>(std::forward<Args>(args)...);
+    return GetResource<T>();
+}
 
-  template<typename T>
-  auto &ResourceManager::GetResource() {
-    const auto &ptr = resources[typeid(T)];
-    return *static_cast<T *>(ptr.get());
-  }
+template<typename T>
+Resource<T>&
+ResourceManager::GetResource()
+{
+    const auto& ptr = resources[typeid(Resource<T>)];
+    return *static_cast<Resource<T>*>(ptr.get());
+}
 }

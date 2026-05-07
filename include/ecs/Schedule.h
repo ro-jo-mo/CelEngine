@@ -21,6 +21,8 @@ enum Schedule : std::size_t
     FinalUpdate,
     Render,
 
+    Cleanup,
+
     SIZE
 };
 }

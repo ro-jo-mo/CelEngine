@@ -5,7 +5,7 @@ using namespace Cel;
 glm::vec3
 GlobalTransform::GetTranslation()
 {
-    return glm::vec3(transform[3]);
+    return { transform[3] };
 }
 
 glm::quat
@@ -25,9 +25,9 @@ glm::vec3
 GlobalTransform::GetScale()
 {
     // FIX ME FOR NEGATIVE
-    return glm::vec3(glm::length(glm::vec3(transform[0])),
-                     glm::length(glm::vec3(transform[1])),
-                     glm::length(glm::vec3(transform[2])));
+    return { glm::length(glm::vec3(transform[0])),
+             glm::length(glm::vec3(transform[1])),
+             glm::length(glm::vec3(transform[2])) };
 }
 
 void

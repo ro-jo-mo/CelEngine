@@ -2,7 +2,8 @@
 
 #include <iostream>
 
-#include "ecs/Time.h"
+#include "../../include/ecs/Running.h"
+#include "../../include/ecs/Time.h"
 #include "ecs/World.h"
 
 using namespace Cel;
@@ -15,11 +16,12 @@ Ecs::Run()
     schedules[Startup].Execute();
     schedules[PostStartup].Execute();
 
-    auto& time = resourceManager.GetResource<Resource<Time>>();
-    auto& world = resourceManager.GetResource<Resource<World>>();
+    auto& time = resourceManager.GetResource<Time>();
+    auto& world = resourceManager.GetResource<World>();
+    auto& running = resourceManager.GetResource<Running>();
 
     // Update loop
-    while (true) {
+    while (running->isRunning) {
         // run fixed update first
         time->SwitchToFixed();
 
@@ -45,4 +47,7 @@ Ecs::Run()
 
         time->Tick();
     }
+
+    // Lastly run cleanup
+    schedules[Cleanup].Execute();
 }
