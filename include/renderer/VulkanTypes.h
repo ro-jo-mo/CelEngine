@@ -11,13 +11,5 @@ namespace Cel::Renderer {
             abort();                                                           \
         }                                                                      \
     } while (0)
-class DeletionQueue
-{
-  public:
-    void Push(std::function<void()>&& func);
-    void Flush();
 
-  private:
-    std::vector<std::function<void()>> queue;
-};
 }

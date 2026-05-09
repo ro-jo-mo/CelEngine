@@ -7,12 +7,10 @@
 #include <vulkan/vulkan_core.h>
 
 namespace Cel::Renderer {
-class Window
+struct Window
 {
-  public:
     Window();
 
-  private:
     SDL_Window* window;
     VkExtent2D extent{ .width = 1600, .height = 900 };
 };

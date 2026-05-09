@@ -45,7 +45,10 @@ target_sources(${PROJECT_NAME}
         "src/core/CorePlugin.cpp"
         "src/renderer/Vma.cpp"
         "src/renderer/RenderPlugin.cpp"
+        "src/renderer/CleanupRenderer.cpp"
         "src/renderer/Window.cpp"
+        "src/renderer/VulkanInitialiser.cpp"
+        "src/renderer/DeletionQueue.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -87,9 +90,10 @@ set(public_headers
         include/ecs/Running.h
 
         include/renderer/AssetServer.h
+        include/renderer/DeletionQueue.h
         include/renderer/RenderPlugin.h
-        include/renderer/VulkanEngine.h
-        include/renderer/RendererTypes.h
+        include/renderer/VulkanInitialiser.h
+        include/renderer/VulkanTypes.h
         include/renderer/Window.h
 )
 

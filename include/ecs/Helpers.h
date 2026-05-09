@@ -28,7 +28,7 @@ template<typename T, typename... Ts>
 constexpr bool
 HasTypeT()
 {
-  return (std::is_same_v<T, Ts> || ...);
+    return (std::is_same_v<T, Ts> || ...);
 }
 
 template<typename... T>

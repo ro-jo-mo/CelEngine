@@ -1,8 +1,16 @@
 #include "renderer/RenderPlugin.h"
+
+#include "renderer/CleanupRenderer.h"
+#include "renderer/VulkanInitialiser.h"
 #include "renderer/Window.h"
+
+using namespace Cel;
+
 void
-Cel::Renderer::RenderPlugin::Build(Scheduler scheduler,
-                                   ResourceManager& resourceManager)
+Renderer::RenderPlugin::Build(Scheduler scheduler,
+                              ResourceManager& resourceManager)
 {
-    resourceManager.InsertResource<Window>();
+    VulkanInitialiser::Initialise(resourceManager);
+    scheduler.AddSystem<CleanupRenderer>(Schedule::Cleanup);
+    scheduler.AddSystem<WindowSystem>(Schedule::Render);
 }

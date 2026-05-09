@@ -21,7 +21,6 @@ class Resource : public IResource
 
     T* operator->();
 
-  private:
     T resource;
 };
 

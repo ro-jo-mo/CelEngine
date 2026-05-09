@@ -1,0 +1,15 @@
+{
+  "name": "celengine",
+  "version": "0.1.0",
+  "dependencies": [
+    "glm",
+    {
+      "name": "sdl3",
+      "features": [
+        "vulkan"
+      ]
+    },
+    "vk-bootstrap",
+    "vulkan-memory-allocator"
+  ]
+}

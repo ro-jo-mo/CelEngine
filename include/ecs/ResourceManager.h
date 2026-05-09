@@ -2,6 +2,7 @@
 
 #include "Resource.h"
 #include <any>
+#include <cassert>
 #include <memory>
 #include <typeindex>
 #include <unordered_map>
@@ -25,6 +26,9 @@ class ResourceManager
     template<typename T, typename... Args>
     Resource<T>& InsertResource(Args&&... args);
 
+    template<typename T>
+    Resource<T>& InsertResource(T resource);
+
     /**
      * @brief Return resource
      * @tparam T Resource type
@@ -41,6 +45,8 @@ template<typename T, typename... Args>
 Resource<T>&
 ResourceManager::InsertResource(Args&&... args)
 {
+    assert(!resources.contains(typeid(Resource<T>)));
+
     resources[typeid(Resource<T>)] =
         std::make_unique<Resource<T>>(std::forward<Args>(args)...);
     return GetResource<T>();
@@ -48,8 +54,20 @@ ResourceManager::InsertResource(Args&&... args)
 
 template<typename T>
 Resource<T>&
+ResourceManager::InsertResource(T resource)
+{
+    assert(!resources.contains(typeid(Resource<T>)));
+
+    resources[typeid(Resource<T>)] = std::make_unique<Resource<T>>(resource);
+    return GetResource<T>();
+}
+
+template<typename T>
+Resource<T>&
 ResourceManager::GetResource()
 {
+    assert(resources.contains(typeid(Resource<T>)));
+
     const auto& ptr = resources[typeid(Resource<T>)];
     return *static_cast<Resource<T>*>(ptr.get());
 }
