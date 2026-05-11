@@ -22,6 +22,16 @@ class PipelineBuilder
 
     VkPipeline BuildPipeline(VkDevice device);
 
+    void SetShaders(VkShaderModule vertexShader, VkShaderModule fragmentShader);
+    void SetInputTopology(VkPrimitiveTopology topology);
+    void SetPolygonMode(VkPolygonMode polygonMode);
+    void SetCullMode(VkCullModeFlags cullMode);
+    void SetMutisamplingNone();
+    void DisableBlending();
+    void SetColourAttachment(VkFormat format);
+    void SetDepthAttachment(VkFormat format);
+    void DisableDepthTest();
+
     void Clear();
 };
 }

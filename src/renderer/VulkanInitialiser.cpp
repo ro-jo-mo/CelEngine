@@ -1,6 +1,6 @@
 #include "renderer/VulkanInitialiser.h"
-
 #include "renderer/DeletionQueue.h"
+#include "renderer/VulkanHelpers.h"
 #include "renderer/Window.h"
 #include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>
@@ -110,6 +110,31 @@ InitSwapchain(ResourceManager& resourceManager)
             vkDestroyImageView(*device, views[i], nullptr);
         }
     });
+}
+
+void
+InitTrianglePipeline(ResourceManager& resourceManager)
+{
+    auto& device = resourceManager.GetResource<VkDevice>();
+
+    VkShaderModule vertShader;
+    if (!Renderer::Helpers::LoadShader(
+            "../shaders/shader.vert", *device, &vertShader)) {
+        throw std::runtime_error("Failed to load vertex shader");
+    }
+
+    VkShaderModule fragShader;
+    if (!Renderer::Helpers::LoadShader(
+            "../shaders/shader.frag", *device, &vertShader)) {
+        throw std::runtime_error("Failed to load fragment shader");
+    }
+
+    VkPipelineLayout pipelineLayout;
+
+    VkPipelineLayoutCreateInfo pipeline_layout_info =
+        vkinit::pipeline_layout_create_info();
+    VK_CHECK(vkCreatePipelineLayout(
+        *device, &pipeline_layout_info, nullptr, &_trianglePipelineLayout));
 }
 
 void
