@@ -14,12 +14,13 @@ find_package(SDL3 CONFIG REQUIRED)
 find_package(glm REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(vk-bootstrap CONFIG REQUIRED)
-
+find_package(fmt CONFIG REQUIRED)
 add_library(${PROJECT_NAME} STATIC)
 add_subdirectory(examples)
 
 target_link_libraries(${PROJECT_NAME}
         PUBLIC
+        fmt::fmt
         glm::glm
         Vulkan::Vulkan
         GPUOpen::VulkanMemoryAllocator
@@ -48,7 +49,7 @@ target_sources(${PROJECT_NAME}
         "src/renderer/CleanupRenderer.cpp"
         "src/renderer/Window.cpp"
         "src/renderer/VulkanInitialiser.cpp"
-        "src/renderer/DeletionQueue.cpp"
+        "src/renderer/PipelineBuilder.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -95,6 +96,7 @@ set(public_headers
         include/renderer/VulkanInitialiser.h
         include/renderer/VulkanTypes.h
         include/renderer/Window.h
+        include/renderer/PipelineBuilder.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

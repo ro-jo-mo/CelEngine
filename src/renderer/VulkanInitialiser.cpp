@@ -13,7 +13,7 @@ void
 InitVulkan(ResourceManager& resourceManager)
 {
     // Firstly create a window
-    auto window = resourceManager.InsertResource<Renderer::Window>();
+    auto& window = resourceManager.InsertResource<Renderer::Window>();
     VkSurfaceKHR surface;
 
     // Create a vulkan instance with our requirements
@@ -24,7 +24,7 @@ InitVulkan(ResourceManager& resourceManager)
                               .require_api_version(1, 3, 0)
                               .build();
 
-    const auto instance = instanceResult.value();
+    auto instance = instanceResult.value();
 
     SDL_Vulkan_CreateSurface(window->window, instance, nullptr, &surface);
 
@@ -50,9 +50,10 @@ InitVulkan(ResourceManager& resourceManager)
             .value();
 
     vkb::DeviceBuilder deviceBuilder{ physicalDevice };
+    auto deviceBuild = deviceBuilder.build().value();
 
-    VkPhysicalDevice gpu = deviceBuilder.build().value().physical_device;
-    VkDevice device = deviceBuilder.build().value().device;
+    VkPhysicalDevice gpu = deviceBuild.physical_device;
+    VkDevice device = deviceBuild.device;
 
     resourceManager.InsertResource(instance.instance);
     resourceManager.InsertResource(instance.debug_messenger);
@@ -60,27 +61,28 @@ InitVulkan(ResourceManager& resourceManager)
     resourceManager.InsertResource(device);
     resourceManager.InsertResource(surface);
 
-    auto cleanup = resourceManager.GetResource<Renderer::FinalCleanup>();
+    auto& cleanup = resourceManager.GetResource<Renderer::FinalCleanup>();
 
-    cleanup->Push([&]() {
+    cleanup->Push([=, &window]() {
         vkDestroyDevice(device, nullptr);
-
+        vkDestroySurfaceKHR(instance, surface, nullptr);
         vkb::destroy_debug_utils_messenger(instance.instance,
                                            instance.debug_messenger);
+
         vkDestroyInstance(instance.instance, nullptr);
         SDL_DestroyWindow(window->window);
+        SDL_Quit();
     });
 }
 
 void
 InitSwapchain(ResourceManager& resourceManager)
 {
-    VkPhysicalDevice gpu =
-        resourceManager.GetResource<VkPhysicalDevice>().resource;
-    VkDevice device = resourceManager.GetResource<VkDevice>().resource;
-    VkSurfaceKHR surface = resourceManager.GetResource<VkSurfaceKHR>().resource;
+    auto& gpu = resourceManager.GetResource<VkPhysicalDevice>();
+    auto& device = resourceManager.GetResource<VkDevice>();
+    auto& surface = resourceManager.GetResource<VkSurfaceKHR>();
 
-    vkb::SwapchainBuilder builder{ gpu, device, surface };
+    vkb::SwapchainBuilder builder{ *gpu, *device, *surface };
     auto format = VK_FORMAT_R8G8B8A8_UNORM;
 
     auto swapchain = builder
@@ -99,13 +101,13 @@ InitSwapchain(ResourceManager& resourceManager)
     resourceManager.InsertResource(views);
     resourceManager.InsertResource(swapchain.get_images().value());
 
-    auto cleanup = resourceManager.GetResource<Renderer::FinalCleanup>();
+    auto& cleanup = resourceManager.GetResource<Renderer::FinalCleanup>();
 
-    cleanup->Push([&]() {
-        vkDestroySwapchainKHR(device, swapchain.swapchain, nullptr);
+    cleanup->Push([=, &gpu, &device, &surface]() {
+        vkDestroySwapchainKHR(*device, swapchain.swapchain, nullptr);
 
         for (int i = 0; i < views.size(); i++) {
-            vkDestroyImageView(device, views[i], nullptr);
+            vkDestroyImageView(*device, views[i], nullptr);
         }
     });
 }
@@ -115,4 +117,5 @@ Renderer::VulkanInitialiser::Initialise(ResourceManager& resourceManager)
 {
     resourceManager.InsertResource(FinalCleanup{});
     InitVulkan(resourceManager);
+    InitSwapchain(resourceManager);
 }

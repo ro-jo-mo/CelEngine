@@ -66,9 +66,9 @@ template<typename T>
 Resource<T>&
 ResourceManager::GetResource()
 {
-    assert(resources.contains(typeid(Resource<T>)));
+    assert(resources.contains(typeid(Resource<std::remove_const_t<T>>)));
 
-    const auto& ptr = resources[typeid(Resource<T>)];
+    const auto& ptr = resources[typeid(Resource<std::remove_const_t<T>>)];
     return *static_cast<Resource<T>*>(ptr.get());
 }
 }

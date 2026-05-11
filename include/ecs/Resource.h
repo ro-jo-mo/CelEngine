@@ -11,6 +11,10 @@ template<typename T>
 class Resource : public IResource
 {
   public:
+    // Remove copy construtor
+    Resource(const Resource&) = delete;
+    Resource& operator=(const Resource&) = delete;
+
     template<typename... Args>
     explicit Resource(Args&&... args)
         : resource(T(std::forward<Args>(args)...))
@@ -21,6 +25,9 @@ class Resource : public IResource
 
     T* operator->();
 
+    T operator*() const;
+
+  private:
     T resource;
 };
 
@@ -29,5 +36,12 @@ T*
 Resource<T>::operator->()
 {
     return &resource;
+}
+
+template<typename T>
+T
+Resource<T>::operator*() const
+{
+    return resource;
 }
 }
