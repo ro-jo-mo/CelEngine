@@ -1,4 +1,7 @@
 #include "renderer/PipelineBuilder.h"
+
+#include "renderer/VulkanHelpers.h"
+
 #include <fmt/printf.h>
 
 VkPipeline
@@ -93,4 +96,84 @@ Cel::Renderer::PipelineBuilder::Clear()
     };
     renderInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
     shaderStages.clear();
+}
+void
+Cel::Renderer::PipelineBuilder::SetShaders(VkShaderModule vertexShader,
+                                           VkShaderModule fragmentShader)
+{
+    shaderStages.clear();
+
+    shaderStages.push_back(Initialisers::PipelineShaderStageCreateInfo(
+        VK_SHADER_STAGE_VERTEX_BIT, vertexShader));
+
+    shaderStages.push_back(Initialisers::PipelineShaderStageCreateInfo(
+        VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader));
+}
+void
+Cel::Renderer::PipelineBuilder::SetInputTopology(VkPrimitiveTopology topology)
+{
+    inputAssembly.topology = topology;
+    // we are not going to use primitive restart on the entire tutorial so leave
+    // it on false
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+}
+void
+Cel::Renderer::PipelineBuilder::SetPolygonMode(VkPolygonMode polygonMode)
+{
+    rasterizer.polygonMode = polygonMode;
+    rasterizer.lineWidth = 1.f;
+}
+void
+Cel::Renderer::PipelineBuilder::SetCullMode(VkCullModeFlags cullMode,
+                                            VkFrontFace frontFace)
+{
+    rasterizer.cullMode = cullMode;
+    rasterizer.frontFace = frontFace;
+}
+void
+Cel::Renderer::PipelineBuilder::SetMutisamplingNone()
+{
+    multisampling.sampleShadingEnable = VK_FALSE;
+    // multisampling defaulted to no multisampling (1 sample per pixel)
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.minSampleShading = 1.0f;
+    multisampling.pSampleMask = nullptr;
+    // no alpha to coverage either
+    multisampling.alphaToCoverageEnable = VK_FALSE;
+    multisampling.alphaToOneEnable = VK_FALSE;
+}
+void
+Cel::Renderer::PipelineBuilder::DisableBlending()
+{
+    colorBlendAttachment.colorWriteMask =
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    // no blending
+    colorBlendAttachment.blendEnable = VK_FALSE;
+}
+void
+Cel::Renderer::PipelineBuilder::SetColourAttachment(VkFormat format)
+{
+    colorAttachmentformat = format;
+    // connect the format to the renderInfo  structure
+    renderInfo.colorAttachmentCount = 1;
+    renderInfo.pColorAttachmentFormats = &colorAttachmentformat;
+}
+void
+Cel::Renderer::PipelineBuilder::SetDepthAttachment(VkFormat format)
+{
+    renderInfo.depthAttachmentFormat = format;
+}
+void
+Cel::Renderer::PipelineBuilder::DisableDepthTest()
+{
+    depthStencil.depthTestEnable = VK_FALSE;
+    depthStencil.depthWriteEnable = VK_FALSE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_NEVER;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.stencilTestEnable = VK_FALSE;
+    depthStencil.front = {};
+    depthStencil.back = {};
+    depthStencil.minDepthBounds = 0.f;
+    depthStencil.maxDepthBounds = 1.f;
 }

@@ -12,7 +12,6 @@ struct Window
     Window();
 
     SDL_Window* window;
-    VkExtent2D extent{ .width = 1600, .height = 900 };
 };
 
 class WindowSystem final : public System<Resource<Window>, Resource<Running>>

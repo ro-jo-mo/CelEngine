@@ -7,7 +7,7 @@ Cel::Renderer::Window::Window()
 
     constexpr SDL_WindowFlags flags = SDL_WINDOW_VULKAN;
 
-    window = SDL_CreateWindow("CelEngine", extent.width, extent.height, flags);
+    window = SDL_CreateWindow("CelEngine", 1600, 900, flags);
 
     if (window == nullptr) {
         throw std::runtime_error(SDL_GetError());

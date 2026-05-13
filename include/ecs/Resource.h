@@ -11,7 +11,7 @@ template<typename T>
 class Resource : public IResource
 {
   public:
-    // Remove copy construtor
+    // Remove copy constructor
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
 
@@ -25,7 +25,7 @@ class Resource : public IResource
 
     T* operator->();
 
-    T operator*() const;
+    T& operator*();
 
   private:
     T resource;
@@ -39,8 +39,8 @@ Resource<T>::operator->()
 }
 
 template<typename T>
-T
-Resource<T>::operator*() const
+T&
+Resource<T>::operator*()
 {
     return resource;
 }

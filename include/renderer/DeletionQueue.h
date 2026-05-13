@@ -4,6 +4,7 @@
 #include <iostream>
 
 namespace Cel::Renderer {
+namespace Detail {
 template<typename Tag>
 class DeletionQueue
 {
@@ -33,9 +34,16 @@ DeletionQueue<Tag>::Flush()
     }
     queue.clear();
 }
-
 struct FinalCleanupTag
 {};
-using FinalCleanup = DeletionQueue<FinalCleanupTag>;
-
+struct PerFrameCleanupTag
+{};
+struct GenericTag
+{};
+}
+// The need for distinct types here is so I can use these as resources
+// Resource<FinalCleanup> & Resource<PerFrameCleanup> etc should be distinctive
+using FinalCleanup = Detail::DeletionQueue<Detail::FinalCleanupTag>;
+using PerFrameCleanup = Detail::DeletionQueue<Detail::PerFrameCleanupTag>;
+using DeletionQueue = Detail::DeletionQueue<Detail::GenericTag>;
 }

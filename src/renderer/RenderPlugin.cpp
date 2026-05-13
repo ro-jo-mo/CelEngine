@@ -1,7 +1,7 @@
 #include "renderer/RenderPlugin.h"
 
 #include "renderer/CleanupRenderer.h"
-#include "renderer/VulkanInitialiser.h"
+#include "renderer/VulkanSetup.h"
 #include "renderer/Window.h"
 
 using namespace Cel;

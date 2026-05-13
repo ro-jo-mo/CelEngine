@@ -40,8 +40,8 @@ Cel::Renderer::Helpers::LoadShader(const char* path,
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.pNext = nullptr;
 
-    // codeSize has to be in bytes, so multply the ints in the buffer by size of
-    // int to know the real size of the buffer
+    // codeSize has to be in bytes, so multiply the ints in the buffer by size
+    // of int to know the real size of the buffer
     createInfo.codeSize = buffer.size() * sizeof(uint32_t);
     createInfo.pCode = buffer.data();
 

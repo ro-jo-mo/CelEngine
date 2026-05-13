@@ -1,15 +1,22 @@
 #pragma once
+#include <fmt/printf.h>
+#include <source_location>
+#include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan_core.h>
 
 namespace Cel::Renderer {
-#define VK_CHECK(x)                                                            \
-    do {                                                                       \
-        VkResult err = x;                                                      \
-        if (err) {                                                             \
-            fmt::print("Detected Vulkan error: {}", string_VkResult(err));     \
-            abort();                                                           \
-        }                                                                      \
-    } while (0)
+inline void
+VkCheck(VkResult err,
+        std::source_location loc = std::source_location::current())
+{
+    if (err) {
+        fmt::print("Vulkan error at {}:{} - {}",
+                   loc.file_name(),
+                   loc.line(),
+                   string_VkResult(err));
+        abort();
+    }
+}
 }
 
 namespace Cel::Renderer::Helpers {
@@ -19,6 +26,7 @@ LoadShader(const char* path, VkDevice device, VkShaderModule* outShaderModule);
 }
 
 namespace Cel::Renderer::Initialisers {
+
 VkCommandPoolCreateInfo
 CommandPoolCreateInfo(uint32_t queueFamilyIndex,
                       VkCommandPoolCreateFlags flags = 0);

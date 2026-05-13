@@ -11,6 +11,7 @@
     },
     "vk-bootstrap",
     "vulkan-memory-allocator",
-    "fmt"
+    "fmt",
+    "vulkan-utility-libraries"
   ]
 }

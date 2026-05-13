@@ -15,6 +15,8 @@ find_package(glm REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(vk-bootstrap CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
+find_package(VulkanUtilityLibraries REQUIRED)
+
 add_library(${PROJECT_NAME} STATIC)
 add_subdirectory(examples)
 
@@ -30,6 +32,7 @@ target_link_libraries(${PROJECT_NAME}
         PRIVATE
         SDL3::SDL3
         vk-bootstrap::vk-bootstrap
+        Vulkan::UtilityHeaders
 )
 
 
@@ -48,9 +51,10 @@ target_sources(${PROJECT_NAME}
         "src/renderer/RenderPlugin.cpp"
         "src/renderer/CleanupRenderer.cpp"
         "src/renderer/Window.cpp"
-        "src/renderer/VulkanInitialiser.cpp"
+        "src/renderer/VulkanSetup.cpp"
         "src/renderer/PipelineBuilder.cpp"
         "src/renderer/VulkanHelpers.cpp"
+        "src/renderer/Draw.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -94,10 +98,12 @@ set(public_headers
         include/renderer/AssetServer.h
         include/renderer/DeletionQueue.h
         include/renderer/RenderPlugin.h
-        include/renderer/VulkanInitialiser.h
+        include/renderer/VulkanSetup.h
         include/renderer/Window.h
         include/renderer/PipelineBuilder.h
         include/renderer/VulkanHelpers.h
+        include/renderer/VulkanTypes.h
+        include/renderer/Draw.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")
