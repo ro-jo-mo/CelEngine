@@ -55,6 +55,7 @@ target_sources(${PROJECT_NAME}
         "src/renderer/PipelineBuilder.cpp"
         "src/renderer/VulkanHelpers.cpp"
         "src/renderer/Draw.cpp"
+        "src/renderer/VulkanUtils.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -104,6 +105,7 @@ set(public_headers
         include/renderer/VulkanHelpers.h
         include/renderer/VulkanTypes.h
         include/renderer/Draw.h
+        include/renderer/VulkanUtils.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

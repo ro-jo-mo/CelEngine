@@ -3,6 +3,7 @@
 #include "Resource.h"
 #include <any>
 #include <cassert>
+#include <fmt/base.h>
 #include <memory>
 #include <typeindex>
 #include <unordered_map>
@@ -45,8 +46,12 @@ template<typename T, typename... Args>
 Resource<T>&
 ResourceManager::InsertResource(Args&&... args)
 {
-    assert(!resources.contains(typeid(Resource<T>)));
-
+    if (resources.contains(typeid(Resource<std::remove_const_t<T>>))) {
+        fmt::println(stderr,
+                     "Requested resource already exists {}",
+                     typeid(Resource<std::remove_const_t<T>>).name());
+        abort();
+    }
     resources[typeid(Resource<T>)] =
         std::make_unique<Resource<T>>(std::forward<Args>(args)...);
     return GetResource<T>();
@@ -56,9 +61,14 @@ template<typename T>
 Resource<T>&
 ResourceManager::InsertResource(T resource)
 {
-    assert(!resources.contains(typeid(Resource<T>)));
-
+    if (resources.contains(typeid(Resource<std::remove_const_t<T>>))) {
+        fmt::println(stderr,
+                     "Requested resource already exists {}",
+                     typeid(Resource<std::remove_const_t<T>>).name());
+        abort();
+    }
     resources[typeid(Resource<T>)] = std::make_unique<Resource<T>>(resource);
+
     return GetResource<T>();
 }
 
@@ -66,8 +76,13 @@ template<typename T>
 Resource<T>&
 ResourceManager::GetResource()
 {
-    assert(resources.contains(typeid(Resource<std::remove_const_t<T>>)));
 
+    if (!resources.contains(typeid(Resource<std::remove_const_t<T>>))) {
+        fmt::println(stderr,
+                     "Requested resource does not exist yet {}",
+                     typeid(Resource<std::remove_const_t<T>>).name());
+        abort();
+    }
     const auto& ptr = resources[typeid(Resource<std::remove_const_t<T>>)];
     return *static_cast<Resource<T>*>(ptr.get());
 }

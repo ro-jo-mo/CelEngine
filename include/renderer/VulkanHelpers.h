@@ -19,12 +19,6 @@ VkCheck(VkResult err,
 }
 }
 
-namespace Cel::Renderer::Helpers {
-
-bool
-LoadShader(const char* path, VkDevice device, VkShaderModule* outShaderModule);
-}
-
 namespace Cel::Renderer::Initialisers {
 
 VkCommandPoolCreateInfo

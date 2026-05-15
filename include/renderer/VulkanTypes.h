@@ -13,14 +13,20 @@ struct Swapchain
     VkSwapchainKHR swapchain;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
+    std::vector<VkSemaphore> submitSemaphores;
     VkFormat format;
     VkExtent2D extent;
 };
 
+struct MeshPipeline
+{
+    VkPipeline pipeline;
+};
+
 struct GraphicsQueue
 {
-    VkQueue graphics;
-    uint32_t graphicsFamily;
+    VkQueue queue;
+    uint32_t family;
 };
 
 struct VulkanContext
@@ -35,8 +41,7 @@ struct FrameData
 {
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffer;
-    VkSemaphore swapchainSemaphore;
-    VkSemaphore renderSemaphore;
+    VkSemaphore acquireSemaphore;
     VkFence renderFence;
 };
 
@@ -52,6 +57,8 @@ struct CurrentFrameData
     std::vector<FrameData> frames;
     size_t currentFrame;
     const size_t totalFrames;
+    FrameData Get() const { return frames[currentFrame]; }
+    void Update() { currentFrame = (currentFrame + 1) % totalFrames; }
 };
 
 struct RenderExtent

@@ -3,6 +3,7 @@
 #include "renderer/PipelineBuilder.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanTypes.h"
+#include "renderer/VulkanUtils.h"
 #include "renderer/Window.h"
 #include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>
@@ -115,13 +116,27 @@ InitSwapchain(ResourceManager& resourceManager)
             .build()
             .value();
 
-    Renderer::Swapchain swapchain{
-        .swapchain = swapchainBuild.swapchain,
-        .images = swapchainBuild.get_images().value(),
-        .imageViews = swapchainBuild.get_image_views().value(),
-        .format = format,
-        .extent = swapchainBuild.extent,
-    };
+    Renderer::Swapchain swapchain{ .swapchain = swapchainBuild.swapchain,
+                                   .images =
+                                       swapchainBuild.get_images().value(),
+                                   .imageViews =
+                                       swapchainBuild.get_image_views().value(),
+                                   .format = format,
+                                   .extent = swapchainBuild.extent };
+
+    // Create semaphores for swapchain images
+    VkSemaphoreCreateInfo semaphoreCreateInfo =
+        Renderer::Initialisers::SemaphoreCreateInfo();
+
+    swapchain.submitSemaphores =
+        std::vector<VkSemaphore>(swapchain.images.size());
+
+    for (size_t i = 0; i < swapchain.images.size(); i++) {
+        vkCreateSemaphore(context->device,
+                          &semaphoreCreateInfo,
+                          nullptr,
+                          &swapchain.submitSemaphores[i]);
+    }
 
     resourceManager.InsertResource(swapchain);
 
@@ -129,10 +144,11 @@ InitSwapchain(ResourceManager& resourceManager)
 
     cleanup->Push([=, &context]() {
         vkDestroySwapchainKHR(context->device, swapchain.swapchain, nullptr);
-
         for (int i = 0; i < swapchain.imageViews.size(); i++) {
             vkDestroyImageView(
                 context->device, swapchain.imageViews[i], nullptr);
+            vkDestroySemaphore(
+                context->device, swapchain.submitSemaphores[i], nullptr);
         }
     });
 }
@@ -177,6 +193,8 @@ InitDrawImages(ResourceManager& resourceManager)
     Renderer::VkCheck(vkCreateImageView(
         context->device, &drawViewCreateInfo, nullptr, &drawImage.imageView));
 
+    resourceManager.InsertResource(drawImage);
+
     auto& cleanup = resourceManager.GetResource<Renderer::FinalCleanup>();
 
     cleanup->Push([=, &context, &allocator]() {
@@ -192,14 +210,16 @@ InitTrianglePipeline(ResourceManager& resourceManager)
     auto& drawImage = resourceManager.GetResource<Renderer::DrawImage>();
 
     VkShaderModule vertShader;
-    if (!Renderer::Helpers::LoadShader(
-            "../shaders/shader.vert.spv", context->device, &vertShader)) {
+    if (!Renderer::Utils::LoadShader(
+            "../../shaders/shader.vert.spv", context->device, &vertShader)) {
+        fmt::println(stderr, "Failed to load vertex shader");
         throw std::runtime_error("Failed to load vertex shader");
     }
 
     VkShaderModule fragShader;
-    if (!Renderer::Helpers::LoadShader(
-            "../shaders/shader.frag.spv", context->device, &fragShader)) {
+    if (!Renderer::Utils::LoadShader(
+            "../../shaders/shader.frag.spv", context->device, &fragShader)) {
+        fmt::println(stderr, "Failed to load frag shader");
         throw std::runtime_error("Failed to load fragment shader");
     }
 
@@ -236,7 +256,9 @@ InitTrianglePipeline(ResourceManager& resourceManager)
     // finally build the pipeline
     auto pipeline = pipelineBuilder.BuildPipeline(context->device);
 
-    resourceManager.InsertResource(pipeline);
+    Renderer::MeshPipeline meshPipeline{ .pipeline = pipeline };
+
+    resourceManager.InsertResource(meshPipeline);
 
     // clean structures
     vkDestroyShaderModule(context->device, fragShader, nullptr);
@@ -262,8 +284,7 @@ InitFrameData(ResourceManager& resourceManager)
 
     VkCommandPoolCreateInfo commandPoolCreateInfo =
         Renderer::Initialisers::CommandPoolCreateInfo(
-            queue->graphicsFamily,
-            VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+            queue->family, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
     VkFenceCreateInfo fenceCreateInfo =
         Renderer::Initialisers::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
@@ -288,7 +309,7 @@ InitFrameData(ResourceManager& resourceManager)
                                                    &commandBufferAllocateInfo,
                                                    &frameData.commandBuffer));
 
-        // Next create synchronisation primtiives
+        // Next create synchronisation primitives
         Renderer::VkCheck(vkCreateFence(context->device,
                                         &fenceCreateInfo,
                                         nullptr,
@@ -297,12 +318,7 @@ InitFrameData(ResourceManager& resourceManager)
         Renderer::VkCheck(vkCreateSemaphore(context->device,
                                             &semaphoreCreateInfo,
                                             nullptr,
-                                            &frameData.renderSemaphore));
-
-        Renderer::VkCheck(vkCreateSemaphore(context->device,
-                                            &semaphoreCreateInfo,
-                                            nullptr,
-                                            &frameData.swapchainSemaphore));
+                                            &frameData.acquireSemaphore));
 
         currentFrameData.frames.push_back(frameData);
 
@@ -310,8 +326,9 @@ InitFrameData(ResourceManager& resourceManager)
             vkDestroyCommandPool(
                 context->device, frameData.commandPool, nullptr);
             vkDestroyFence(context->device, frameData.renderFence, nullptr);
+
             vkDestroySemaphore(
-                context->device, frameData.renderSemaphore, nullptr);
+                context->device, frameData.acquireSemaphore, nullptr);
         });
     }
 
@@ -331,6 +348,9 @@ InitFrameData(ResourceManager& resourceManager)
 
     Renderer::VkCheck(vkCreateFence(
         context->device, &fenceCreateInfo, nullptr, &immediate.fence));
+
+    resourceManager.InsertResource(immediate);
+    resourceManager.InsertResource(currentFrameData);
 
     cleanup->Push([=, &context]() {
         vkDestroyCommandPool(context->device, immediate.commandPool, nullptr);

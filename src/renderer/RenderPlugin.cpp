@@ -1,6 +1,7 @@
 #include "renderer/RenderPlugin.h"
 
 #include "renderer/CleanupRenderer.h"
+#include "renderer/Draw.h"
 #include "renderer/VulkanSetup.h"
 #include "renderer/Window.h"
 
@@ -13,4 +14,6 @@ Renderer::RenderPlugin::Build(Scheduler scheduler,
     VulkanInitialiser::Initialise(resourceManager);
     scheduler.AddSystem<CleanupRenderer>(Schedule::Cleanup);
     scheduler.AddSystem<WindowSystem>(Schedule::Render);
+    scheduler.AddSystem<SetRenderExtent>(Schedule::Render);
+    scheduler.AddSystem<Draw>(Schedule::Render).After<SetRenderExtent>();
 }

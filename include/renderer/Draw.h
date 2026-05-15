@@ -4,18 +4,24 @@
 
 namespace Cel::Renderer {
 
-class DrawGeometry
+class Draw
     : public System<Resource<VulkanContext>,
+                    Resource<Swapchain>,
+                    Resource<GraphicsQueue>,
                     Resource<DrawImage>,
-                    Resource<VkPipeline>,
-                    Resource<RenderExtent>>
+                    Resource<MeshPipeline>,
+                    Resource<RenderExtent>,
+                    Resource<CurrentFrameData>>
 
 {
   public:
     void Run(Resource<VulkanContext>& context,
+             Resource<Swapchain>& swapchain,
+             Resource<GraphicsQueue>& graphicsQueue,
              Resource<DrawImage>& drawImage,
-             Resource<VkPipeline>& pipeline,
-             Resource<RenderExtent>& renderExtent) override;
+             Resource<MeshPipeline>& pipeline,
+             Resource<RenderExtent>& renderExtent,
+             Resource<CurrentFrameData>& frameData) override;
 };
 
 class SetRenderExtent
