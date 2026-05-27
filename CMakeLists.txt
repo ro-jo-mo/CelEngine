@@ -16,6 +16,8 @@ find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(vk-bootstrap CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(VulkanUtilityLibraries REQUIRED)
+find_package(fastgltf CONFIG REQUIRED)
+find_package(Stb REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC)
 add_subdirectory(examples)
@@ -33,8 +35,10 @@ target_link_libraries(${PROJECT_NAME}
         SDL3::SDL3
         vk-bootstrap::vk-bootstrap
         Vulkan::UtilityHeaders
+        fastgltf::fastgltf
 )
 
+target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
 
 target_sources(${PROJECT_NAME}
         PRIVATE
@@ -56,6 +60,7 @@ target_sources(${PROJECT_NAME}
         "src/renderer/VulkanHelpers.cpp"
         "src/renderer/Draw.cpp"
         "src/renderer/VulkanUtils.cpp"
+        "src/renderer/AssetServer.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -106,6 +111,7 @@ set(public_headers
         include/renderer/VulkanTypes.h
         include/renderer/Draw.h
         include/renderer/VulkanUtils.h
+        include/renderer/AssetTypes.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

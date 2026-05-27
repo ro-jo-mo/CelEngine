@@ -67,6 +67,13 @@ struct RenderExtent
     float renderScale = 1.0f;
 };
 
+struct AllocatedBuffer
+{
+    VkBuffer buffer;
+    VmaAllocation allocation;
+    VmaAllocationInfo info;
+};
+
 namespace Detail {
 
 template<typename T>

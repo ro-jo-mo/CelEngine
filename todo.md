@@ -6,7 +6,9 @@
     - Single
     - Group scheduling
     - Fix chains
+- Introduce custom schedules for Ai tick and such
 - Organise public / private headers (currently all public)
+- Asynchronous asset loading
 
 # Later
 

@@ -12,6 +12,8 @@
     "vk-bootstrap",
     "vulkan-memory-allocator",
     "fmt",
-    "vulkan-utility-libraries"
+    "vulkan-utility-libraries",
+    "fastgltf",
+    "stb"
   ]
 }

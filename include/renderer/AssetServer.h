@@ -1,15 +1,11 @@
 #pragma once
 
-#include "ecs/ResourceManager.h"
+#include "VulkanTypes.h"
+#include "ecs/Types.h"
+#include "ecs/World.h"
+#include "renderer/AssetTypes.h"
 
 namespace Cel::Renderer {
-
-class MaterialHandle;
-class MeshHandle;
-
-// After loading a gltf we create an asset handle
-class AssetHandle
-{};
 
 // Comments:
 // If an object is made up of a hierarchy of models, like a scene might be I
@@ -23,15 +19,52 @@ class AssetHandle
 // At a later point I can optimise this, baking parts of the gltf that don't
 // need to be their own entity
 
+// A caching mechanism should be used on several levels
+// Firstly we should not load the same gltf file twice
+// Keep a map of file paths to asset handle
+// The same material and mesh may be used in the same model several times
+// For example wheels on a car
+
+// Asset unloading:
+// Once all references to an asset are deleted, i.e. no entities exist with this
+// asset handle It should be added to a deletion queue. While in the deletion
+// queue, it should still be accessible through the asset cache
+// If loaded again, take out of the deletion queue
+// Otherwise, whenever we determine more memory is required
+// flush the deletion queue (until we have enough memory? or until empty queue?)
+
 class AssetServer
 {
   public:
-    AssetServer(ResourceManager& resourceManager);
-    AssetHandle LoadAsset(const char* path);
+    AssetServer(Resource<VulkanContext>& context,
+                Resource<VmaAllocator>& allocator,
+                Resource<ImmediateSubmit>& immediate,
+                Resource<GraphicsQueue>& graphicsQueue)
+        : context(*context)
+        , allocator(*allocator)
+        , immediate(*immediate)
+        , graphicsQueue(*graphicsQueue) {};
+
+    Handle<SceneAsset> LoadAsset(const char* filepath);
     void AddAssetToEntity(Entity entity,
-                          Resource<World>& world,
-                          AssetHandle asset);
+                          Handle<SceneAsset> assetHandle,
+                          Resource<World>& world);
 
   private:
+    std::optional<AllocatedImage> LoadImage(fastgltf::Asset& asset,
+                                            fastgltf::Image& gltfImage);
+    std::vector<AllocatedImage> LoadImages(fastgltf::Asset& asset);
+    std::vector<Material> LoadMaterials(fastgltf::Asset& asset);
+    AssetNode LoadNodes(fastgltf::Asset& asset);
+    std::vector<Mesh> LoadMeshes(fastgltf::Asset& asset);
+
+    std::unordered_map<const char*, Handle<AssetNode>> pathToAssetMap;
+
+    std::vector<SceneAsset> assets;
+
+    VulkanContext& context;
+    VmaAllocator& allocator;
+    ImmediateSubmit& immediate;
+    GraphicsQueue& graphicsQueue;
 };
 }

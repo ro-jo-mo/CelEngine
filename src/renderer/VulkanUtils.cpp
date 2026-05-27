@@ -3,6 +3,7 @@
 #include "renderer/VulkanHelpers.h"
 
 #include <fstream>
+#include <ranges>
 #include <vector>
 
 bool
@@ -134,4 +135,285 @@ Cel::Renderer::Utils::CopyImageToImage(VkCommandBuffer cmd,
     blitInfo.pRegions = &blitRegion;
 
     vkCmdBlitImage2(cmd, &blitInfo);
+}
+
+Cel::Renderer::AllocatedImage
+Cel::Renderer::Utils::CreateImage(const void* data,
+                                  VkExtent3D size,
+                                  VkFormat format,
+                                  VkImageUsageFlags usage,
+                                  bool mipmapped,
+                                  VulkanContext& context,
+                                  VmaAllocator& allocator,
+                                  const ImmediateSubmit& immediate,
+                                  const GraphicsQueue& graphicsQueue)
+{
+    size_t dataSize = size.depth * size.width * size.height * 4;
+    AllocatedBuffer uploadBuffer =
+        CreateBuffer(dataSize,
+                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                     VMA_MEMORY_USAGE_CPU_TO_GPU,
+                     allocator);
+
+    memcpy(uploadBuffer.info.pMappedData, data, dataSize);
+
+    AllocatedImage newImage =
+        CreateImage(size,
+                    format,
+                    usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                    mipmapped,
+                    context,
+                    allocator);
+
+    SubmitImmediate(
+        [&](VkCommandBuffer cmd) {
+            Utils::TransitionImageLayout(cmd,
+                                         newImage.image,
+                                         VK_IMAGE_LAYOUT_UNDEFINED,
+                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+            VkBufferImageCopy copyRegion = {};
+            copyRegion.bufferOffset = 0;
+            copyRegion.bufferRowLength = 0;
+            copyRegion.bufferImageHeight = 0;
+
+            copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            copyRegion.imageSubresource.mipLevel = 0;
+            copyRegion.imageSubresource.baseArrayLayer = 0;
+            copyRegion.imageSubresource.layerCount = 1;
+            copyRegion.imageExtent = size;
+
+            // copy the buffer into the image
+            vkCmdCopyBufferToImage(cmd,
+                                   uploadBuffer.buffer,
+                                   newImage.image,
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                   1,
+                                   &copyRegion);
+
+            if (mipmapped) {
+                Utils::GenerateMipMaps(
+                    cmd,
+                    newImage.image,
+                    VkExtent2D{ newImage.imageExtent.width,
+                                newImage.imageExtent.height });
+            } else {
+                Utils::TransitionImageLayout(
+                    cmd,
+                    newImage.image,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            }
+        },
+        context,
+        immediate,
+        graphicsQueue);
+    DestroyBuffer(uploadBuffer, allocator);
+
+    return newImage;
+}
+
+Cel::Renderer::AllocatedImage
+Cel::Renderer::Utils::CreateImage(VkExtent3D size,
+                                  VkFormat format,
+                                  VkImageUsageFlags usage,
+                                  bool mipmapped,
+                                  VulkanContext& context,
+                                  VmaAllocator& allocator)
+{
+    AllocatedImage newImage;
+    newImage.imageFormat = format;
+    newImage.imageExtent = size;
+
+    VkImageCreateInfo img_info =
+        Initialisers::ImageCreateInfo(format, usage, size);
+
+    if (mipmapped) {
+        img_info.mipLevels =
+            static_cast<uint32_t>(
+                std::floor(std::log2(std::max(size.width, size.height)))) +
+            1;
+    }
+
+    // always allocate images on dedicated GPU memory
+    VmaAllocationCreateInfo allocinfo = {};
+    allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocinfo.requiredFlags =
+        VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    // allocate and create the image
+    VkCheck(vmaCreateImage(allocator,
+                           &img_info,
+                           &allocinfo,
+                           &newImage.image,
+                           &newImage.allocation,
+                           nullptr));
+
+    // if the format is a depth format, we will need to have it use the correct
+    // aspect flag
+    VkImageAspectFlags aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
+    if (format == VK_FORMAT_D32_SFLOAT) {
+        aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+
+    // build a image-view for the image
+    VkImageViewCreateInfo view_info =
+        Initialisers::ImageViewCreateInfo(format, newImage.image, aspectFlag);
+    view_info.subresourceRange.levelCount = img_info.mipLevels;
+
+    VkCheck(vkCreateImageView(
+        context.device, &view_info, nullptr, &newImage.imageView));
+
+    return newImage;
+}
+
+Cel::Renderer::AllocatedBuffer
+Cel::Renderer::Utils::CreateBuffer(size_t allocSize,
+                                   VkBufferUsageFlags usage,
+                                   VmaMemoryUsage memoryUsage,
+                                   VmaAllocator& allocator)
+{
+    VkBufferCreateInfo bufferInfo = {};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.pNext = nullptr;
+    bufferInfo.size = allocSize;
+
+    bufferInfo.usage = usage;
+
+    VmaAllocationCreateInfo vmaallocInfo = {};
+    vmaallocInfo.usage = memoryUsage;
+    vmaallocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    AllocatedBuffer newBuffer;
+
+    VkCheck(vmaCreateBuffer(allocator,
+                            &bufferInfo,
+                            &vmaallocInfo,
+                            &newBuffer.buffer,
+                            &newBuffer.allocation,
+                            &newBuffer.info));
+
+    return newBuffer;
+}
+
+void
+Cel::Renderer::Utils::SubmitImmediate(
+    std::function<void(VkCommandBuffer cmd)>&& function,
+    const VulkanContext& context,
+    const ImmediateSubmit& immediate,
+    const GraphicsQueue& queue)
+{
+    VkCheck(vkResetFences(context.device, 1, &immediate.fence));
+    VkCheck(vkResetCommandBuffer(immediate.commandBuffer, 0));
+
+    auto beginInfo = Initialisers::CommandBufferBeginInfo(
+        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    vkBeginCommandBuffer(immediate.commandBuffer, &beginInfo);
+    function(immediate.commandBuffer);
+    vkEndCommandBuffer(immediate.commandBuffer);
+
+    VkCommandBufferSubmitInfo submitInfo =
+        Initialisers::CommandBufferSubmitInfo(immediate.commandBuffer);
+    VkSubmitInfo2 submitInfo2 =
+        Initialisers::SubmitInfo(&submitInfo, nullptr, nullptr);
+
+    VkCheck(vkQueueSubmit2(queue.queue, 1, &submitInfo2, immediate.fence));
+    VkCheck(vkWaitForFences(
+        context.device, 1, &immediate.fence, VK_TRUE, UINT64_MAX));
+}
+
+void
+Cel::Renderer::Utils::GenerateMipMaps(VkCommandBuffer cmd,
+                                      VkImage image,
+                                      VkExtent2D imageSize)
+{
+    int mipLevels = int(std::floor(std::log2(
+                        std::max(imageSize.width, imageSize.height)))) +
+                    1;
+
+    for (int mip = 0; mip < mipLevels; mip++) {
+
+        VkExtent2D halfSize = imageSize;
+        halfSize.width /= 2;
+        halfSize.height /= 2;
+
+        VkImageMemoryBarrier2 imageBarrier{
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2, .pNext = nullptr
+        };
+
+        imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+        imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+        imageBarrier.dstAccessMask =
+            VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+
+        imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
+        VkImageAspectFlags aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageBarrier.subresourceRange =
+            Initialisers::ImageSubresourceRange(aspectMask);
+        imageBarrier.subresourceRange.levelCount = 1;
+        imageBarrier.subresourceRange.baseMipLevel = mip;
+        imageBarrier.image = image;
+
+        VkDependencyInfo depInfo{ .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                                  .pNext = nullptr };
+        depInfo.imageMemoryBarrierCount = 1;
+        depInfo.pImageMemoryBarriers = &imageBarrier;
+
+        vkCmdPipelineBarrier2(cmd, &depInfo);
+
+        if (mip < mipLevels - 1) {
+            VkImageBlit2 blitRegion{ .sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2,
+                                     .pNext = nullptr };
+
+            blitRegion.srcOffsets[1].x = imageSize.width;
+            blitRegion.srcOffsets[1].y = imageSize.height;
+            blitRegion.srcOffsets[1].z = 1;
+
+            blitRegion.dstOffsets[1].x = halfSize.width;
+            blitRegion.dstOffsets[1].y = halfSize.height;
+            blitRegion.dstOffsets[1].z = 1;
+
+            blitRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            blitRegion.srcSubresource.baseArrayLayer = 0;
+            blitRegion.srcSubresource.layerCount = 1;
+            blitRegion.srcSubresource.mipLevel = mip;
+
+            blitRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            blitRegion.dstSubresource.baseArrayLayer = 0;
+            blitRegion.dstSubresource.layerCount = 1;
+            blitRegion.dstSubresource.mipLevel = mip + 1;
+
+            VkBlitImageInfo2 blitInfo{ .sType =
+                                           VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2,
+                                       .pNext = nullptr };
+            blitInfo.dstImage = image;
+            blitInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            blitInfo.srcImage = image;
+            blitInfo.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            blitInfo.filter = VK_FILTER_LINEAR;
+            blitInfo.regionCount = 1;
+            blitInfo.pRegions = &blitRegion;
+
+            vkCmdBlitImage2(cmd, &blitInfo);
+
+            imageSize = halfSize;
+        }
+    }
+
+    // transition all mip levels into the final read_only layout
+    TransitionImageLayout(cmd,
+                          image,
+                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+}
+
+void
+Cel::Renderer::Utils::DestroyBuffer(const AllocatedBuffer& buffer,
+                                    const VmaAllocator& allocator)
+{
+    vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
 }
