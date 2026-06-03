@@ -4,12 +4,12 @@
 #include <unordered_set>
 
 namespace Cel {
-struct Parent
+struct Children
 {
     std::unordered_set<Entity> children;
 };
 
-struct Child
+struct Parent
 {
     Entity parent;
 };

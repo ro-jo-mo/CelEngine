@@ -56,7 +56,7 @@ class AssetServer
     std::vector<AllocatedImage> LoadImages(fastgltf::Asset& asset);
     std::vector<Material> LoadMaterials(fastgltf::Asset& asset);
     AssetNode LoadNodes(fastgltf::Asset& asset);
-    std::vector<Mesh> LoadMeshes(fastgltf::Asset& asset);
+    std::vector<Model> LoadModels(fastgltf::Asset& asset);
 
     std::unordered_map<const char*, Handle<AssetNode>> pathToAssetMap;
 

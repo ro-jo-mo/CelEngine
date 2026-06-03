@@ -30,7 +30,7 @@ struct AssetNode
     std::string name;
     std::vector<AssetNode> children;
     glm::mat4 localTransform;
-    std::optional<int> mesh;
+    std::optional<size_t> model;
 };
 
 struct Primitive
@@ -40,7 +40,7 @@ struct Primitive
     std::optional<size_t> materialIndex;
 };
 
-struct Mesh
+struct Model
 {
     std::vector<Primitive> primitives;
 };
@@ -51,7 +51,7 @@ struct SceneAsset
     AssetNode root;
     std::vector<Material> materials;
     std::vector<AllocatedImage> images;
-    std::vector<Mesh> meshes;
+    std::vector<Model> models;
 };
 
 // Handle<Mesh>, Handle<AssetNode> etc

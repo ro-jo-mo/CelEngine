@@ -101,6 +101,8 @@ set(public_headers
         include/core/CorePlugin.h
         include/ecs/Running.h
 
+        include/common/SlotMap.h
+
         include/renderer/AssetServer.h
         include/renderer/DeletionQueue.h
         include/renderer/RenderPlugin.h

@@ -12,13 +12,13 @@
 using namespace Cel::Renderer;
 using namespace Cel;
 
-std::vector<Mesh>
-AssetServer::LoadMeshes(fastgltf::Asset& asset)
+std::vector<Model>
+AssetServer::LoadModels(fastgltf::Asset& asset)
 {
-    std::vector<Mesh> meshes;
+    std::vector<Model> models;
 
     for (const auto& gltfMesh : asset.meshes) {
-        Mesh newMesh;
+        Model newModel;
         for (const auto& gltfPrimitive : gltfMesh.primitives) {
             Primitive newPrimitive;
             newPrimitive.materialIndex = gltfPrimitive.materialIndex;
@@ -83,13 +83,13 @@ AssetServer::LoadMeshes(fastgltf::Asset& asset)
                             newPrimitive.vertices[index].uv_y = vert.y();
                         });
                 }
-                newMesh.primitives.push_back(newPrimitive);
+                newModel.primitives.push_back(newPrimitive);
             }
         }
-        meshes.push_back(newMesh);
+        models.push_back(newModel);
     }
 
-    return meshes;
+    return models;
 }
 
 std::optional<AllocatedImage>
@@ -213,7 +213,7 @@ CreateNodeTree(const size_t nodeIndex, fastgltf::Asset& asset)
     newNode.children.reserve(node.children.size());
     newNode.name = node.name;
     if (node.meshIndex.has_value()) {
-        newNode.mesh = node.meshIndex.value();
+        newNode.model = node.meshIndex.value();
     }
 
     std::visit(
@@ -222,7 +222,7 @@ CreateNodeTree(const size_t nodeIndex, fastgltf::Asset& asset)
                 glm::vec3 t = { trs.translation.x(),
                                 trs.translation.y(),
                                 trs.translation.z() };
-                glm::quat q = {
+                glm::quat r = {
                     trs.rotation.w(),
                     trs.rotation.x(),
                     trs.rotation.y(),
@@ -231,7 +231,7 @@ CreateNodeTree(const size_t nodeIndex, fastgltf::Asset& asset)
                 glm::vec3 s = { trs.scale.x(), trs.scale.y(), trs.scale.z() };
 
                 newNode.localTransform = glm::translate(glm::mat4(1.0f), t) *
-                                         glm::mat4_cast(glm::quat(q)) *
+                                         glm::mat4_cast(glm::quat(r)) *
                                          glm::scale(glm::mat4(1.0f), s);
             },
             [&](fastgltf::math::fmat4x4& mat) {
@@ -294,7 +294,7 @@ AssetServer::LoadAsset(const char* filepath)
     fastgltf::Asset asset = std::move(result.get());
 
     SceneAsset newAsset;
-    newAsset.meshes = LoadMeshes(asset);
+    newAsset.models = LoadModels(asset);
     newAsset.images = LoadImages(asset);
     newAsset.materials = LoadMaterials(asset);
     newAsset.root = LoadNodes(asset);
@@ -305,10 +305,25 @@ AssetServer::LoadAsset(const char* filepath)
 }
 
 void
-RecursivelySpawnChildren(AssetNode& node, Resource<World>& world)
+RecursivelySpawnChildren(Entity parent, AssetNode& node, Resource<World>& world)
 {
+    // For brevity I'll reuse functions from global transform to extract the trs
+    // from the transform matrix
+    GlobalTransform transform{ node.localTransform };
+
+    const Entity entity = world->Spawn(Position{ transform.GetTranslation() },
+                                       Rotation{ transform.GetRotation() },
+                                       Scale{ transform.GetScale() });
+
+    world->AddChild(parent, entity);
+
+    if (node.model.has_value()) {
+        auto x = node.model.value();
+        world->AddComponent(entity, Handle<Model>{ node.model.value() });
+    }
+
     for (auto& child : node.children) {
-        world->Spawn(Handle<Mesh>) RecursivelySpawnChildren(child, world);
+        RecursivelySpawnChildren(entity, child, world);
     }
 }
 
@@ -317,5 +332,10 @@ AssetServer::AddAssetToEntity(Entity entity,
                               const Handle<SceneAsset> assetHandle,
                               Resource<World>& world)
 {
-    const SceneAsset& asset = assets[assetHandle.index];
+    SceneAsset& asset = assets[assetHandle.index];
+
+    RecursivelySpawnChildren(entity, asset.root, world);
 }
+
+// Restructure loading to simply store a list of primitives
+// And a corresponding list of material ids

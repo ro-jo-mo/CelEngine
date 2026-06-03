@@ -27,9 +27,9 @@ RecurseThroughChildren(const Entity entity,
 {
     toRemove.insert(entity);
     // Does this entity have children?
-    if (componentsManager.HasComponent<Parent>(entity)) {
+    if (componentsManager.HasComponent<Children>(entity)) {
         // If so, delete their children
-        const auto [children] = componentsManager.GetComponent<Parent>(entity);
+        const auto [children] = componentsManager.GetComponent<Children>(entity);
 
         for (auto& child : children) {
             RecurseThroughChildren(child, toRemove, componentsManager);
@@ -88,27 +88,27 @@ void
 World::AddChildCommand::Execute() const
 {
     // If parent has no children, add component
-    if (!world.componentsManager.HasComponent<Parent>(parent)) {
-        world.componentsManager.AddComponent(parent, Parent{});
+    if (!world.componentsManager.HasComponent<Children>(parent)) {
+        world.componentsManager.AddComponent(parent, Children{});
     }
 
-    if (world.componentsManager.HasComponent<Child>(child)) {
+    if (world.componentsManager.HasComponent<Parent>(child)) {
         throw std::runtime_error(
             "Child entity already has a parent! Unparent the object first if "
             "you want to change its parent");
     }
 
-    world.componentsManager.AddComponent(child, Child{ parent });
-    auto [children] = world.componentsManager.GetComponent<Parent>(parent);
+    world.componentsManager.AddComponent(child, Parent{ parent });
+    auto [children] = world.componentsManager.GetComponent<Children>(parent);
     children.insert(child);
 }
 void
 World::RemoveChildCommand::Execute() const
 {
-    world.componentsManager.RemoveComponent<Child>(child);
-    auto [children] = world.componentsManager.GetComponent<Parent>(parent);
+    world.componentsManager.RemoveComponent<Parent>(child);
+    auto [children] = world.componentsManager.GetComponent<Children>(parent);
     children.erase(child);
     if (children.empty()) {
-        world.componentsManager.RemoveComponent<Parent>(parent);
+        world.componentsManager.RemoveComponent<Children>(parent);
     }
 }

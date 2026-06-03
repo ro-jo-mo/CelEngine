@@ -8,6 +8,8 @@
 #include <glm/vec3.hpp>
 
 namespace Cel {
+
+// I decided to use position over translation to conform with Unity
 struct Position
 {
     glm::vec3 position;
@@ -26,6 +28,8 @@ struct Position
         : position(x, y, z)
     {
     }
+
+    explicit Position(const glm::mat4& transform);
 };
 
 struct Rotation
@@ -51,6 +55,8 @@ struct Rotation
         : rotation(glm::vec3(pitch, yaw, roll))
     {
     }
+
+    explicit Rotation(const glm::mat4& transform);
 };
 
 struct Scale
@@ -72,10 +78,12 @@ struct Scale
     {
     }
 
-    Scale(const float uniform)
+    explicit Scale(const float uniform)
         : scale(uniform)
     {
     }
+
+    explicit Scale(const glm::mat4& transform);
 };
 
 struct GlobalTransform
@@ -103,9 +111,9 @@ class HierarchyPropagation final
                                const Position,
                                const Rotation,
                                const Scale,
-                               const Parent>,
-                          Without<Child>>,
-                    Query<With<const Parent>>,
+                               const Children>,
+                          Without<Parent>>,
+                    Query<With<const Children>>,
                     Query<With<GlobalTransform,
                                const Position,
                                const Rotation,
@@ -118,9 +126,9 @@ class HierarchyPropagation final
                    const Position,
                    const Rotation,
                    const Scale,
-                   const Parent>,
-              Without<Child>>& rootParentQuery,
-        Query<With<const Parent>>& parentQuery,
+                   const Children>,
+              Without<Parent>>& rootParentQuery,
+        Query<With<const Children>>& parentQuery,
         Query<
             With<GlobalTransform, const Position, const Rotation, const Scale>>&
             childQuery) override;

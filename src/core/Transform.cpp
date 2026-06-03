@@ -11,23 +11,38 @@ GlobalTransform::GetTranslation()
 glm::quat
 GlobalTransform::GetRotation()
 {
-    glm::vec3 scale(glm::length(glm::vec3(transform[0])),
-                    glm::length(glm::vec3(transform[1])),
-                    glm::length(glm::vec3(transform[2])));
+    const glm::vec3 scale(glm::length(glm::vec3(transform[0])),
+                          glm::length(glm::vec3(transform[1])),
+                          glm::length(glm::vec3(transform[2])));
 
-    if (glm::determinant(glm::mat3(transform)) < 0.0f) {
-        scale.x = -scale.x;
+    glm::mat3 rotMat(glm::vec3(transform[0]) / scale.x,
+                     glm::vec3(transform[1]) / scale.y,
+                     glm::vec3(transform[2]) / scale.z);
+
+    if (glm::determinant(rotMat) < 0.0f) {
+        rotMat[2] = -rotMat[2];
     }
-    return scale;
+
+    return glm::quat_cast(rotMat);
 }
 
 glm::vec3
 GlobalTransform::GetScale()
 {
-    // FIX ME FOR NEGATIVE
-    return { glm::length(glm::vec3(transform[0])),
-             glm::length(glm::vec3(transform[1])),
-             glm::length(glm::vec3(transform[2])) };
+
+    glm::vec3 scale(glm::length(glm::vec3(transform[0])),
+                    glm::length(glm::vec3(transform[1])),
+                    glm::length(glm::vec3(transform[2])));
+
+    const glm::mat3 rotMat(glm::vec3(transform[0]) / scale.x,
+                           glm::vec3(transform[1]) / scale.y,
+                           glm::vec3(transform[2]) / scale.z);
+
+    if (glm::determinant(rotMat) < 0.0f) {
+        scale.z = -scale.z;
+    }
+
+    return scale;
 }
 
 void
@@ -60,7 +75,7 @@ GlobalTransform::TransformFromLocal(const Position& localPosition,
 void
 PropagateThroughChildren(
     const Entity& parent,
-    Query<With<const Parent>>& parentQuery,
+    Query<With<const Children>>& parentQuery,
     Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery)
 {
@@ -91,9 +106,9 @@ HierarchyPropagation::Run(
                const Position,
                const Rotation,
                const Scale,
-               const Parent>,
-          Without<Child>>& rootParentQuery,
-    Query<With<const Parent>>& parentQuery,
+               const Children>,
+          Without<Parent>>& rootParentQuery,
+    Query<With<const Children>>& parentQuery,
     Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery)
 {
