@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ecs/Running.h"
+#include "../core/Running.h"
 #include "ecs/System.h"
 
 #include <SDL3/SDL.h>

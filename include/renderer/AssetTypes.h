@@ -25,33 +25,24 @@ struct Material
     bool doubleSided;
 };
 
+struct Model
+{
+    std::vector<size_t> meshes;
+    std::vector<std::optional<size_t>> materials;
+};
+
+struct Mesh
+{
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+};
+
 struct AssetNode
 {
     std::string name;
     std::vector<AssetNode> children;
     glm::mat4 localTransform;
-    std::optional<size_t> model;
-};
-
-struct Primitive
-{
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    std::optional<size_t> materialIndex;
-};
-
-struct Model
-{
-    std::vector<Primitive> primitives;
-};
-
-// Stores the asset structure
-struct SceneAsset
-{
-    AssetNode root;
-    std::vector<Material> materials;
-    std::vector<AllocatedImage> images;
-    std::vector<Model> models;
+    std::optional<Model> model;
 };
 
 // Handle<Mesh>, Handle<AssetNode> etc

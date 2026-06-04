@@ -1,4 +1,4 @@
-#include "ecs/World.h"
+#include "core/World.h"
 
 using namespace Cel;
 
@@ -29,7 +29,8 @@ RecurseThroughChildren(const Entity entity,
     // Does this entity have children?
     if (componentsManager.HasComponent<Children>(entity)) {
         // If so, delete their children
-        const auto [children] = componentsManager.GetComponent<Children>(entity);
+        const auto [children] =
+            componentsManager.GetComponent<Children>(entity);
 
         for (auto& child : children) {
             RecurseThroughChildren(child, toRemove, componentsManager);
@@ -111,4 +112,9 @@ World::RemoveChildCommand::Execute() const
     if (children.empty()) {
         world.componentsManager.RemoveComponent<Children>(parent);
     }
+}
+Entity
+EntityBuilder::Get() const
+{
+    return entity;
 }

@@ -7,31 +7,40 @@
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
+#include <ranges>
 #include <stb_image.h>
 
 using namespace Cel::Renderer;
 using namespace Cel;
 
 std::vector<Model>
-AssetServer::LoadModels(fastgltf::Asset& asset)
+AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
 {
     std::vector<Model> models;
 
     for (const auto& gltfMesh : asset.meshes) {
         Model newModel;
+
         for (const auto& gltfPrimitive : gltfMesh.primitives) {
-            Primitive newPrimitive;
-            newPrimitive.materialIndex = gltfPrimitive.materialIndex;
+            Mesh newMesh;
+
+            // Associate the new mesh with a material
+            auto materialIndex = gltfPrimitive.materialIndex;
+            if (materialIndex.has_value()) {
+                materialIndex = materialIndex.value() + materialOffset;
+            }
+            newModel.materials.push_back(materialIndex);
+
             // Load indices
             {
                 fastgltf::Accessor& accessor =
                     asset.accessors[gltfPrimitive.indicesAccessor.value()];
 
-                newPrimitive.indices.reserve(accessor.count);
+                newMesh.indices.reserve(accessor.count);
 
                 fastgltf::iterateAccessor<uint32_t>(
                     asset, accessor, [&](const uint32_t idx) {
-                        newPrimitive.indices.push_back(idx);
+                        newMesh.indices.push_back(idx);
                     });
             }
 
@@ -41,7 +50,7 @@ AssetServer::LoadModels(fastgltf::Asset& asset)
                     asset.accessors[gltfPrimitive.findAttribute("POSITION")
                                         ->accessorIndex];
 
-                newPrimitive.vertices.reserve(accessor.count);
+                newMesh.vertices.reserve(accessor.count);
 
                 fastgltf::iterateAccessor<fastgltf::math::fvec3>(
                     asset, accessor, [&](fastgltf::math::fvec3 vert) {
@@ -50,7 +59,7 @@ AssetServer::LoadModels(fastgltf::Asset& asset)
                         newVertex.normal = { 1, 0, 0 };
                         newVertex.uv_x = 0;
                         newVertex.uv_y = 0;
-                        newPrimitive.vertices.push_back(newVertex);
+                        newMesh.vertices.push_back(newVertex);
                     });
             }
 
@@ -63,9 +72,9 @@ AssetServer::LoadModels(fastgltf::Asset& asset)
                         asset,
                         asset.accessors[normals->accessorIndex],
                         [&](fastgltf::math::fvec3 normal, const size_t index) {
-                            newPrimitive.vertices[index].normal = {
-                                normal.x(), normal.y(), normal.z()
-                            };
+                            newMesh.vertices[index].normal = { normal.x(),
+                                                               normal.y(),
+                                                               normal.z() };
                         });
                 }
             }
@@ -79,11 +88,13 @@ AssetServer::LoadModels(fastgltf::Asset& asset)
                         asset,
                         asset.accessors[uv->accessorIndex],
                         [&](fastgltf::math::fvec2 vert, const size_t index) {
-                            newPrimitive.vertices[index].uv_x = vert.x();
-                            newPrimitive.vertices[index].uv_y = vert.y();
+                            newMesh.vertices[index].uv_x = vert.x();
+                            newMesh.vertices[index].uv_y = vert.y();
                         });
                 }
-                newModel.primitives.push_back(newPrimitive);
+
+                newModel.meshes.push_back(meshes.size());
+                meshes.push_back(newMesh);
             }
         }
         models.push_back(newModel);
@@ -151,26 +162,20 @@ AssetServer::LoadImage(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
     return newImage;
 }
 
-std::vector<AllocatedImage>
+void
 AssetServer::LoadImages(fastgltf::Asset& asset)
 {
-    std::vector<AllocatedImage> images;
-
     for (auto& image : asset.images) {
         auto img = LoadImage(asset, image);
         if (img.has_value()) {
             images.push_back(img.value());
         }
     }
-
-    return images;
 }
 
-std::vector<Material>
-AssetServer::LoadMaterials(fastgltf::Asset& asset)
+void
+AssetServer::LoadMaterials(fastgltf::Asset& asset, size_t imageOffset)
 {
-    std::vector<Material> materials;
-
     for (auto& gltfMaterial : asset.materials) {
         Material newMaterial{};
 
@@ -179,7 +184,6 @@ AssetServer::LoadMaterials(fastgltf::Asset& asset)
         const auto& pbr = gltfMaterial.pbrData;
         auto& colour = pbr.baseColorFactor;
         newMaterial.baseColorFactor = {
-
             colour.x(), colour.y(), colour.z(), colour.w()
         };
         newMaterial.roughnessFactor = pbr.roughnessFactor;
@@ -187,25 +191,25 @@ AssetServer::LoadMaterials(fastgltf::Asset& asset)
 
         if (gltfMaterial.normalTexture.has_value()) {
             newMaterial.normalTexture =
-                gltfMaterial.normalTexture.value().textureIndex;
+                gltfMaterial.normalTexture.value().textureIndex + imageOffset;
         }
         if (pbr.metallicRoughnessTexture.has_value()) {
             newMaterial.metallicRoughnessTexture =
-                pbr.metallicRoughnessTexture.value().textureIndex;
+                pbr.metallicRoughnessTexture.value().textureIndex + imageOffset;
         }
         if (pbr.baseColorTexture.has_value()) {
             newMaterial.baseColorTexture =
-                pbr.baseColorTexture.value().textureIndex;
+                pbr.baseColorTexture.value().textureIndex + imageOffset;
         }
 
         materials.push_back(newMaterial);
     }
-
-    return materials;
 }
 
 AssetNode
-CreateNodeTree(const size_t nodeIndex, fastgltf::Asset& asset)
+CreateNodeTree(const size_t nodeIndex,
+               fastgltf::Asset& asset,
+               std::vector<Model>& models)
 {
     auto node = asset.nodes[nodeIndex];
 
@@ -213,7 +217,7 @@ CreateNodeTree(const size_t nodeIndex, fastgltf::Asset& asset)
     newNode.children.reserve(node.children.size());
     newNode.name = node.name;
     if (node.meshIndex.has_value()) {
-        newNode.model = node.meshIndex.value();
+        newNode.model = std::move(models[node.meshIndex.value()]);
     }
 
     std::visit(
@@ -240,14 +244,14 @@ CreateNodeTree(const size_t nodeIndex, fastgltf::Asset& asset)
         node.transform);
 
     for (auto const child : node.children) {
-        newNode.children.push_back(CreateNodeTree(child, asset));
+        newNode.children.push_back(CreateNodeTree(child, asset, models));
     }
 
     return newNode;
 }
 
 AssetNode
-AssetServer::LoadNodes(fastgltf::Asset& asset)
+AssetServer::LoadNodes(fastgltf::Asset& asset, std::vector<Model>& models)
 {
     // A scene may have several root nodes
     // Return a list of root nodes? The roots contain their children
@@ -257,7 +261,7 @@ AssetServer::LoadNodes(fastgltf::Asset& asset)
     roots.reserve(scene.nodeIndices.size());
 
     for (const auto& index : scene.nodeIndices) {
-        roots.push_back(CreateNodeTree(index, asset));
+        roots.push_back(CreateNodeTree(index, asset, models));
     }
 
     std::vector<size_t> rootIds(roots.size());
@@ -269,7 +273,7 @@ AssetServer::LoadNodes(fastgltf::Asset& asset)
     return root;
 }
 
-Handle<SceneAsset>
+Handle<AssetNode>
 AssetServer::LoadAsset(const char* filepath)
 {
     std::filesystem::path path = filepath;
@@ -293,11 +297,17 @@ AssetServer::LoadAsset(const char* filepath)
 
     fastgltf::Asset asset = std::move(result.get());
 
-    SceneAsset newAsset;
-    newAsset.models = LoadModels(asset);
-    newAsset.images = LoadImages(asset);
-    newAsset.materials = LoadMaterials(asset);
-    newAsset.root = LoadNodes(asset);
+    // Offsets for the newly loaded meshes / materials loaded into the asset
+    // server
+
+    size_t materialOffset = materials.size();
+    size_t imageOffset = images.size();
+
+    LoadImages(asset);
+    LoadMaterials(asset, imageOffset);
+    LoadModels(asset, materialOffset);
+    auto models = LoadModels(asset, materialOffset);
+    AssetNode newAsset = LoadNodes(asset, models);
 
     assets.push_back(std::move(newAsset));
 
@@ -305,37 +315,42 @@ AssetServer::LoadAsset(const char* filepath)
 }
 
 void
-RecursivelySpawnChildren(Entity parent, AssetNode& node, Resource<World>& world)
+AddNodeHierarchyToEntity(const Entity entity,
+                         const AssetNode& node,
+                         Resource<World>& world)
 {
-    // For brevity I'll reuse functions from global transform to extract the trs
-    // from the transform matrix
-    GlobalTransform transform{ node.localTransform };
+    // reuse global transform functions for decomposition
+    auto transform = GlobalTransform{ node.localTransform };
 
-    const Entity entity = world->Spawn(Position{ transform.GetTranslation() },
-                                       Rotation{ transform.GetRotation() },
-                                       Scale{ transform.GetScale() });
+    auto child = world->Spawn(Position{ transform.GetTranslation() },
+                              Rotation{ transform.GetRotation() },
+                              Scale{ transform.GetScale() });
 
-    world->AddChild(parent, entity);
+    world->AddChild(entity, child.Get());
 
     if (node.model.has_value()) {
-        auto x = node.model.value();
-        world->AddComponent(entity, Handle<Model>{ node.model.value() });
+        child.WithChildren([&](ChildBuilder parent) {
+            auto& [meshes, materials] = node.model.value();
+            // Add all meshes as child entities
+            for (const auto& [mesh, material] :
+                 std::ranges::views::zip(meshes, materials)) {
+                parent.Spawn(Handle<Mesh>{ .index = mesh },
+                             Handle<Material>{ .index = material.value_or(0) });
+            }
+        });
     }
 
-    for (auto& child : node.children) {
-        RecursivelySpawnChildren(entity, child, world);
-    }
+    for (auto& childNode : node.children) {
+        AddNodeHierarchyToEntity(child.Get(), childNode, world);
+    };
 }
 
 void
-AssetServer::AddAssetToEntity(Entity entity,
-                              const Handle<SceneAsset> assetHandle,
-                              Resource<World>& world)
+AssetServer::AddAssetToEntity(const Entity entity,
+                              const Handle<AssetNode> assetHandle,
+                              Resource<World>& world) const
 {
-    SceneAsset& asset = assets[assetHandle.index];
+    const auto& node = assets[assetHandle.index];
 
-    RecursivelySpawnChildren(entity, asset.root, world);
+    AddNodeHierarchyToEntity(entity, node, world);
 }
-
-// Restructure loading to simply store a list of primitives
-// And a corresponding list of material ids

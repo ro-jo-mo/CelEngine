@@ -47,8 +47,8 @@ target_sources(${PROJECT_NAME}
         "src/ecs/ComponentsManager.cpp"
         "src/ecs/ScheduleGraph.cpp"
         "src/ecs/QueryManager.cpp"
-        "src/ecs/World.cpp"
-        "src/ecs/Time.cpp"
+        "src/core/World.cpp"
+        "src/core/Time.cpp"
         "src/core/Transform.cpp"
         "src/core/CorePlugin.cpp"
         "src/renderer/Vma.cpp"
@@ -82,7 +82,6 @@ set(public_headers
         include/ecs/IResource.h
         include/ecs/IQuery.h
         include/ecs/Locks.h
-        include/ecs/Plugin.h
         include/ecs/Resource.h
         include/ecs/ResourceManager.h
         include/ecs/Schedule.h
@@ -93,13 +92,14 @@ set(public_headers
         include/ecs/QueryManager.h
         include/ecs/Types.h
         include/ecs/Query.h
-        include/ecs/World.h
-        include/ecs/Time.h
 
+        include/core/Plugin.h
+        include/core/World.h
+        include/core/Time.h
         include/core/Transform.h
         include/core/Hierarchy.h
         include/core/CorePlugin.h
-        include/ecs/Running.h
+        include/core/Running.h
 
         include/common/SlotMap.h
 

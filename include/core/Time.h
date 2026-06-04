@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Resource.h"
+#include "../ecs/Resource.h"
 #include <chrono>
 
 

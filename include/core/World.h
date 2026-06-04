@@ -1,13 +1,14 @@
 #pragma once
 
-#include "ComponentsManager.h"
-#include "EntityManager.h"
-#include "Helpers.h"
-#include "Types.h"
 #include "core/Transform.h"
+#include "ecs/ComponentsManager.h"
+#include "ecs/EntityManager.h"
+#include "ecs/Helpers.h"
+#include "ecs/Types.h"
 #include <vector>
 
 namespace Cel {
+class EntityBuilder;
 /**
  * @brief Manager of the game world state
  * Responsible for creating new entities, components, deletion ...
@@ -28,7 +29,7 @@ class World
      * @return New entity id
      */
     template<typename... Components>
-    Entity Spawn(Components... components);
+    EntityBuilder Spawn(Components... components);
 
     /**
      * @brief Destroy this entity
@@ -105,6 +106,40 @@ class World
     std::vector<Entity> toDestroy;
 };
 
+class EntityBuilder
+{
+  public:
+    EntityBuilder(Entity entity, World& world)
+        : entity(entity)
+        , world(world)
+    {
+    }
+
+    Entity Get() const;
+    EntityBuilder& WithChildren(auto func);
+
+  private:
+    Entity entity;
+    World& world;
+};
+
+class ChildBuilder
+{
+  public:
+    ChildBuilder(const Entity parent, World& world)
+        : parent(parent)
+        , world(world)
+    {
+    }
+
+    template<typename... Components>
+    EntityBuilder Spawn(Components... components);
+
+  private:
+    Entity parent;
+    World& world;
+};
+
 class World::AddChildCommand
 {
   public:
@@ -168,7 +203,7 @@ class World::RemoveCommand final : public World::Command
 };
 
 template<typename... Components>
-inline Entity
+inline EntityBuilder
 World::Spawn(Components... components)
 {
     auto entity = entityManager.AllocateEntity();
@@ -193,8 +228,10 @@ World::Spawn(Components... components)
     if (!hasGlobalTransform) {
         AddComponent(entity, GlobalTransform{});
     }
+    World w = World(componentsManager, entityManager);
+    EntityBuilder e = EntityBuilder(entity, w);
 
-    return entity;
+    return EntityBuilder(entity, w);
 }
 
 template<typename Component>
@@ -225,5 +262,23 @@ inline void
 World::RemoveCommand<T>::Execute()
 {
     world.componentsManager.RemoveComponent<T>(entity);
+}
+
+EntityBuilder&
+EntityBuilder::WithChildren(auto func)
+{
+    func(ChildBuilder(entity, world));
+
+    return *this;
+}
+
+template<typename... Components>
+EntityBuilder
+ChildBuilder::Spawn(Components... components)
+{
+    auto child = world.Spawn(components...).Get();
+    world.AddChild(parent, child);
+
+    return EntityBuilder(child, world);
 }
 }

@@ -1,5 +1,5 @@
 #pragma once
-#include "ecs/Plugin.h"
+#include "../core/Plugin.h"
 
 namespace Cel::Renderer {
 class RenderPlugin final : public Plugin

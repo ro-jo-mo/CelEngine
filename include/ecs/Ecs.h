@@ -1,11 +1,11 @@
 #pragma once
 
+#include "../core/Plugin.h"
+#include "../core/Running.h"
 #include "ComponentsManager.h"
 #include "EntityManager.h"
-#include "Plugin.h"
 #include "QueryManager.h"
 #include "ResourceManager.h"
-#include "Running.h"
 #include "Schedule.h"
 #include "ScheduleGraph.h"
 #include "Scheduler.h"

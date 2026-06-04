@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ResourceManager.h"
-#include "Scheduler.h"
+#include "../ecs/ResourceManager.h"
+#include "../ecs/Scheduler.h"
 
 namespace Cel {
     /**

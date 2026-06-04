@@ -1,8 +1,8 @@
 #pragma once
 
+#include "../core/World.h"
 #include "VulkanTypes.h"
 #include "ecs/Types.h"
-#include "ecs/World.h"
 #include "renderer/AssetTypes.h"
 
 namespace Cel::Renderer {
@@ -45,22 +45,26 @@ class AssetServer
         , immediate(*immediate)
         , graphicsQueue(*graphicsQueue) {};
 
-    Handle<SceneAsset> LoadAsset(const char* filepath);
+    Handle<AssetNode> LoadAsset(const char* filepath);
     void AddAssetToEntity(Entity entity,
-                          Handle<SceneAsset> assetHandle,
-                          Resource<World>& world);
+                          Handle<AssetNode> assetHandle,
+                          Resource<World>& world) const;
 
   private:
     std::optional<AllocatedImage> LoadImage(fastgltf::Asset& asset,
                                             fastgltf::Image& gltfImage);
-    std::vector<AllocatedImage> LoadImages(fastgltf::Asset& asset);
-    std::vector<Material> LoadMaterials(fastgltf::Asset& asset);
-    AssetNode LoadNodes(fastgltf::Asset& asset);
-    std::vector<Model> LoadModels(fastgltf::Asset& asset);
+    void LoadImages(fastgltf::Asset& asset);
+    void LoadMaterials(fastgltf::Asset& asset, size_t imageOffset);
+    AssetNode LoadNodes(fastgltf::Asset& asset, std::vector<Model>& models);
+    std::vector<Model> LoadModels(fastgltf::Asset& asset,
+                                  size_t materialOffset);
 
     std::unordered_map<const char*, Handle<AssetNode>> pathToAssetMap;
 
-    std::vector<SceneAsset> assets;
+    std::vector<AssetNode> assets;
+    std::vector<AllocatedImage> images;
+    std::vector<Mesh> meshes;
+    std::vector<Material> materials;
 
     VulkanContext& context;
     VmaAllocator& allocator;

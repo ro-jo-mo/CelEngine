@@ -1,5 +1,5 @@
 #pragma once
-#include "ecs/Plugin.h"
+#include "Plugin.h"
 
 namespace Cel {
 class CorePlugin final : public Plugin

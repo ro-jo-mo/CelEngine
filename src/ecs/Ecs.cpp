@@ -2,9 +2,9 @@
 
 #include <iostream>
 
-#include "../../include/ecs/Running.h"
+#include "../../include/core/Running.h"
+#include "../../include/core/World.h"
 #include "../../include/ecs/Time.h"
-#include "ecs/World.h"
 
 using namespace Cel;
 
