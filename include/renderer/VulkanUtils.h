@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AssetTypes.h"
 #include "VulkanTypes.h"
 #include "ecs/Resource.h"
 
@@ -47,7 +48,15 @@ AllocatedBuffer
 CreateBuffer(size_t allocSize,
              VkBufferUsageFlags usage,
              VmaMemoryUsage memoryUsage,
-             VmaAllocator& allocator);
+             const VmaAllocator& allocator);
+
+AllocatedMeshBuffer
+UploadMesh(std::vector<uint32_t>& indices,
+           std::vector<Vertex>& vertices,
+           VulkanContext& context,
+           VmaAllocator& allocator,
+           ImmediateSubmit& immediate,
+           GraphicsQueue& queue);
 
 void
 SubmitImmediate(std::function<void(VkCommandBuffer cmd)>&& function,

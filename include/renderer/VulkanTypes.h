@@ -74,6 +74,13 @@ struct AllocatedBuffer
     VmaAllocationInfo info;
 };
 
+struct AllocatedMeshBuffer
+{
+    AllocatedBuffer indexBuffer;
+    AllocatedBuffer vertexBuffer;
+    VkDeviceAddress vertexBufferAddress;
+};
+
 namespace Detail {
 
 template<typename T>

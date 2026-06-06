@@ -53,8 +53,17 @@ class AssetServer
   private:
     std::optional<AllocatedImage> LoadImage(fastgltf::Asset& asset,
                                             fastgltf::Image& gltfImage);
+    TextureSamplerCombo ResolveTextureSampler(
+        fastgltf::Asset& asset,
+        const std::optional<fastgltf::TextureInfo>& textureInfo,
+        size_t imageOffset,
+        size_t samplerOffset);
+
     void LoadImages(fastgltf::Asset& asset);
-    void LoadMaterials(fastgltf::Asset& asset, size_t imageOffset);
+    void LoadSamplers(const fastgltf::Asset& asset);
+    void LoadMaterials(fastgltf::Asset& asset,
+                       size_t imageOffset,
+                       size_t samplerOffset);
     AssetNode LoadNodes(fastgltf::Asset& asset, std::vector<Model>& models);
     std::vector<Model> LoadModels(fastgltf::Asset& asset,
                                   size_t materialOffset);
@@ -63,7 +72,9 @@ class AssetServer
 
     std::vector<AssetNode> assets;
     std::vector<AllocatedImage> images;
+    std::vector<VkSampler> samplers;
     std::vector<Mesh> meshes;
+    std::vector<AllocatedMeshBuffer> meshBuffers;
     std::vector<Material> materials;
 
     VulkanContext& context;

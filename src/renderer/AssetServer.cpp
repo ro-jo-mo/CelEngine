@@ -94,7 +94,14 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
                 }
 
                 newModel.meshes.push_back(meshes.size());
+                // For now store both cpu & gpu
                 meshes.push_back(newMesh);
+                meshBuffers.push_back(Utils::UploadMesh(newMesh.indices,
+                                                        newMesh.vertices,
+                                                        context,
+                                                        allocator,
+                                                        immediate,
+                                                        graphicsQueue));
             }
         }
         models.push_back(newModel);
@@ -173,8 +180,89 @@ AssetServer::LoadImages(fastgltf::Asset& asset)
     }
 }
 
+VkFilter
+ExtractFilter(const fastgltf::Filter filter)
+{
+    switch (filter) {
+        // nearest samplers
+        case fastgltf::Filter::Nearest:
+        case fastgltf::Filter::NearestMipMapNearest:
+        case fastgltf::Filter::NearestMipMapLinear:
+            return VK_FILTER_NEAREST;
+
+            // linear samplers
+        case fastgltf::Filter::Linear:
+        case fastgltf::Filter::LinearMipMapNearest:
+        case fastgltf::Filter::LinearMipMapLinear:
+        default:
+            return VK_FILTER_LINEAR;
+    }
+}
+
+VkSamplerMipmapMode
+ExtractMipMap(const fastgltf::Filter filter)
+{
+    switch (filter) {
+        case fastgltf::Filter::NearestMipMapNearest:
+        case fastgltf::Filter::LinearMipMapNearest:
+            return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+
+        case fastgltf::Filter::NearestMipMapLinear:
+        case fastgltf::Filter::LinearMipMapLinear:
+        default:
+            return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    }
+}
+
+TextureSamplerCombo
+AssetServer::ResolveTextureSampler(
+    fastgltf::Asset& asset,
+    const std::optional<fastgltf::TextureInfo>& textureInfo,
+    const size_t imageOffset,
+    const size_t samplerOffset)
+{
+    TextureSamplerCombo samplerCombo;
+
+    if (textureInfo.has_value()) {
+        auto& texture = asset.textures[textureInfo.value().textureIndex];
+        samplerCombo.image = texture.imageIndex.value() + imageOffset;
+        if (texture.samplerIndex.has_value()) {
+            samplerCombo.sampler = texture.samplerIndex.value() + samplerOffset;
+        }
+    }
+
+    return samplerCombo;
+}
+
 void
-AssetServer::LoadMaterials(fastgltf::Asset& asset, size_t imageOffset)
+AssetServer::LoadSamplers(const fastgltf::Asset& asset)
+{
+    for (auto& gltfSampler : asset.samplers) {
+        VkSamplerCreateInfo sampler = {
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO, .pNext = nullptr
+        };
+        sampler.maxLod = VK_LOD_CLAMP_NONE;
+        sampler.minLod = 0;
+
+        sampler.magFilter = ExtractFilter(
+            gltfSampler.magFilter.value_or(fastgltf::Filter::Nearest));
+        sampler.minFilter = ExtractFilter(
+            gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
+
+        sampler.mipmapMode = ExtractMipMap(
+            gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
+
+        VkSampler newSampler;
+        vkCreateSampler(context.device, &sampler, nullptr, &newSampler);
+
+        samplers.push_back(newSampler);
+    }
+}
+
+void
+AssetServer::LoadMaterials(fastgltf::Asset& asset,
+                           const size_t imageOffset,
+                           const size_t samplerOffset)
 {
     for (auto& gltfMaterial : asset.materials) {
         Material newMaterial{};
@@ -189,18 +277,19 @@ AssetServer::LoadMaterials(fastgltf::Asset& asset, size_t imageOffset)
         newMaterial.roughnessFactor = pbr.roughnessFactor;
         newMaterial.metallicFactor = pbr.metallicFactor;
 
-        if (gltfMaterial.normalTexture.has_value()) {
-            newMaterial.normalTexture =
-                gltfMaterial.normalTexture.value().textureIndex + imageOffset;
-        }
-        if (pbr.metallicRoughnessTexture.has_value()) {
-            newMaterial.metallicRoughnessTexture =
-                pbr.metallicRoughnessTexture.value().textureIndex + imageOffset;
-        }
-        if (pbr.baseColorTexture.has_value()) {
-            newMaterial.baseColorTexture =
-                pbr.baseColorTexture.value().textureIndex + imageOffset;
-        }
+        newMaterial.baseColor = ResolveTextureSampler(
+            asset, pbr.baseColorTexture, imageOffset, samplerOffset);
+        newMaterial.metallicRoughness = ResolveTextureSampler(
+            asset, pbr.metallicRoughnessTexture, imageOffset, samplerOffset);
+        newMaterial.normal = ResolveTextureSampler(
+            asset,
+            gltfMaterial.normalTexture.transform([](const auto& info) {
+                return fastgltf::TextureInfo{ .textureIndex = info.textureIndex,
+                                              .texCoordIndex =
+                                                  info.texCoordIndex };
+            }),
+            imageOffset,
+            samplerOffset);
 
         materials.push_back(newMaterial);
     }
@@ -302,9 +391,10 @@ AssetServer::LoadAsset(const char* filepath)
 
     size_t materialOffset = materials.size();
     size_t imageOffset = images.size();
+    size_t samplerOffset = samplers.size();
 
     LoadImages(asset);
-    LoadMaterials(asset, imageOffset);
+    LoadMaterials(asset, imageOffset, samplerOffset);
     LoadModels(asset, materialOffset);
     auto models = LoadModels(asset, materialOffset);
     AssetNode newAsset = LoadNodes(asset, models);

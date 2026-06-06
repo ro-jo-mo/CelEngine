@@ -1,5 +1,4 @@
 #include "renderer/VulkanUtils.h"
-
 #include "renderer/VulkanHelpers.h"
 
 #include <fstream>
@@ -269,10 +268,10 @@ Cel::Renderer::Utils::CreateImage(VkExtent3D size,
 }
 
 Cel::Renderer::AllocatedBuffer
-Cel::Renderer::Utils::CreateBuffer(size_t allocSize,
-                                   VkBufferUsageFlags usage,
-                                   VmaMemoryUsage memoryUsage,
-                                   VmaAllocator& allocator)
+Cel::Renderer::Utils::CreateBuffer(const size_t allocSize,
+                                   const VkBufferUsageFlags usage,
+                                   const VmaMemoryUsage memoryUsage,
+                                   const VmaAllocator& allocator)
 {
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -281,14 +280,14 @@ Cel::Renderer::Utils::CreateBuffer(size_t allocSize,
 
     bufferInfo.usage = usage;
 
-    VmaAllocationCreateInfo vmaallocInfo = {};
-    vmaallocInfo.usage = memoryUsage;
-    vmaallocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
-    AllocatedBuffer newBuffer;
+    VmaAllocationCreateInfo vmaAllocInfo = {};
+    vmaAllocInfo.usage = memoryUsage;
+    vmaAllocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    AllocatedBuffer newBuffer{};
 
     VkCheck(vmaCreateBuffer(allocator,
                             &bufferInfo,
-                            &vmaallocInfo,
+                            &vmaAllocInfo,
                             &newBuffer.buffer,
                             &newBuffer.allocation,
                             &newBuffer.info));
@@ -416,4 +415,84 @@ Cel::Renderer::Utils::DestroyBuffer(const AllocatedBuffer& buffer,
                                     const VmaAllocator& allocator)
 {
     vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
+}
+
+Cel::Renderer::AllocatedMeshBuffer
+Cel::Renderer::Utils::UploadMesh(std::vector<uint32_t>& indices,
+                                 std::vector<Vertex>& vertices,
+                                 VulkanContext& context,
+                                 VmaAllocator& allocator,
+                                 ImmediateSubmit& immediate,
+                                 GraphicsQueue& queue)
+{
+    const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
+    const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
+
+    AllocatedMeshBuffer newSurface;
+
+    newSurface.vertexBuffer = CreateBuffer(
+        vertexBufferSize,
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        allocator);
+
+    VkBufferDeviceAddressInfo deviceAdressInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = newSurface.vertexBuffer.buffer
+    };
+    newSurface.vertexBufferAddress =
+        vkGetBufferDeviceAddress(context.device, &deviceAdressInfo);
+
+    newSurface.indexBuffer = CreateBuffer(indexBufferSize,
+                                          VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                                              VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                          VMA_MEMORY_USAGE_GPU_ONLY,
+                                          allocator);
+
+    AllocatedBuffer staging = CreateBuffer(vertexBufferSize + indexBufferSize,
+                                           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                           VMA_MEMORY_USAGE_CPU_ONLY,
+                                           allocator);
+
+    void* data = staging.info.pMappedData;
+
+    // copy vertex buffer
+    memcpy(data, vertices.data(), vertexBufferSize);
+    // copy index buffer
+    memcpy(static_cast<char*>(data) + vertexBufferSize,
+           indices.data(),
+           indexBufferSize);
+
+    SubmitImmediate(
+        [&](VkCommandBuffer cmd) {
+            VkBufferCopy vertexCopy{ 0 };
+            vertexCopy.dstOffset = 0;
+            vertexCopy.srcOffset = 0;
+            vertexCopy.size = vertexBufferSize;
+
+            vkCmdCopyBuffer(cmd,
+                            staging.buffer,
+                            newSurface.vertexBuffer.buffer,
+                            1,
+                            &vertexCopy);
+
+            VkBufferCopy indexCopy{ 0 };
+            indexCopy.dstOffset = 0;
+            indexCopy.srcOffset = vertexBufferSize;
+            indexCopy.size = indexBufferSize;
+
+            vkCmdCopyBuffer(cmd,
+                            staging.buffer,
+                            newSurface.indexBuffer.buffer,
+                            1,
+                            &indexCopy);
+        },
+        context,
+        immediate,
+        queue);
+
+    DestroyBuffer(staging, allocator);
+
+    return newSurface;
 }

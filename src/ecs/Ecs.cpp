@@ -1,11 +1,5 @@
 #include "ecs/Ecs.h"
 
-#include <iostream>
-
-#include "../../include/core/Running.h"
-#include "../../include/core/World.h"
-#include "../../include/ecs/Time.h"
-
 using namespace Cel;
 
 void

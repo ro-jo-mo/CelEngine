@@ -1,6 +1,9 @@
 #pragma once
 
 #include <fastgltf/types.hpp>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 namespace Cel::Renderer {
 
@@ -12,15 +15,21 @@ struct Vertex
     float uv_y;
 };
 
+struct TextureSamplerCombo
+{
+    std::optional<size_t> image;
+    std::optional<size_t> sampler;
+};
+
 struct Material
 {
     glm::vec4 baseColorFactor;
     float metallicFactor;
     float roughnessFactor;
 
-    std::optional<int> baseColorTexture;
-    std::optional<int> metallicRoughnessTexture;
-    std::optional<int> normalTexture;
+    TextureSamplerCombo baseColor;
+    TextureSamplerCombo metallicRoughness;
+    TextureSamplerCombo normal;
 
     bool doubleSided;
 };

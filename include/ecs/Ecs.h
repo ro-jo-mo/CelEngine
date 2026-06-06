@@ -9,8 +9,8 @@
 #include "Schedule.h"
 #include "ScheduleGraph.h"
 #include "Scheduler.h"
-#include "Time.h"
-#include "World.h"
+#include "core/Time.h"
+#include "core/World.h"
 #include <concepts>
 
 namespace Cel {
