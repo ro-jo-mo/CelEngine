@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../core/World.h"
+#include "Descriptors.h"
 #include "VulkanTypes.h"
 #include "ecs/Types.h"
 #include "renderer/AssetTypes.h"
@@ -43,7 +44,10 @@ class AssetServer
         : context(*context)
         , allocator(*allocator)
         , immediate(*immediate)
-        , graphicsQueue(*graphicsQueue) {};
+        , graphicsQueue(*graphicsQueue)
+    {
+        CreateDefaults();
+    }
 
     Handle<AssetNode> LoadAsset(const char* filepath);
     void AddAssetToEntity(Entity entity,
@@ -51,17 +55,23 @@ class AssetServer
                           Resource<World>& world) const;
 
   private:
+    void CreateDefaults();
+
     std::optional<AllocatedImage> LoadImage(fastgltf::Asset& asset,
                                             fastgltf::Image& gltfImage);
-    TextureSamplerCombo ResolveTextureSampler(
+
+    void LoadImages(fastgltf::Asset& asset);
+    void LoadSamplers(const fastgltf::Asset& asset);
+    void WriteMaterialDescriptors(Material& material,
+                                  DescriptorAllocator& descriptorAllocator);
+    uint32_t ResolveTextureSampler(
         fastgltf::Asset& asset,
         const std::optional<fastgltf::TextureInfo>& textureInfo,
         size_t imageOffset,
         size_t samplerOffset);
 
-    void LoadImages(fastgltf::Asset& asset);
-    void LoadSamplers(const fastgltf::Asset& asset);
     void LoadMaterials(fastgltf::Asset& asset,
+                       DescriptorAllocator& descriptorAllocator,
                        size_t imageOffset,
                        size_t samplerOffset);
     AssetNode LoadNodes(fastgltf::Asset& asset, std::vector<Model>& models);
@@ -70,12 +80,21 @@ class AssetServer
 
     std::unordered_map<const char*, Handle<AssetNode>> pathToAssetMap;
 
+    // Assets, buffers, descriptors are coupled
+    // These might be combined into a single struct later?
     std::vector<AssetNode> assets;
+    std::vector<DescriptorAllocator> allocators;
+    std::vector<AllocatedBuffer> materialBuffers;
+
     std::vector<AllocatedImage> images;
     std::vector<VkSampler> samplers;
     std::vector<Mesh> meshes;
     std::vector<AllocatedMeshBuffer> meshBuffers;
     std::vector<Material> materials;
+
+    DescriptorWriter descriptorWriter;
+    TextureCache textureCache;
+    VkDescriptorSetLayout materialLayout;
 
     VulkanContext& context;
     VmaAllocator& allocator;

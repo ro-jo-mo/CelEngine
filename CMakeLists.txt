@@ -47,10 +47,12 @@ target_sources(${PROJECT_NAME}
         "src/ecs/ComponentsManager.cpp"
         "src/ecs/ScheduleGraph.cpp"
         "src/ecs/QueryManager.cpp"
+
         "src/core/World.cpp"
         "src/core/Time.cpp"
         "src/core/Transform.cpp"
         "src/core/CorePlugin.cpp"
+
         "src/renderer/Vma.cpp"
         "src/renderer/RenderPlugin.cpp"
         "src/renderer/CleanupRenderer.cpp"
@@ -61,6 +63,7 @@ target_sources(${PROJECT_NAME}
         "src/renderer/Draw.cpp"
         "src/renderer/VulkanUtils.cpp"
         "src/renderer/AssetServer.cpp"
+        "src/renderer/Descriptors.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -114,6 +117,7 @@ set(public_headers
         include/renderer/Draw.h
         include/renderer/VulkanUtils.h
         include/renderer/AssetTypes.h
+        include/renderer/Descriptors.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

@@ -7,11 +7,55 @@
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
+#include <glm/glm.hpp>
 #include <ranges>
 #include <stb_image.h>
 
 using namespace Cel::Renderer;
 using namespace Cel;
+
+void
+AssetServer::CreateDefaults()
+{
+    // checkerboard image
+    int32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
+    int32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 1));
+    std::array<uint32_t, 16 * 16> pixels; // for 16x16 checkerboard texture
+    for (int x = 0; x < 16; x++) {
+        for (int y = 0; y < 16; y++) {
+            pixels[y * 16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
+        }
+    }
+
+    // For now, we'll default to a checkerboard when no texture is assigned
+    // However, this is a little silly for normals roughness etc
+    AllocatedImage checkerboard = Utils::CreateImage(pixels.data(),
+                                                     VkExtent3D{ 16, 16, 1 },
+                                                     VK_FORMAT_R8G8B8A8_UNORM,
+                                                     VK_IMAGE_USAGE_SAMPLED_BIT,
+                                                     false,
+                                                     context,
+                                                     allocator,
+                                                     immediate,
+                                                     graphicsQueue);
+    images.push_back(checkerboard);
+
+    VkSampler defaultSampler;
+    VkSamplerCreateInfo samplerInfo = {
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
+    };
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+
+    vkCreateSampler(context.device, &samplerInfo, nullptr, &defaultSampler);
+
+    samplers.push_back(defaultSampler);
+
+    DescriptorLayoutBuilder builder;
+    builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    builder.Build(context.device,
+                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+}
 
 std::vector<Model>
 AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
@@ -214,26 +258,6 @@ ExtractMipMap(const fastgltf::Filter filter)
     }
 }
 
-TextureSamplerCombo
-AssetServer::ResolveTextureSampler(
-    fastgltf::Asset& asset,
-    const std::optional<fastgltf::TextureInfo>& textureInfo,
-    const size_t imageOffset,
-    const size_t samplerOffset)
-{
-    TextureSamplerCombo samplerCombo;
-
-    if (textureInfo.has_value()) {
-        auto& texture = asset.textures[textureInfo.value().textureIndex];
-        samplerCombo.image = texture.imageIndex.value() + imageOffset;
-        if (texture.samplerIndex.has_value()) {
-            samplerCombo.sampler = texture.samplerIndex.value() + samplerOffset;
-        }
-    }
-
-    return samplerCombo;
-}
-
 void
 AssetServer::LoadSamplers(const fastgltf::Asset& asset)
 {
@@ -260,28 +284,84 @@ AssetServer::LoadSamplers(const fastgltf::Asset& asset)
 }
 
 void
+AssetServer::WriteMaterialDescriptors(Material& material,
+                                      DescriptorAllocator& descriptorAllocator)
+{
+    material.materialSet =
+        descriptorAllocator.Allocate(context.device, materialLayout);
+
+    descriptorWriter.Clear();
+
+    descriptorWriter.WriteBuffer(0,
+                                 materialBuffers[material.bufferIndex].buffer,
+                                 sizeof(MaterialConstants),
+                                 material.bufferOffset,
+                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+    descriptorWriter.UpdateSet(context.device, material.materialSet);
+}
+
+uint32_t
+AssetServer::ResolveTextureSampler(
+    fastgltf::Asset& asset,
+    const std::optional<fastgltf::TextureInfo>& textureInfo,
+    const size_t imageOffset,
+    const size_t samplerOffset)
+{
+
+    if (textureInfo.has_value()) {
+        auto& texture = asset.textures[textureInfo.value().textureIndex];
+        const auto view =
+            images[texture.imageIndex.value() + imageOffset].imageView;
+
+        VkSampler sampler;
+        if (texture.samplerIndex.has_value()) {
+            sampler = samplers[texture.samplerIndex.value() + samplerOffset];
+        } else {
+            sampler = samplers[0];
+        }
+
+        return textureCache.AddTexture(view, sampler);
+    }
+    return textureCache.AddTexture(images[0].imageView, samplers[0]);
+}
+
+void
 AssetServer::LoadMaterials(fastgltf::Asset& asset,
+                           DescriptorAllocator& descriptorAllocator,
                            const size_t imageOffset,
                            const size_t samplerOffset)
 {
-    for (auto& gltfMaterial : asset.materials) {
-        Material newMaterial{};
+    const uint32_t bufferIndex = materials.size();
+    uint32_t bufferOffset = 0;
+    materialBuffers.push_back(
+        Utils::CreateBuffer(asset.materials.size() * sizeof(MaterialConstants),
+                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                            VMA_MEMORY_USAGE_CPU_TO_GPU,
+                            allocator));
 
-        newMaterial.doubleSided = gltfMaterial.doubleSided;
+    const auto buffer = static_cast<MaterialConstants*>(
+        materialBuffers[bufferIndex].info.pMappedData);
+    for (auto& gltfMaterial : asset.materials) {
+        // Material constants will be stored in a buffer on the gpu
+        // The material will then contain the buffer index and offset for these
+        // constants
+        MaterialConstants constants{};
 
         const auto& pbr = gltfMaterial.pbrData;
         auto& colour = pbr.baseColorFactor;
-        newMaterial.baseColorFactor = {
+        constants.baseColorFactors = {
             colour.x(), colour.y(), colour.z(), colour.w()
         };
-        newMaterial.roughnessFactor = pbr.roughnessFactor;
-        newMaterial.metallicFactor = pbr.metallicFactor;
+        constants.metalRoughnessFactors = {
+            pbr.metallicFactor, pbr.roughnessFactor, 0, 0
+        };
 
-        newMaterial.baseColor = ResolveTextureSampler(
+        constants.colorTextureIndex = ResolveTextureSampler(
             asset, pbr.baseColorTexture, imageOffset, samplerOffset);
-        newMaterial.metallicRoughness = ResolveTextureSampler(
+        constants.metalRoughnessTextureIndex = ResolveTextureSampler(
             asset, pbr.metallicRoughnessTexture, imageOffset, samplerOffset);
-        newMaterial.normal = ResolveTextureSampler(
+        constants.normalTextureIndex = ResolveTextureSampler(
             asset,
             gltfMaterial.normalTexture.transform([](const auto& info) {
                 return fastgltf::TextureInfo{ .textureIndex = info.textureIndex,
@@ -291,7 +371,19 @@ AssetServer::LoadMaterials(fastgltf::Asset& asset,
             imageOffset,
             samplerOffset);
 
+        // Upload constants to buffer
+        buffer[bufferOffset] = constants;
+
+        Material newMaterial{
+            .bufferIndex = bufferIndex,
+            .bufferOffset = bufferOffset,
+        };
+
+        // Lastly create a descriptor for this material
+        WriteMaterialDescriptors(newMaterial, descriptorAllocator);
+
         materials.push_back(newMaterial);
+        ++bufferOffset;
     }
 }
 
@@ -393,13 +485,22 @@ AssetServer::LoadAsset(const char* filepath)
     size_t imageOffset = images.size();
     size_t samplerOffset = samplers.size();
 
+    DescriptorAllocator descriptorAllocator;
+    std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1 }
+    };
+    descriptorAllocator.Init(context.device, 1024, sizes);
+
     LoadImages(asset);
-    LoadMaterials(asset, imageOffset, samplerOffset);
+    LoadMaterials(asset, descriptorAllocator, imageOffset, samplerOffset);
     LoadModels(asset, materialOffset);
     auto models = LoadModels(asset, materialOffset);
     AssetNode newAsset = LoadNodes(asset, models);
 
     assets.push_back(std::move(newAsset));
+    allocators.push_back(std::move(descriptorAllocator));
 
     return { .index = assets.size() - 1 };
 }

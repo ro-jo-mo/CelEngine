@@ -13,6 +13,7 @@
 
 # Later
 
+- Update default textures for materials
 - Optional components
 - Generating entity sets for queries can be optimised
     - With<const X, const Y> is the same set of entities as With<X, Y>

@@ -15,23 +15,24 @@ struct Vertex
     float uv_y;
 };
 
-struct TextureSamplerCombo
-{
-    std::optional<size_t> image;
-    std::optional<size_t> sampler;
-};
-
 struct Material
 {
-    glm::vec4 baseColorFactor;
-    float metallicFactor;
-    float roughnessFactor;
+    uint32_t bufferIndex;
+    uint32_t bufferOffset;
 
-    TextureSamplerCombo baseColor;
-    TextureSamplerCombo metallicRoughness;
-    TextureSamplerCombo normal;
+    VkDescriptorSet materialSet;
+};
 
-    bool doubleSided;
+struct MaterialConstants
+{
+    glm::vec4 baseColorFactors;
+    glm::vec4 metalRoughnessFactors;
+    // padding, we need it anyway for uniform buffers
+    uint32_t colorTextureIndex;
+    uint32_t metalRoughnessTextureIndex;
+    uint32_t normalTextureIndex;
+    uint32_t pad1;
+    glm::vec4 extra[13];
 };
 
 struct Model

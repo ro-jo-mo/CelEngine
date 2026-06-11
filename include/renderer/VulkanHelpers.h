@@ -4,6 +4,9 @@
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan_core.h>
 
+// Helpers is somewhat nondescript especially with Utils also existing
+// For now it contains VkCheck, and Initialisers
+
 namespace Cel::Renderer {
 inline void
 VkCheck(VkResult err,
