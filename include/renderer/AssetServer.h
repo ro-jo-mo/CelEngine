@@ -53,6 +53,7 @@ class AssetServer
     void AddAssetToEntity(Entity entity,
                           Handle<AssetNode> assetHandle,
                           Resource<World>& world) const;
+    VkDescriptorSetLayout materialLayout;
 
   private:
     void CreateDefaults();
@@ -94,7 +95,6 @@ class AssetServer
 
     DescriptorWriter descriptorWriter;
     TextureCache textureCache;
-    VkDescriptorSetLayout materialLayout;
 
     VulkanContext& context;
     VmaAllocator& allocator;

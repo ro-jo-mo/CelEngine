@@ -64,6 +64,7 @@ target_sources(${PROJECT_NAME}
         "src/renderer/VulkanUtils.cpp"
         "src/renderer/AssetServer.cpp"
         "src/renderer/Descriptors.cpp"
+        "src/renderer/Camera.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -118,6 +119,7 @@ set(public_headers
         include/renderer/VulkanUtils.h
         include/renderer/AssetTypes.h
         include/renderer/Descriptors.h
+        include/renderer/Camera.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

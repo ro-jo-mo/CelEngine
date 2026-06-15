@@ -1,5 +1,9 @@
 #include "renderer/VulkanSetup.h"
+
+#include "core/Error.h"
+#include "renderer/AssetServer.h"
 #include "renderer/DeletionQueue.h"
+#include "renderer/Descriptors.h"
 #include "renderer/PipelineBuilder.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanTypes.h"
@@ -9,6 +13,7 @@
 #include <VkBootstrap.h>
 
 using namespace Cel;
+using namespace Cel::Renderer;
 
 constexpr bool useValidationLayers = true;
 
@@ -16,7 +21,7 @@ void
 InitVulkan(ResourceManager& resourceManager)
 {
     // Firstly create a window
-    auto& window = resourceManager.InsertResource<Renderer::Window>();
+    auto& window = resourceManager.InsertResource<Window>();
     VkSurfaceKHR surface;
 
     // Create a vulkan instance with our requirements
@@ -54,10 +59,10 @@ InitVulkan(ResourceManager& resourceManager)
     vkb::DeviceBuilder deviceBuilder{ physicalDevice };
     auto deviceBuild = deviceBuilder.build().value();
 
-    Renderer::VulkanContext context{ .instance = instanceBuild.instance,
-                                     .gpu = deviceBuild.physical_device,
-                                     .device = deviceBuild.device,
-                                     .surface = surface };
+    VulkanContext context{ .instance = instanceBuild.instance,
+                           .gpu = deviceBuild.physical_device,
+                           .device = deviceBuild.device,
+                           .surface = surface };
 
     resourceManager.InsertResource<>(context);
 
@@ -66,7 +71,7 @@ InitVulkan(ResourceManager& resourceManager)
     auto graphicsQueueFamily =
         deviceBuild.get_queue_index(vkb::QueueType::graphics).value();
 
-    Renderer::GraphicsQueue queue{ graphicsQueue, graphicsQueueFamily };
+    GraphicsQueue queue{ graphicsQueue, graphicsQueueFamily };
 
     resourceManager.InsertResource<>(queue);
 
@@ -80,7 +85,7 @@ InitVulkan(ResourceManager& resourceManager)
 
     resourceManager.InsertResource<>(allocator);
 
-    auto& cleanup = resourceManager.GetResource<Renderer::FinalCleanup>();
+    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
     cleanup->Push([=, &window]() {
         vmaDestroyAllocator(allocator);
@@ -98,7 +103,7 @@ InitVulkan(ResourceManager& resourceManager)
 void
 InitSwapchain(ResourceManager& resourceManager)
 {
-    auto& context = resourceManager.GetResource<Renderer::VulkanContext>();
+    auto& context = resourceManager.GetResource<VulkanContext>();
 
     vkb::SwapchainBuilder builder{ context->gpu,
                                    context->device,
@@ -116,17 +121,15 @@ InitSwapchain(ResourceManager& resourceManager)
             .build()
             .value();
 
-    Renderer::Swapchain swapchain{ .swapchain = swapchainBuild.swapchain,
-                                   .images =
-                                       swapchainBuild.get_images().value(),
-                                   .imageViews =
-                                       swapchainBuild.get_image_views().value(),
-                                   .format = format,
-                                   .extent = swapchainBuild.extent };
+    Swapchain swapchain{ .swapchain = swapchainBuild.swapchain,
+                         .images = swapchainBuild.get_images().value(),
+                         .imageViews = swapchainBuild.get_image_views().value(),
+                         .format = format,
+                         .extent = swapchainBuild.extent };
 
     // Create semaphores for swapchain images
     VkSemaphoreCreateInfo semaphoreCreateInfo =
-        Renderer::Initialisers::SemaphoreCreateInfo();
+        Initialisers::SemaphoreCreateInfo();
 
     swapchain.submitSemaphores =
         std::vector<VkSemaphore>(swapchain.images.size());
@@ -140,7 +143,7 @@ InitSwapchain(ResourceManager& resourceManager)
 
     resourceManager.InsertResource(swapchain);
 
-    auto& cleanup = resourceManager.GetResource<Renderer::FinalCleanup>();
+    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
     cleanup->Push([=, &context]() {
         vkDestroySwapchainKHR(context->device, swapchain.swapchain, nullptr);
@@ -156,25 +159,25 @@ InitSwapchain(ResourceManager& resourceManager)
 void
 InitDrawImages(ResourceManager& resourceManager)
 {
-    auto& swapchain = resourceManager.GetResource<Renderer::Swapchain>();
+    auto& swapchain = resourceManager.GetResource<Swapchain>();
     auto& allocator = resourceManager.GetResource<VmaAllocator>();
-    auto& context = resourceManager.GetResource<Renderer::VulkanContext>();
+    auto& context = resourceManager.GetResource<VulkanContext>();
 
-    VkExtent3D drawExtent{ .width = swapchain->extent.width,
-                           .height = swapchain->extent.height,
-                           .depth = 1 };
+    const VkExtent3D drawExtent{ .width = swapchain->extent.width,
+                                 .height = swapchain->extent.height,
+                                 .depth = 1 };
 
-    Renderer::DrawImage drawImage;
+    DrawImage drawImage;
     drawImage.imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+    drawImage.imageExtent = drawExtent;
 
     VkImageUsageFlags drawImageUsages{};
     drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     drawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
     drawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    VkImageCreateInfo drawImageCreateInfo =
-        Renderer::Initialisers::ImageCreateInfo(
-            drawImage.imageFormat, drawImageUsages, drawExtent);
+    VkImageCreateInfo drawImageCreateInfo = Initialisers::ImageCreateInfo(
+        drawImage.imageFormat, drawImageUsages, drawImage.imageExtent);
 
     VmaAllocationCreateInfo drawImageAllocationInfo{};
     drawImageAllocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -187,138 +190,93 @@ InitDrawImages(ResourceManager& resourceManager)
                    &drawImage.allocation,
                    nullptr);
     VkImageViewCreateInfo drawViewCreateInfo =
-        Renderer::Initialisers::ImageViewCreateInfo(
+        Initialisers::ImageViewCreateInfo(
             drawImage.imageFormat, drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    Renderer::VkCheck(vkCreateImageView(
+    VkCheck(vkCreateImageView(
         context->device, &drawViewCreateInfo, nullptr, &drawImage.imageView));
 
     resourceManager.InsertResource(drawImage);
 
-    auto& cleanup = resourceManager.GetResource<Renderer::FinalCleanup>();
+    // Create depth image
+    DepthImage depth;
+    depth.imageFormat = VK_FORMAT_D32_SFLOAT;
+    depth.imageExtent = drawImage.imageExtent;
+    VkImageUsageFlags depthImageUsages{};
+    depthImageUsages |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    VkImageCreateInfo depthImageCreateInfo = Initialisers::ImageCreateInfo(
+        depth.imageFormat, depthImageUsages, drawImage.imageExtent);
+
+    vmaCreateImage(*allocator,
+                   &depthImageCreateInfo,
+                   &drawImageAllocationInfo,
+                   &depth.image,
+                   &depth.allocation,
+                   nullptr);
+
+    VkImageViewCreateInfo depthImageViewCreateInfo =
+        Initialisers::ImageViewCreateInfo(
+            depth.imageFormat, depth.image, VK_IMAGE_ASPECT_DEPTH_BIT);
+    VkCheck(vkCreateImageView(
+        context->device, &depthImageViewCreateInfo, nullptr, &depth.imageView));
+
+    resourceManager.InsertResource(depth);
+
+    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
     cleanup->Push([=, &context, &allocator]() {
         vkDestroyImageView(context->device, drawImage.imageView, nullptr);
+        vkDestroyImageView(context->device, depth.imageView, nullptr);
         vmaDestroyImage(*allocator, drawImage.image, drawImage.allocation);
-    });
-}
-
-void
-InitTrianglePipeline(ResourceManager& resourceManager)
-{
-    auto& context = resourceManager.GetResource<Renderer::VulkanContext>();
-    auto& drawImage = resourceManager.GetResource<Renderer::DrawImage>();
-
-    VkShaderModule vertShader;
-    if (!Renderer::Utils::LoadShader(
-            "../../shaders/shader.vert.spv", context->device, &vertShader)) {
-        fmt::println(stderr, "Failed to load vertex shader");
-        throw std::runtime_error("Failed to load vertex shader");
-    }
-
-    VkShaderModule fragShader;
-    if (!Renderer::Utils::LoadShader(
-            "../../shaders/shader.frag.spv", context->device, &fragShader)) {
-        fmt::println(stderr, "Failed to load frag shader");
-        throw std::runtime_error("Failed to load fragment shader");
-    }
-
-    VkPipelineLayout pipelineLayout;
-
-    VkPipelineLayoutCreateInfo pipeline_layout_info =
-        Cel::Renderer::Initialisers::PipelineLayoutCreateInfo();
-    Renderer::VkCheck(vkCreatePipelineLayout(
-        context->device, &pipeline_layout_info, nullptr, &pipelineLayout));
-
-    Renderer::PipelineBuilder pipelineBuilder;
-
-    // use the triangle layout we created
-    pipelineBuilder.pipelineLayout = pipelineLayout;
-    // connecting the vertex and pixel shaders to the pipeline
-    pipelineBuilder.SetShaders(vertShader, fragShader);
-    // it will draw triangles
-    pipelineBuilder.SetInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    // filled triangles
-    pipelineBuilder.SetPolygonMode(VK_POLYGON_MODE_FILL);
-    // no backface culling
-    pipelineBuilder.SetCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
-    // no multisampling
-    pipelineBuilder.SetMutisamplingNone();
-    // no blending
-    pipelineBuilder.DisableBlending();
-    // no depth testing
-    pipelineBuilder.DisableDepthTest();
-
-    // connect the image format we will draw into, from draw image
-    pipelineBuilder.SetColourAttachment(drawImage->imageFormat);
-    pipelineBuilder.SetDepthAttachment(VK_FORMAT_UNDEFINED);
-
-    // finally build the pipeline
-    auto pipeline = pipelineBuilder.BuildPipeline(context->device);
-
-    Renderer::MeshPipeline meshPipeline{ .pipeline = pipeline };
-
-    resourceManager.InsertResource(meshPipeline);
-
-    // clean structures
-    vkDestroyShaderModule(context->device, fragShader, nullptr);
-    vkDestroyShaderModule(context->device, vertShader, nullptr);
-
-    auto& cleanup = resourceManager.GetResource<Renderer::FinalCleanup>();
-
-    cleanup->Push([=, &context]() {
-        vkDestroyPipelineLayout(context->device, pipelineLayout, nullptr);
-        vkDestroyPipeline(context->device, pipeline, nullptr);
+        vmaDestroyImage(*allocator, depth.image, depth.allocation);
     });
 }
 
 void
 InitFrameData(ResourceManager& resourceManager)
 {
-    auto& queue = resourceManager.GetResource<Renderer::GraphicsQueue>();
-    auto& context = resourceManager.GetResource<Renderer::VulkanContext>();
-    auto& cleanup = resourceManager.GetResource<Renderer::FinalCleanup>();
+    auto& queue = resourceManager.GetResource<GraphicsQueue>();
+    auto& context = resourceManager.GetResource<VulkanContext>();
+    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
-    Renderer::CurrentFrameData currentFrameData{ .totalFrames =
-                                                     Renderer::FRAME_OVERLAP };
+    CurrentFrameData currentFrameData{ .totalFrames = FRAME_OVERLAP };
 
     VkCommandPoolCreateInfo commandPoolCreateInfo =
-        Renderer::Initialisers::CommandPoolCreateInfo(
+        Initialisers::CommandPoolCreateInfo(
             queue->family, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
     VkFenceCreateInfo fenceCreateInfo =
-        Renderer::Initialisers::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+        Initialisers::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
     VkSemaphoreCreateInfo semaphoreCreateInfo =
-        Renderer::Initialisers::SemaphoreCreateInfo();
+        Initialisers::SemaphoreCreateInfo();
 
     // Create per frame resources
-    for (int i = 0; i < Renderer::FRAME_OVERLAP; i++) {
-        Renderer::FrameData frameData{};
+    for (int i = 0; i < FRAME_OVERLAP; i++) {
+        FrameData frameData{};
 
         // Firstly create command pool / buffer
-        Renderer::VkCheck(vkCreateCommandPool(context->device,
-                                              &commandPoolCreateInfo,
-                                              nullptr,
-                                              &frameData.commandPool));
+        VkCheck(vkCreateCommandPool(context->device,
+                                    &commandPoolCreateInfo,
+                                    nullptr,
+                                    &frameData.commandPool));
 
         VkCommandBufferAllocateInfo commandBufferAllocateInfo =
-            Renderer::Initialisers::CommandBufferAllocateInfo(
-                frameData.commandPool, 1);
+            Initialisers::CommandBufferAllocateInfo(frameData.commandPool, 1);
 
-        Renderer::VkCheck(vkAllocateCommandBuffers(context->device,
-                                                   &commandBufferAllocateInfo,
-                                                   &frameData.commandBuffer));
+        VkCheck(vkAllocateCommandBuffers(context->device,
+                                         &commandBufferAllocateInfo,
+                                         &frameData.commandBuffer));
 
         // Next create synchronisation primitives
-        Renderer::VkCheck(vkCreateFence(context->device,
-                                        &fenceCreateInfo,
-                                        nullptr,
-                                        &frameData.renderFence));
+        VkCheck(vkCreateFence(context->device,
+                              &fenceCreateInfo,
+                              nullptr,
+                              &frameData.renderFence));
 
-        Renderer::VkCheck(vkCreateSemaphore(context->device,
-                                            &semaphoreCreateInfo,
-                                            nullptr,
-                                            &frameData.acquireSemaphore));
+        VkCheck(vkCreateSemaphore(context->device,
+                                  &semaphoreCreateInfo,
+                                  nullptr,
+                                  &frameData.acquireSemaphore));
 
         currentFrameData.frames.push_back(frameData);
 
@@ -333,20 +291,19 @@ InitFrameData(ResourceManager& resourceManager)
     }
 
     // Lastly create resources for immediate submit
-    Renderer::ImmediateSubmit immediate{};
-    Renderer::VkCheck(vkCreateCommandPool(context->device,
-                                          &commandPoolCreateInfo,
-                                          nullptr,
-                                          &immediate.commandPool));
+    ImmediateSubmit immediate{};
+    VkCheck(vkCreateCommandPool(context->device,
+                                &commandPoolCreateInfo,
+                                nullptr,
+                                &immediate.commandPool));
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo =
-        Renderer::Initialisers::CommandBufferAllocateInfo(immediate.commandPool,
-                                                          1);
+        Initialisers::CommandBufferAllocateInfo(immediate.commandPool, 1);
 
-    Renderer::VkCheck(vkAllocateCommandBuffers(
+    VkCheck(vkAllocateCommandBuffers(
         context->device, &commandBufferAllocateInfo, &immediate.commandBuffer));
 
-    Renderer::VkCheck(vkCreateFence(
+    VkCheck(vkCreateFence(
         context->device, &fenceCreateInfo, nullptr, &immediate.fence));
 
     resourceManager.InsertResource(immediate);
@@ -359,13 +316,195 @@ InitFrameData(ResourceManager& resourceManager)
 }
 
 void
-Renderer::VulkanInitialiser::Initialise(ResourceManager& resourceManager)
+InitAssetServer(ResourceManager& resourceManager)
+{
+    auto& context = resourceManager.GetResource<VulkanContext>();
+    auto& queue = resourceManager.GetResource<GraphicsQueue>();
+    auto& allocator = resourceManager.GetResource<VmaAllocator>();
+    auto& immediate = resourceManager.GetResource<ImmediateSubmit>();
+
+    resourceManager.InsertResource<AssetServer>(
+        context, allocator, immediate, queue);
+}
+
+void
+InitDescriptorData(ResourceManager& resourceManager)
+{
+    auto& context = resourceManager.GetResource<VulkanContext>();
+    auto& frameData = resourceManager.GetResource<CurrentFrameData>();
+    auto& assetServer = resourceManager.GetResource<AssetServer>();
+
+    GlobalDescriptorData global{};
+
+    std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
+    };
+
+    global.allocator.Init(context->device, 10, sizes);
+
+    // Set material layout, initially handled by the asset server
+    global.materialLayout = assetServer->materialLayout;
+
+    // Set scene layout
+    {
+        DescriptorLayoutBuilder builder;
+        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        builder.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        VkDescriptorSetLayoutBindingFlagsCreateInfo bindFlags = {
+            .sType =
+                VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+            .pNext = nullptr
+        };
+
+        std::array<VkDescriptorBindingFlags, 2> flagArray{
+            0,
+            VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
+                VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
+        };
+
+        builder.bindings[1].descriptorCount = 4048;
+
+        bindFlags.bindingCount = 2;
+        bindFlags.pBindingFlags = flagArray.data();
+
+        global.sceneLayout = builder.Build(context->device,
+                                           VK_SHADER_STAGE_VERTEX_BIT |
+                                               VK_SHADER_STAGE_FRAGMENT_BIT,
+                                           &bindFlags);
+    }
+
+    auto& frames = frameData->frames;
+    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
+
+    for (int i = 0; i < FRAME_OVERLAP; i++) {
+        // create a descriptor pool
+        std::vector<DescriptorAllocator::PoolSizeRatio> frameSizes = {
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 },
+        };
+
+        frames[i].descriptorAllocator.Init(context->device, 1000, frameSizes);
+
+        cleanup->Push(
+            [&, i]() { frames[i].descriptorAllocator.DestroyPools(); });
+    }
+
+    resourceManager.InsertResource(global);
+
+    cleanup->Push([&]() {
+        vkDestroyDescriptorSetLayout(
+            context->device, global.sceneLayout, nullptr);
+        vkDestroyDescriptorSetLayout(
+            context->device, global.materialLayout, nullptr);
+    });
+}
+
+void
+InitPipeline(ResourceManager& resourceManager)
+{
+    auto& context = resourceManager.GetResource<VulkanContext>();
+    auto& drawImage = resourceManager.GetResource<DrawImage>();
+    auto& depthImage = resourceManager.GetResource<DepthImage>();
+    auto& global = resourceManager.GetResource<GlobalDescriptorData>();
+
+    VkShaderModule vertShader;
+    if (!Utils::LoadShader(
+            "../../shaders/shader.vert.spv", context->device, &vertShader)) {
+        ThrowError("Failed to load vertex shader");
+    }
+
+    VkShaderModule fragShader;
+    if (!Utils::LoadShader(
+            "../../shaders/shader.frag.spv", context->device, &fragShader)) {
+        ThrowError("Failed to load vertex shader");
+    }
+
+    // Push constants include the entities global transform, as well as a 3x3
+    // normal transform matrix (stored as mat4 for alignment)
+    VkPushConstantRange matrixRange = {};
+    matrixRange.offset = 0;
+    matrixRange.size = sizeof(EntityPushConstants);
+    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    DescriptorLayoutBuilder layoutBuilder;
+    layoutBuilder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    layoutBuilder.Build(context->device,
+                        VK_SHADER_STAGE_VERTEX_BIT |
+                            VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    VkDescriptorSetLayout layouts[] = { global->sceneLayout,
+                                        global->materialLayout };
+
+    VkPipelineLayoutCreateInfo meshLayoutInfo =
+        Initialisers::PipelineLayoutCreateInfo();
+    meshLayoutInfo.setLayoutCount = 2;
+    meshLayoutInfo.pSetLayouts = layouts;
+    meshLayoutInfo.pPushConstantRanges = &matrixRange;
+    meshLayoutInfo.pushConstantRangeCount = 1;
+
+    VkPipelineLayout pipelineLayout;
+    VkCheck(vkCreatePipelineLayout(
+        context->device, &meshLayoutInfo, nullptr, &pipelineLayout));
+
+    // #####################
+
+    PipelineBuilder pipelineBuilder;
+
+    // use the triangle layout we created
+    pipelineBuilder.pipelineLayout = pipelineLayout;
+    // connecting the vertex and pixel shaders to the pipeline
+    pipelineBuilder.SetShaders(vertShader, fragShader);
+    // it will draw triangles
+    pipelineBuilder.SetInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    // filled triangles
+    pipelineBuilder.SetPolygonMode(VK_POLYGON_MODE_FILL);
+    // no backface culling
+    pipelineBuilder.SetCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+    // no multisampling
+    pipelineBuilder.SetMutisamplingNone();
+    // Enable blending later once I figure it out
+    pipelineBuilder.DisableBlending();
+    // enable depth test
+    pipelineBuilder.EnableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+
+    // connect the image format we will draw into, from draw image
+    pipelineBuilder.SetColourAttachment(drawImage->imageFormat);
+    pipelineBuilder.SetDepthAttachment(depthImage->imageFormat);
+
+    // finally build the pipeline
+    auto pipeline = pipelineBuilder.BuildPipeline(context->device);
+
+    MeshPipeline meshPipeline{ .pipeline = pipeline, .layout = pipelineLayout };
+
+    resourceManager.InsertResource(meshPipeline);
+
+    // clean structures
+    vkDestroyShaderModule(context->device, fragShader, nullptr);
+    vkDestroyShaderModule(context->device, vertShader, nullptr);
+
+    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
+
+    cleanup->Push([=, &context]() {
+        vkDestroyPipelineLayout(context->device, pipelineLayout, nullptr);
+        vkDestroyPipeline(context->device, pipeline, nullptr);
+    });
+}
+
+void
+VulkanInitialiser::Initialise(ResourceManager& resourceManager)
 {
     resourceManager.InsertResource(FinalCleanup{});
     resourceManager.InsertResource<RenderExtent>();
+
     InitVulkan(resourceManager);
     InitSwapchain(resourceManager);
     InitDrawImages(resourceManager);
     InitFrameData(resourceManager);
-    InitTrianglePipeline(resourceManager);
+    InitAssetServer(resourceManager);
+    InitDescriptorData(resourceManager);
+    InitPipeline(resourceManager);
 }

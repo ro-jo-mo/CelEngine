@@ -287,8 +287,7 @@ void
 AssetServer::WriteMaterialDescriptors(Material& material,
                                       DescriptorAllocator& descriptorAllocator)
 {
-    material.materialSet =
-        descriptorAllocator.Allocate(context.device, materialLayout);
+    material.materialSet = descriptorAllocator.Allocate(materialLayout);
 
     descriptorWriter.Clear();
 
@@ -485,7 +484,7 @@ AssetServer::LoadAsset(const char* filepath)
     size_t imageOffset = images.size();
     size_t samplerOffset = samplers.size();
 
-    DescriptorAllocator descriptorAllocator;
+    DescriptorAllocator descriptorAllocator{};
     std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },

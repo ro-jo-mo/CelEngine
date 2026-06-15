@@ -4,6 +4,7 @@
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <vulkan/vulkan.h>
 
 namespace Cel::Renderer {
 

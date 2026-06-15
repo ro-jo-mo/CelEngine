@@ -1,5 +1,9 @@
 #pragma once
 
+#include "DeletionQueue.h"
+#include "Descriptors.h"
+
+#include <glm/glm.hpp>
 #include <vector>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan_core.h>
@@ -21,6 +25,7 @@ struct Swapchain
 struct MeshPipeline
 {
     VkPipeline pipeline;
+    VkPipelineLayout layout;
 };
 
 struct GraphicsQueue
@@ -43,6 +48,8 @@ struct FrameData
     VkCommandBuffer commandBuffer;
     VkSemaphore acquireSemaphore;
     VkFence renderFence;
+    DescriptorAllocator descriptorAllocator;
+    PerFrameCleanup toDelete;
 };
 
 struct ImmediateSubmit
@@ -57,7 +64,7 @@ struct CurrentFrameData
     std::vector<FrameData> frames;
     size_t currentFrame;
     const size_t totalFrames;
-    FrameData Get() const { return frames[currentFrame]; }
+    [[nodiscard]] FrameData Get() const { return frames[currentFrame]; }
     void Update() { currentFrame = (currentFrame + 1) % totalFrames; }
 };
 
@@ -65,6 +72,20 @@ struct RenderExtent
 {
     VkExtent2D extent;
     float renderScale = 1.0f;
+};
+
+// Constants unique to each entity
+struct EntityPushConstants
+{
+    glm::mat4 transform;
+    glm::mat4 normalTransform;
+};
+
+struct GlobalDescriptorData
+{
+    DescriptorAllocator allocator;
+    VkDescriptorSetLayout sceneLayout;
+    VkDescriptorSetLayout materialLayout;
 };
 
 struct AllocatedBuffer

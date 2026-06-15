@@ -1,23 +1,36 @@
 #include "renderer/Draw.h"
 
+#include "renderer/Camera.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanUtils.h"
 
-using namespace Cel::Renderer;
 using namespace Cel;
+using namespace Cel::Renderer;
 
 void
-DrawGeometry(Resource<DrawImage>& drawImage,
-             Resource<RenderExtent>& renderExtent,
-             VkCommandBuffer& cmd,
-             Resource<MeshPipeline>& pipeline)
+DrawGeometry(
+    Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
+    Query<With<Camera>>& cameras,
+    Resource<DrawImage>& drawImage,
+    Resource<DepthImage>& depthImage,
+    Resource<RenderExtent>& renderExtent,
+    VkCommandBuffer& cmd,
+    Resource<MeshPipeline>& pipeline,
+    Resource<AssetServer>& assetServer,
+    Resource<Camera>& camera,
+    Resource<GlobalDescriptorData>& globalDescriptors)
 {
     VkRenderingAttachmentInfo colourAttachment =
         Initialisers::AttachmentInfo(drawImage->imageView,
                                      nullptr,
                                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    VkRenderingAttachmentInfo depthAttachment =
+        Initialisers::DepthAttachmentInfo(
+            depthImage->imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
     VkRenderingInfo renderInfo = Initialisers::RenderingInfo(
-        renderExtent->extent, &colourAttachment, nullptr);
+        renderExtent->extent, &colourAttachment, &depthAttachment);
 
     vkCmdBeginRendering(cmd, &renderInfo);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
@@ -40,19 +53,37 @@ DrawGeometry(Resource<DrawImage>& drawImage,
 
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-    vkCmdDraw(cmd, 3, 1, 0, 0);
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipeline->layout,
+                            0,
+                            1,
+                            &globalDescriptors->sceneLayout,
+                            0,
+                            nullptr);
 
+    for (const auto& [transform, mesh, material] : renderables) {
+        // Get stuff from asset server
+        // Bind stuff
+        // Draw cmd
+    }
     vkCmdEndRendering(cmd);
 }
 
 void
-Cel::Renderer::Draw::Run(Resource<VulkanContext>& context,
-                         Resource<Swapchain>& swapchain,
-                         Resource<GraphicsQueue>& graphicsQueue,
-                         Resource<DrawImage>& drawImage,
-                         Resource<MeshPipeline>& pipeline,
-                         Resource<RenderExtent>& renderExtent,
-                         Resource<CurrentFrameData>& currentFrameData)
+Draw::Run(
+    Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
+    Query<With<Camera>>& cameras,
+    Resource<VulkanContext>& context,
+    Resource<Swapchain>& swapchain,
+    Resource<GraphicsQueue>& graphicsQueue,
+    Resource<DrawImage>& drawImage,
+    Resource<DepthImage>& depthImage,
+    Resource<MeshPipeline>& pipeline,
+    Resource<RenderExtent>& renderExtent,
+    Resource<CurrentFrameData>& currentFrameData,
+    Resource<AssetServer>& assetServer,
+    Resource<GlobalDescriptorData>& globalDescriptors)
 {
     auto frameData = currentFrameData->Get();
     VkCheck(vkWaitForFences(
@@ -84,10 +115,13 @@ Cel::Renderer::Draw::Run(Resource<VulkanContext>& context,
                                  drawImage->image,
                                  VK_IMAGE_LAYOUT_UNDEFINED,
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
+    Utils::TransitionImageLayout(cmd,
+                                 depthImage->image,
+                                 VK_IMAGE_LAYOUT_UNDEFINED,
+                                 VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
     // DRAW GEOMETRY HERE
 
-    DrawGeometry(drawImage, renderExtent, cmd, pipeline);
+    DrawGeometry(renderables, drawImage, renderExtent, cmd, pipeline);
 
     // DRAWING FINISHED
     Utils::TransitionImageLayout(cmd,
@@ -148,9 +182,9 @@ Cel::Renderer::Draw::Run(Resource<VulkanContext>& context,
 }
 
 void
-Cel::Renderer::SetRenderExtent::Run(Resource<RenderExtent>& renderExtent,
-                                    Resource<DrawImage>& drawImage,
-                                    Resource<Swapchain>& swapchain)
+SetRenderExtent::Run(Resource<RenderExtent>& renderExtent,
+                     Resource<DrawImage>& drawImage,
+                     Resource<Swapchain>& swapchain)
 {
     renderExtent->extent.height =
         std::min(swapchain->extent.height, drawImage->imageExtent.height) *
@@ -159,3 +193,5 @@ Cel::Renderer::SetRenderExtent::Run(Resource<RenderExtent>& renderExtent,
         std::min(swapchain->extent.width, drawImage->imageExtent.width) *
         renderExtent->renderScale;
 }
+
+auto x = SetRenderExtent::Run;

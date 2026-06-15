@@ -1,28 +1,34 @@
 #pragma once
 
 namespace Cel {
-/**
- * @brief An enum for schedule states
- */
-enum Schedule : std::size_t
+
+enum class UpdateType : uint8_t
 {
-    PreStartup,
-    Startup,
-    PostStartup,
-
-    PreFixedUpdate,
     FixedUpdate,
-    PostFixedUpdate,
-
-    PreUpdate,
-    Update,
-    PostUpdate,
-
-    FinalUpdate,
-    Render,
-
-    Cleanup,
-
-    SIZE
+    DynamicUpdate,
+    OneShot
 };
+
+// Move this to physics plugin at a later stage
+enum class PhysicsUpdate : uint8_t
+{
+    First,
+    Pre,
+    Update,
+    Post,
+    Final
+};
+
+enum class MainUpdate : uint8_t
+{
+    First,
+    Pre,
+    Update,
+    Post,
+    Final
+};
+
+// Add schedule
+// typeid(PhysicsUpdate)
+
 }

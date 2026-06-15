@@ -6,16 +6,19 @@
 
 void
 Cel::Renderer::DescriptorAllocator::Init(
-    const VkDevice device,
+    VkDevice vkdevice,
+
     const uint32_t initialSets,
     const std::span<PoolSizeRatio> poolRatios)
 {
+    device = vkdevice;
+
     ratios.clear();
     for (auto r : poolRatios) {
         ratios.push_back(r);
     }
 
-    VkDescriptorPool newPool = CreatePool(device, initialSets, poolRatios);
+    VkDescriptorPool newPool = CreatePool(initialSets, poolRatios);
 
     setsPerPool = initialSets * 1.5;
 
@@ -23,7 +26,7 @@ Cel::Renderer::DescriptorAllocator::Init(
 }
 
 void
-Cel::Renderer::DescriptorAllocator::ClearPools(VkDevice device)
+Cel::Renderer::DescriptorAllocator::ClearPools()
 {
     for (auto p : readyPools) {
         vkResetDescriptorPool(device, p, 0);
@@ -36,7 +39,7 @@ Cel::Renderer::DescriptorAllocator::ClearPools(VkDevice device)
 }
 
 void
-Cel::Renderer::DescriptorAllocator::DestroyPools(VkDevice device)
+Cel::Renderer::DescriptorAllocator::DestroyPools()
 {
     for (auto p : readyPools) {
         vkDestroyDescriptorPool(device, p, nullptr);
@@ -49,12 +52,11 @@ Cel::Renderer::DescriptorAllocator::DestroyPools(VkDevice device)
 }
 
 VkDescriptorSet
-Cel::Renderer::DescriptorAllocator::Allocate(VkDevice device,
-                                             VkDescriptorSetLayout layout,
+Cel::Renderer::DescriptorAllocator::Allocate(VkDescriptorSetLayout layout,
                                              const void* pNext)
 {
     // get or create a pool to allocate from
-    VkDescriptorPool poolToUse = GetPool(device);
+    VkDescriptorPool poolToUse = GetPool();
 
     VkDescriptorSetAllocateInfo allocInfo = {};
     allocInfo.pNext = pNext;
@@ -71,7 +73,7 @@ Cel::Renderer::DescriptorAllocator::Allocate(VkDevice device,
         result == VK_ERROR_FRAGMENTED_POOL) {
 
         fullPools.push_back(poolToUse);
-        poolToUse = GetPool(device);
+        poolToUse = GetPool();
         allocInfo.descriptorPool = poolToUse;
 
         VkCheck(vkAllocateDescriptorSets(device, &allocInfo, &ds));
@@ -82,7 +84,7 @@ Cel::Renderer::DescriptorAllocator::Allocate(VkDevice device,
 }
 
 VkDescriptorPool
-Cel::Renderer::DescriptorAllocator::GetPool(VkDevice device)
+Cel::Renderer::DescriptorAllocator::GetPool()
 {
     VkDescriptorPool newPool;
     if (readyPools.size() != 0) {
@@ -90,7 +92,7 @@ Cel::Renderer::DescriptorAllocator::GetPool(VkDevice device)
         readyPools.pop_back();
     } else {
         // need to create a new pool
-        newPool = CreatePool(device, setsPerPool, ratios);
+        newPool = CreatePool(setsPerPool, ratios);
 
         setsPerPool = setsPerPool * 1.5;
         if (setsPerPool > 4092) {
@@ -103,7 +105,6 @@ Cel::Renderer::DescriptorAllocator::GetPool(VkDevice device)
 
 VkDescriptorPool
 Cel::Renderer::DescriptorAllocator::CreatePool(
-    VkDevice device,
     const uint32_t setCount,
     const std::span<PoolSizeRatio> poolRatios)
 {
@@ -242,7 +243,7 @@ Cel::Renderer::DescriptorWriter::UpdateSet(VkDevice device, VkDescriptorSet set)
 
 uint32_t
 Cel::Renderer::TextureCache::AddTexture(VkImageView imageView,
-                                                VkSampler sampler)
+                                        VkSampler sampler)
 {
     for (const auto& [i, descriptor] :
          std::ranges::views::enumerate(descriptors)) {
@@ -252,7 +253,7 @@ Cel::Renderer::TextureCache::AddTexture(VkImageView imageView,
         }
     }
 
-    uint32_t i = descriptors.size();
+    const uint32_t i = descriptors.size();
 
     descriptors.push_back(VkDescriptorImageInfo{
         .sampler = sampler,

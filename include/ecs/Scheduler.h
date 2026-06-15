@@ -1,113 +1,121 @@
 #pragma once
 
-#include <vector>
-#include "Schedule.h"
 #include "ScheduleGraph.h"
+#include <vector>
 
 namespace Cel {
+
+class RelativeScheduler
+{
+  public:
+    RelativeScheduler(ScheduleGraph& graph, void* system)
+        : graph(graph)
+        , exit{ system }
+        , entrance{ system }
+    {
+    }
+
+    RelativeScheduler(ScheduleGraph& graph, void* start, void* end)
+        : graph(graph)
+        , exit{ end }
+        , entrance{ start }
+    {
+    }
+
+    RelativeScheduler(ScheduleGraph& graph, std::vector<void*>&& systems)
+        : graph(graph)
+        , exit(systems)
+        , entrance(systems)
+    {
+    }
+
+    RelativeScheduler& After(const RelativeScheduler& runsBefore);
+
+    RelativeScheduler& After(const void* runsBefore);
+
+    RelativeScheduler& Before(const RelativeScheduler& runsAfter);
+
+    RelativeScheduler& Before(const void* runsAfter);
+
+  private:
+    ScheduleGraph& graph;
+    std::vector<void*> exit;
+    std::vector<void*> entrance;
+};
+
+/**
+ * @brief A class for scheduling new systems
+ */
+class Scheduler
+{
+  public:
+    explicit Scheduler(auto& scdl)
+        : schedules(scdl)
+    {
+    }
+
     /**
-     * @brief A class for scheduling new systems
+     * @brief Add a new system to this schedule
+     * @tparam System System function type
+     * @param schedule Schedule to add this system to i.e (update, fixed update,
+     * ...)
+     * @param system System to add
+     * @return A scheduling object for ordering this system relative to others
      */
-    class Scheduler {
-    public:
-        explicit Scheduler(auto &scdl) : schedules(scdl) {
-        }
+    template<typename Schedule, typename System>
+    RelativeScheduler AddSystem(Schedule schedule, System system);
 
-        /**
-         * @brief A helper class for chaining scheduling calls
-         * @tparam First FIX ME
-         * @tparam Last FIX ME
-         */
-        template<typename First, typename Last>
-        class SystemScheduler;
+    template<typename Schedule, typename... Systems>
+    RelativeScheduler AddGroup(Schedule schedule, Systems... systems);
 
-        /**
-         * @brief Add a new system to this schedule
-         * @tparam System System to schedule
-         * @param schedule Schedule to add this system to (update, fixed update, ...)
-         * @return A scheduling object for ordering this system relative to others
-         */
-        template<typename System>
-        SystemScheduler<System, System> AddSystem(Schedule schedule);
+    template<typename Schedule, typename... Systems>
+    RelativeScheduler AddChain(Schedule schedule, Systems... systems);
 
-        /**
-         * FIX ME
-         * @tparam First
-         * @tparam Second
-         * @tparam Others
-         * @param schedule
-         * @return
-         */
-        template<typename First, typename Second, typename... Others>
-        auto Chain(Schedule schedule);
+  private:
+    std::vector<ScheduleGraph>& schedules;
+};
 
-    private:
-        template<typename First, typename Second, typename... Others>
-        void AddEdges(ScheduleGraph &graph);
+template<typename Schedule, typename System>
+RelativeScheduler
+Scheduler::AddSystem(Schedule schedule, System system)
+{
+    auto& graph = schedules[schedule];
+    graph.AddNode(system);
+    return RelativeScheduler{ graph, reinterpret_cast<void*>(&system) };
+}
 
-        std::vector<ScheduleGraph> &schedules;
-    };
+template<typename Schedule, typename... Systems>
+RelativeScheduler
+Scheduler::AddGroup(Schedule schedule, Systems... systems)
+{
+    auto& graph = schedules[schedule];
+    (void(graph.AddNode(systems)), ...);
 
-    template<typename First, typename Last>
-    class Scheduler::SystemScheduler {
-    public:
-        explicit SystemScheduler
-        (ScheduleGraph &scdl) : schedule(scdl) {
-        }
+    return RelativeScheduler{ graph, { reinterpret_cast<void*>(&systems)... } };
+}
 
-        template<typename T>
-        SystemScheduler After();
+template<typename Schedule, typename... Systems>
+RelativeScheduler
+Scheduler::AddChain(Schedule schedule, Systems... systems)
+{
+    auto& graph = schedules[schedule];
+    (void(graph.AddNode(systems)), ...);
 
-        template<typename T>
-        SystemScheduler Before();
+    auto tuple = std::make_tuple(systems...);
+    constexpr size_t SIZE = sizeof...(Systems);
 
-    private:
-        ScheduleGraph &schedule;
-    };
+    [&]<size_t... Index>(std::index_sequence<Index...>) {
+        (void(
+             graph.AddEdge(std::get<Index>(tuple), std::get<Index + 1>(tuple))),
+         ...);
+    }(std::make_index_sequence<SIZE - 1>{});
 
-    template<typename System>
-    Scheduler::SystemScheduler<System, System> Scheduler::AddSystem(const Schedule schedule) {
-        auto &graph = schedules[schedule];
-        graph.AddNode<System>();
-        return SystemScheduler<System, System>(graph);
-    }
+    auto first = std::get<0>(tuple);
+    auto last = std::get<SIZE - 1>(tuple);
 
-    template<typename First, typename Second, typename... Others>
-    auto Scheduler::Chain(
-        const Schedule schedule) {
-        auto &graph = schedules[schedule];
-        graph.AddNode<First>();
-        graph.AddNode<Second>();
-        (void(graph.AddNode<Others>()), ...);
-        graph.AddEdge<First, Second>();
-        if constexpr (sizeof...(Others) > 0) {
-            AddEdges<Second, Others...>(graph);
-            using Last = std::tuple_element_t<(sizeof...(Others) - 1), std::tuple<Others...> >;
-            return SystemScheduler<First, Last>(graph);
-        }
-        return SystemScheduler<First, Second>(graph);
-    }
+    return RelativeScheduler{ graph,
+                              reinterpret_cast<void*>(&first),
+                              reinterpret_cast<void*>(&last) };
+}
 
-    template<typename First, typename Second, typename... Others>
-    void Scheduler::AddEdges(ScheduleGraph &graph) {
-        graph.AddEdge<First, Second>();
-        if (sizeof...(Others) > 0) {
-            AddEdges<Second, Others...>(graph);
-        }
-    }
-
-
-    template<typename First, typename Last>
-    template<typename T>
-    Scheduler::SystemScheduler<First, Last> Scheduler::SystemScheduler<First, Last>::After() {
-        schedule.AddEdge<T, First>();
-        return *this;
-    }
-
-    template<typename First, typename Last>
-    template<typename T>
-    Scheduler::SystemScheduler<First, Last> Scheduler::SystemScheduler<First, Last>::Before() {
-        schedule.AddEdge<Last, T>();
-        return *this;
-    }
 }
