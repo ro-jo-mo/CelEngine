@@ -14,9 +14,6 @@ struct Window
     SDL_Window* window;
 };
 
-class WindowSystem final : public System<Resource<Window>, Resource<Running>>
-{
-  public:
-    void Run(Resource<Window>& window, Resource<Running>& isRunning) override;
-};
+void
+WindowSystem(Resource<Window>& window, Resource<Running>& isRunning);
 }

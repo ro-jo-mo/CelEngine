@@ -9,23 +9,7 @@
 
 namespace Cel::Renderer {
 
-class Draw
-    : public System<
-          Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>,
-          Query<With<Camera>>,
-          Resource<VulkanContext>,
-          Resource<Swapchain>,
-          Resource<GraphicsQueue>,
-          Resource<DrawImage>,
-          Resource<DepthImage>,
-          Resource<MeshPipeline>,
-          Resource<RenderExtent>,
-          Resource<CurrentFrameData>,
-          Resource<AssetServer>,
-          Resource<GlobalDescriptorData>>
-{
-  public:
-    void Run(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>&
+void Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>&
                  renderables,
              Query<With<Camera>>& cameras,
              Resource<VulkanContext>& context,
@@ -37,17 +21,11 @@ class Draw
              Resource<RenderExtent>& renderExtent,
              Resource<CurrentFrameData>& currentFrameData,
              Resource<AssetServer>& assetServer,
-             Resource<GlobalDescriptorData>& globalDescriptors) override;
-};
+             Resource<GlobalDescriptorData>& globalDescriptors);
 
-class SetRenderExtent
-    : public System<Resource<RenderExtent>,
-                    Resource<DrawImage>,
-                    Resource<Swapchain>>
-{
-  public:
-    void Run(Resource<RenderExtent>&,
-             Resource<DrawImage>&,
-             Resource<Swapchain>&) override;
-};
+
+void
+SetRenderExtent(Resource<RenderExtent>& renderExtent,
+                Resource<DrawImage>& drawImage,
+                Resource<Swapchain>& swapchain);
 }

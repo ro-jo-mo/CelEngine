@@ -101,7 +101,7 @@ PropagateThroughChildren(
 }
 
 void
-HierarchyPropagation::Run(
+HierarchyPropagation(
     Query<With<GlobalTransform,
                const Position,
                const Rotation,

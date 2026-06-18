@@ -18,20 +18,17 @@ class ScheduleGraph
 
     /**
      * @brief Add a new system to the graph, with no edges
-     * @tparam T System type
+     * @tparam System System type
      */
-    template<typename T>
-    void AddNode(T t);
+    template<typename System>
+    void AddNode(System system);
 
     /**
-     * @brief Introduce a new edge between to systems (From -> To)
-     * @tparam From System type
-     * @tparam To System type
+     * @brief  Add an edge marking "from" as a dependency for "to"
+     * @param from Function pointer
+     * @param to Function pointer
      */
-    template<typename From, typename To>
-    void AddEdge();
-
-    void AddEdge(std::type_index from, std::type_index to);
+    void AddEdge(void* from, void* to);
 
     /**
      * @brief Serial execution of this DAG
@@ -44,8 +41,7 @@ class ScheduleGraph
      * @param id System id to run
      * @param executed A set of already executed systems
      */
-    void ExecuteSystem(std::type_index id,
-                       std::unordered_set<std::type_index>& executed);
+    void ExecuteSystem(void* id, std::unordered_set<void*>& executed);
 
     /**
      * @brief Returns true if all the dependencies of this system have been run
@@ -53,40 +49,35 @@ class ScheduleGraph
      * @param executed A set of already executed systems
      * @return True if system is ready to run, false otherwise
      */
-    bool CheckRequirements(std::type_index id,
-                           std::unordered_set<std::type_index>& executed);
+    bool CheckRequirements(void* id, std::unordered_set<void*>& executed);
 
     /**
      * @brief Execute all child systems ready to go
      * @param id Parent system
      * @param executed A set of already executed systems
      */
-    void RecursivelyExecute(std::type_index id,
-                            std::unordered_set<std::type_index>& executed);
+    void RecursivelyExecute(void* id, std::unordered_set<void*>& executed);
 
-    std::unordered_map<std::type_index, std::unordered_set<std::type_index>>
-        adjacencyList{};
-    std::unordered_map<std::type_index, std::unordered_set<std::type_index>>
-        requirements{};
-    std::unordered_map<std::type_index, std::function<void()>> idToSystem{};
+    std::unordered_map<void*, std::unordered_set<void*>> adjacencyList{};
+    std::unordered_map<void*, std::unordered_set<void*>> requirements{};
+    std::unordered_map<void*, std::function<void()>> idToSystem;
+
     SystemAllocator& systemAllocator;
 };
 
-template<typename T>
+template<typename System>
 void
-ScheduleGraph::AddNode()
+ScheduleGraph::AddNode(System system)
 {
-    auto system = std::make_shared<T>();
-    idToSystem[typeid(T)] = T::Register(system, systemAllocator);
-    // Use registered items from sys allocator for dependency graphs
-    requirements[typeid(T)];
-    adjacencyList[typeid(T)];
+    // Firstly check if system already exists
+    if (idToSystem.contains(reinterpret_cast<void*>(system))) {
+        return;
+    }
+
+    idToSystem[reinterpret_cast<void*>(system)] =
+        systemAllocator.AllocateSystem(system);
+    requirements[reinterpret_cast<void*>(system)];
+    adjacencyList[reinterpret_cast<void*>(system)];
 }
 
-template<typename From, typename To>
-void
-ScheduleGraph::AddEdge()
-{
-    AddEdge(typeid(From), typeid(To));
-}
 }

@@ -21,6 +21,12 @@ Cel::Renderer::Camera::Camera3d(const float fov,
     return { fov, nearPlane, farPlane };
 }
 
+glm::mat4
+Cel::Renderer::Camera::GetViewMatrix() const
+{
+    return viewMatrix;
+}
+
 void
 Cel::Renderer::Camera::UpdateViewMatrix(const glm::mat4& transform)
 {
@@ -51,7 +57,7 @@ Cel::Renderer::Camera::GetProjectionMatrix(const VkExtent2D extent) const
 }
 
 void
-Cel::Renderer::CameraSystem::Run(Query<With<Camera, GlobalTransform>>& cameras)
+Cel::Renderer::CameraSystem(Query<With<Camera, GlobalTransform>>& cameras)
 {
     for (const auto& [camera, transform] : cameras) {
         camera.UpdateViewMatrix(transform.transform);

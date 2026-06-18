@@ -43,9 +43,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
 target_sources(${PROJECT_NAME}
         PRIVATE
         "src/ecs/EntityManager.cpp"
-        "src/ecs/Ecs.cpp"
+        "src/ecs/App.cpp"
         "src/ecs/ComponentsManager.cpp"
         "src/ecs/ScheduleGraph.cpp"
+        "src/ecs/Scheduler.cpp"
         "src/ecs/QueryManager.cpp"
 
         "src/core/World.cpp"
@@ -80,7 +81,7 @@ target_include_directories(${PROJECT_NAME}
 set(public_headers
         include/ecs/ComponentArray.h
         include/ecs/ComponentsManager.h
-        include/ecs/Ecs.h
+        include/ecs/App.h
         include/ecs/EntityManager.h
         include/ecs/Helpers.h
         include/ecs/IResource.h
@@ -92,7 +93,6 @@ set(public_headers
         include/ecs/ScheduleGraph.h
         include/ecs/Scheduler.h
         include/ecs/System.h
-        include/ecs/SystemAllocator.h
         include/ecs/QueryManager.h
         include/ecs/Types.h
         include/ecs/Query.h

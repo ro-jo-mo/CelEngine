@@ -1,22 +1,24 @@
 #pragma once
 
-#include "../ecs/ResourceManager.h"
-#include "../ecs/Scheduler.h"
+#include "ecs/ResourceManager.h"
+#include "ecs/Scheduler.h"
 
 namespace Cel {
+/**
+ * @brief Required interface for plugins
+ * Includes methods for the setup of plugin resources and systems
+ */
+class Plugin
+{
+  public:
     /**
-     * @brief Required interface for plugins
-     * Includes methods for the setup of plugin resources and systems
+     * @brief Adds the plugin to the ECS.
+     * @param scheduler Use to schedule game systems
+     * @param resourceManager Use to initialise resources
      */
-    class Plugin {
-    public:
-        /**
-         * @brief Adds the plugin to the ECS.
-         * @param scheduler Use to schedule game systems
-         * @param resourceManager Use to initialise resources
-         */
-        virtual void Build(Scheduler scheduler, ResourceManager &resourceManager) = 0;
+    virtual void Build(Scheduler scheduler,
+                       ResourceManager& resourceManager) = 0;
 
-        virtual ~Plugin() = default;
-    };
+    virtual ~Plugin() = default;
+};
 }

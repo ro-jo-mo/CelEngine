@@ -1,12 +1,12 @@
 #pragma once
 
+#include "Helpers.h"
+#include "QueryManager.h"
+#include "ResourceManager.h"
+
 #include <functional>
 
-#include "SystemAllocator.h"
-
 namespace Cel {
-
-namespace Detail {
 
 // This is a collection of type helpers for functions
 
@@ -26,8 +26,11 @@ struct FunctionType
 // Has type: int (*pointer)(float,int,...);
 // Removing variable name "pointer" results in type: int (*)(float,int,...);
 template<typename ReturnT, typename... ParameterTs>
-FunctionType<ReturnT, ParameterTs...> GetFunctionType(
-    ReturnT (*)(ParameterTs...));
+FunctionType<ReturnT, ParameterTs...>
+GetFunctionType(ReturnT (*)(ParameterTs...))
+{
+    return FunctionType<ReturnT, ParameterTs...>{};
+}
 
 // Type of a class member function:
 // int MyClass::MyFunc(float x, int y,...);
@@ -47,48 +50,86 @@ FunctionType<ReturnT, ParameterTs...> GetFunctionType(
 
 // template<typename T> auto GetFunctionType(T) ->
 // decltype(GetFunctionType(&T::operator()));
-// }
 
 /**
- * @brief Abstract base class for game systems
- * @tparam Parameters A list of queries and resources required by this system
+ * @brief Allocates resources and queries to systems.
  */
-template<typename... Parameters>
-class System
+class SystemAllocator
 {
   public:
-    virtual ~System() = default;
+    SystemAllocator(ResourceManager& resource_manager,
+                    QueryManager& query_manager)
+        : resourceManager(resource_manager)
+        , queryManager(query_manager)
+    {
+    }
 
-    /**
-     * @brief Registers this system, creating a new function with the required
-     * data captured
-     * @param system A system pointer, required for polymorphism
-     * @param allocator Resource allocator for system
-     * @return A function that runs this system with its required params.
-     * Requires no inputs.
-     */
-    static std::function<void()> Register(std::shared_ptr<System> system,
-                                          SystemAllocator& allocator);
+    template<typename System>
+    std::function<void()> AllocateSystem(System system);
 
+  private:
     /**
-     * @brief Virtual method for running the system.
-     * @param params Queries, resources needed to run
+     * @brief Registers a resource / query to the system, and returns the actual
+     * data.
+     * @tparam T Resource / query type
+     * @return The actual Resource / query
      */
-    virtual void Run(Parameters&... params) = 0;
+    template<typename T>
+    T Register();
+
+    template<typename T>
+    struct RegisterAll;
+
+    std::vector<std::type_index> registeredResources;
+    std::vector<std::type_index> registeredQueries;
+    ResourceManager& resourceManager;
+    QueryManager& queryManager;
+};
+
+// Create a simple wrapper class to allow partial template specialisation
+template<typename... Parameters>
+struct SystemAllocator::RegisterAll<ParameterList<Parameters...>>
+{
+    static std::tuple<Parameters&...> Execute(SystemAllocator& allocator);
 };
 
 template<typename... Parameters>
-std::function<void()>
-System<Parameters...>::Register(std::shared_ptr<System> system,
-                                SystemAllocator& allocator)
+std::tuple<Parameters&...>
+SystemAllocator::RegisterAll<ParameterList<Parameters...>>::Execute(
+    SystemAllocator& allocator)
 {
-    auto args = std::tuple<Parameters&...>(allocator.Register<Parameters>()...);
-    auto run = [system](auto&... _args) { system->Run(_args...); };
-
-    return [run, args = std::move(args)]() { std::apply(run, args); };
+    return std::tie(allocator.Register<Parameters>()...);
 }
 
-// Instead of creating a system class, we will simply pass a function pointer to
-// add system
+template<typename System>
+std::function<void()>
+SystemAllocator::AllocateSystem(System system)
+{
+    // ParameterList<Params...>
+    using Parameters = decltype(GetFunctionType(system))::Parameters;
+
+    auto args = RegisterAll<Parameters>::Execute(*this);
+
+    return [=, args = std::move(args)]() { std::apply(system, args); };
+}
+
+template<typename _T>
+_T
+SystemAllocator::Register()
+{
+    using T = std::remove_reference_t<_T>;
+
+    if constexpr (IsQuery<T>::value) {
+        registeredQueries.push_back(std::type_index(typeid(T)));
+        return queryManager.GetQuery<T>();
+    } else if constexpr (IsResource<T>::value) {
+        registeredResources.push_back(std::type_index(typeid(T)));
+        return resourceManager.GetResource<typename T::inner>();
+    } else {
+        static_assert(alwaysFalse<T>,
+                      "A system can only request resources and queries!");
+        return T();
+    }
+}
 
 }

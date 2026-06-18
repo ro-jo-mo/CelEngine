@@ -10,6 +10,8 @@
 - Organise public / private headers (currently all public)
 - Asynchronous asset loading
 - Split up world & commands
+- Move to Query<Get<a,b,c>,With<d,e,f>,Without<x,y,z>>
+- Update Time resource to be less silly
 
 # Later
 

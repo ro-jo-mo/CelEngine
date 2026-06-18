@@ -1,7 +1,7 @@
 #include "Test.h"
 
 #include "core/CorePlugin.h"
-#include "ecs/Ecs.h"
+#include "ecs/App.h"
 #include "renderer/RenderPlugin.h"
 
 using namespace Cel;
@@ -9,7 +9,7 @@ using namespace Cel;
 int
 main()
 {
-    Ecs ecs;
+    App ecs;
     ecs.AddPlugin<CorePlugin>().AddPlugin<Renderer::RenderPlugin>();
     ecs.Run();
 

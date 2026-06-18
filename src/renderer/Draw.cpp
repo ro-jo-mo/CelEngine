@@ -71,19 +71,18 @@ DrawGeometry(
 }
 
 void
-Draw::Run(
-    Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
-    Query<With<Camera>>& cameras,
-    Resource<VulkanContext>& context,
-    Resource<Swapchain>& swapchain,
-    Resource<GraphicsQueue>& graphicsQueue,
-    Resource<DrawImage>& drawImage,
-    Resource<DepthImage>& depthImage,
-    Resource<MeshPipeline>& pipeline,
-    Resource<RenderExtent>& renderExtent,
-    Resource<CurrentFrameData>& currentFrameData,
-    Resource<AssetServer>& assetServer,
-    Resource<GlobalDescriptorData>& globalDescriptors)
+Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
+     Query<With<Camera>>& cameras,
+     Resource<VulkanContext>& context,
+     Resource<Swapchain>& swapchain,
+     Resource<GraphicsQueue>& graphicsQueue,
+     Resource<DrawImage>& drawImage,
+     Resource<DepthImage>& depthImage,
+     Resource<MeshPipeline>& pipeline,
+     Resource<RenderExtent>& renderExtent,
+     Resource<CurrentFrameData>& currentFrameData,
+     Resource<AssetServer>& assetServer,
+     Resource<GlobalDescriptorData>& globalDescriptors)
 {
     auto frameData = currentFrameData->Get();
     VkCheck(vkWaitForFences(
@@ -182,9 +181,9 @@ Draw::Run(
 }
 
 void
-SetRenderExtent::Run(Resource<RenderExtent>& renderExtent,
-                     Resource<DrawImage>& drawImage,
-                     Resource<Swapchain>& swapchain)
+SetRenderExtent(Resource<RenderExtent>& renderExtent,
+                Resource<DrawImage>& drawImage,
+                Resource<Swapchain>& swapchain)
 {
     renderExtent->extent.height =
         std::min(swapchain->extent.height, drawImage->imageExtent.height) *
@@ -193,5 +192,3 @@ SetRenderExtent::Run(Resource<RenderExtent>& renderExtent,
         std::min(swapchain->extent.width, drawImage->imageExtent.width) *
         renderExtent->renderScale;
 }
-
-auto x = SetRenderExtent::Run;

@@ -4,11 +4,9 @@
 #include "ecs/System.h"
 
 namespace Cel::Renderer {
-class CleanupRenderer final
-    : public System<Resource<FinalCleanup>, Resource<VulkanContext>>
-{
-  public:
-    void Run(Resource<FinalCleanup>& cleanup,
-             Resource<VulkanContext>& context) override;
-};
+
+void
+CleanupRenderer(Resource<FinalCleanup>& cleanup,
+                Resource<VulkanContext>& context);
+
 }

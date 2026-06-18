@@ -15,8 +15,8 @@ Cel::Renderer::Window::Window()
 }
 
 void
-Cel::Renderer::WindowSystem::Run(Resource<Window>& window,
-                                 Resource<Running>& isRunning)
+Cel::Renderer::WindowSystem(Resource<Window>& window,
+                            Resource<Running>& isRunning)
 {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {

@@ -106,31 +106,16 @@ struct GlobalTransform
                                         const Scale& localScale);
 };
 
-class HierarchyPropagation final
-    : public System<Query<With<GlobalTransform,
-                               const Position,
-                               const Rotation,
-                               const Scale,
-                               const Children>,
-                          Without<Parent>>,
-                    Query<With<const Children>>,
-                    Query<With<GlobalTransform,
-                               const Position,
-                               const Rotation,
-                               const Scale>>>
-{
+void
+HierarchyPropagation(
+    Query<With<GlobalTransform,
+               const Position,
+               const Rotation,
+               const Scale,
+               const Children>,
+          Without<Parent>>& rootParentQuery,
+    Query<With<const Children>>& parentQuery,
+    Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
+        childQuery);
 
-  public:
-    void Run(
-        Query<With<GlobalTransform,
-                   const Position,
-                   const Rotation,
-                   const Scale,
-                   const Children>,
-              Without<Parent>>& rootParentQuery,
-        Query<With<const Children>>& parentQuery,
-        Query<
-            With<GlobalTransform, const Position, const Rotation, const Scale>>&
-            childQuery) override;
-};
 }

@@ -10,7 +10,6 @@ struct GlobalTransform;
 }
 
 namespace Cel::Renderer {
-class CameraSystem;
 
 /**
  * @brief A camera component. Can render in 2D or 3D (Orthographic/Perspective)
@@ -39,7 +38,7 @@ class Camera
 
     [[nodiscard]] glm::mat4 GetProjectionMatrix(VkExtent2D extent) const;
 
-    glm::mat4 viewMatrix = glm::mat4(1.0f);
+    [[nodiscard]] glm::mat4 GetViewMatrix() const;
 
   private:
     Camera(const float fov, const float nearPlane, const float farPlane)
@@ -53,15 +52,16 @@ class Camera
     float fov;
     float farPlane;
     float nearPlane;
+
+    glm::mat4 viewMatrix = glm::mat4(1.0f);
+
     Projection projection;
 
-    friend class CameraSystem;
+    friend void CameraSystem(Query<With<Camera, GlobalTransform>>& cameras);
 };
 
 // Update view matrix, run after transform propagation
-class CameraSystem : public System<Query<With<Camera, GlobalTransform>>>
-{
-  public:
-    void Run(Query<With<Camera, GlobalTransform>>& cameras) override;
-};
+void
+CameraSystem(Query<With<Camera, GlobalTransform>>& cameras);
+
 }

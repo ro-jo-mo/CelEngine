@@ -19,16 +19,6 @@ Cel::RelativeScheduler::After(const RelativeScheduler& runsBefore)
 }
 
 Cel::RelativeScheduler&
-Cel::RelativeScheduler::After(const void* runsBefore)
-{
-    for (const auto& entry : this->entrance) {
-        graph.AddEdge(runsBefore, entry);
-    }
-
-    return *this;
-}
-
-Cel::RelativeScheduler&
 Cel::RelativeScheduler::Before(const RelativeScheduler& runsAfter)
 {
     // The simplest way of reasoning about this is to think of a chain
@@ -41,16 +31,6 @@ Cel::RelativeScheduler::Before(const RelativeScheduler& runsAfter)
         for (const auto& entry : runsAfter.entrance) {
             graph.AddEdge(exits, entry);
         }
-    }
-
-    return *this;
-}
-
-Cel::RelativeScheduler&
-Cel::RelativeScheduler::Before(const void* runsAfter)
-{
-    for (const auto& exits : this->exit) {
-        graph.AddEdge(exits, runsAfter);
     }
 
     return *this;
