@@ -78,7 +78,14 @@ struct RenderExtent
 struct EntityPushConstants
 {
     glm::mat4 transform;
-    glm::mat4 normalTransform;
+    // glm::mat4 normalTransform;
+    VkDeviceAddress vertexBuffer;
+};
+
+struct SceneData
+{
+    glm::mat4 viewMatrix;
+    glm::mat4 projectionMatrix;
 };
 
 struct GlobalDescriptorData
@@ -100,6 +107,7 @@ struct AllocatedMeshBuffer
     AllocatedBuffer indexBuffer;
     AllocatedBuffer vertexBuffer;
     VkDeviceAddress vertexBufferAddress;
+    uint32_t indexCount;
 };
 
 namespace Detail {

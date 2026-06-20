@@ -15,7 +15,9 @@ class DescriptorAllocator
         float ratio;
     };
 
-    void Init(VkDevice device,uint32_t initialSets, std::span<PoolSizeRatio> poolRatios);
+    void Init(VkDevice device,
+              uint32_t initialSets,
+              std::span<PoolSizeRatio> poolRatios);
     void ClearPools();
     void DestroyPools();
 
@@ -61,6 +63,8 @@ class DescriptorWriter
                      size_t offset,
                      VkDescriptorType type);
 
+    void Write(VkWriteDescriptorSet set);
+
     void Clear();
     void UpdateSet(VkDevice device, VkDescriptorSet set);
 
@@ -70,13 +74,9 @@ class DescriptorWriter
     std::vector<VkWriteDescriptorSet> writes;
 };
 
-class TextureCache
+struct TextureCache
 {
-
-  public:
     uint32_t AddTexture(VkImageView imageView, VkSampler sampler);
-
-  private:
     std::vector<VkDescriptorImageInfo> descriptors;
 };
 

@@ -26,7 +26,11 @@ class Camera
         Orthographic
     };
 
-    Camera() = delete;
+    /**
+     * @brief Default constructor is required for std::array
+     * Please do not use
+     */
+    Camera() {}
 
     static Camera Camera2d();
     /**

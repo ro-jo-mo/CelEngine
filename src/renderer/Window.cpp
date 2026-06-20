@@ -1,7 +1,9 @@
 #include "renderer/Window.h"
 #include <SDL3/SDL_vulkan.h>
 
-Cel::Renderer::Window::Window()
+using namespace Cel;
+
+Renderer::Window::Window()
 {
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -15,8 +17,7 @@ Cel::Renderer::Window::Window()
 }
 
 void
-Cel::Renderer::WindowSystem(Resource<Window>& window,
-                            Resource<Running>& isRunning)
+Renderer::WindowSystem(Resource<Window>& window, Resource<Running>& isRunning)
 {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -25,4 +26,17 @@ Cel::Renderer::WindowSystem(Resource<Window>& window,
             break;
         }
     }
+}
+
+void
+Renderer::SetRenderExtent(Resource<RenderExtent>& renderExtent,
+                          Resource<DrawImage>& drawImage,
+                          Resource<Swapchain>& swapchain)
+{
+    renderExtent->extent.height =
+        std::min(swapchain->extent.height, drawImage->imageExtent.height) *
+        renderExtent->renderScale;
+    renderExtent->extent.width =
+        std::min(swapchain->extent.width, drawImage->imageExtent.width) *
+        renderExtent->renderScale;
 }

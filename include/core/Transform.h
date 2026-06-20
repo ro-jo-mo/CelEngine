@@ -9,6 +9,30 @@
 
 namespace Cel {
 
+struct Position;
+struct Rotation;
+struct Scale;
+
+struct GlobalTransform
+{
+    glm::mat4 transform;
+
+    glm::vec3 GetTranslation();
+
+    glm::quat GetRotation();
+
+    glm::vec3 GetScale();
+
+    void TransformPropagation(const GlobalTransform& parent,
+                              const Position& localPosition,
+                              const Rotation& localRotation,
+                              const Scale& localScale);
+
+    static glm::mat4 TransformFromLocal(const Position& localPosition,
+                                        const Rotation& localRotation,
+                                        const Scale& localScale);
+};
+
 // I decided to use position over translation to conform with Unity
 struct Position
 {
@@ -29,7 +53,10 @@ struct Position
     {
     }
 
-    explicit Position(const glm::mat4& transform);
+    explicit Position(const glm::mat4& transform)
+        : position(GlobalTransform{ transform }.GetTranslation())
+    {
+    }
 };
 
 struct Rotation
@@ -56,7 +83,10 @@ struct Rotation
     {
     }
 
-    explicit Rotation(const glm::mat4& transform);
+    explicit Rotation(const glm::mat4& transform)
+        : rotation(GlobalTransform{ transform }.GetRotation())
+    {
+    }
 };
 
 struct Scale
@@ -83,27 +113,10 @@ struct Scale
     {
     }
 
-    explicit Scale(const glm::mat4& transform);
-};
-
-struct GlobalTransform
-{
-    glm::mat4 transform;
-
-    glm::vec3 GetTranslation();
-
-    glm::quat GetRotation();
-
-    glm::vec3 GetScale();
-
-    void TransformPropagation(const GlobalTransform& parent,
-                              const Position& localPosition,
-                              const Rotation& localRotation,
-                              const Scale& localScale);
-
-    static glm::mat4 TransformFromLocal(const Position& localPosition,
-                                        const Rotation& localRotation,
-                                        const Scale& localScale);
+    explicit Scale(const glm::mat4& transform)
+        : scale(GlobalTransform{ transform }.GetScale())
+    {
+    }
 };
 
 void

@@ -63,7 +63,7 @@ ResourceManager::InsertResource(T resource)
 {
     if (resources.contains(typeid(Resource<std::remove_const_t<T>>))) {
         fmt::println(stderr,
-                     "Requested resource already exists {}",
+                     "Inserted resource already exists {}",
                      typeid(Resource<std::remove_const_t<T>>).name());
         abort();
     }
@@ -83,7 +83,8 @@ ResourceManager::GetResource()
                      typeid(Resource<std::remove_const_t<T>>).name());
         abort();
     }
-    const auto& ptr = resources[typeid(Resource<std::remove_const_t<T>>)];
+
+    const auto& ptr = resources.at(typeid(Resource<std::remove_const_t<T>>));
     return *static_cast<Resource<T>*>(ptr.get());
 }
 }

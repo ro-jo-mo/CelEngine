@@ -429,6 +429,7 @@ Cel::Renderer::Utils::UploadMesh(std::vector<uint32_t>& indices,
     const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
 
     AllocatedMeshBuffer newSurface;
+    newSurface.indexCount = indices.size();
 
     newSurface.vertexBuffer = CreateBuffer(
         vertexBufferSize,

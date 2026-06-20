@@ -220,6 +220,12 @@ Cel::Renderer::DescriptorWriter::WriteBuffer(const int binding,
 }
 
 void
+Cel::Renderer::DescriptorWriter::Write(VkWriteDescriptorSet set)
+{
+    writes.push_back(set);
+}
+
+void
 Cel::Renderer::DescriptorWriter::Clear()
 {
     imageInfos.clear();

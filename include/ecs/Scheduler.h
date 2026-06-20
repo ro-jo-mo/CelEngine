@@ -100,7 +100,8 @@ RelativeScheduler::Before(System runsAfter)
 class Scheduler
 {
   public:
-    explicit Scheduler(auto& schedules, SystemAllocator& systemAllocator)
+    explicit Scheduler(std::map<ScheduleKey, ScheduleGraph>& schedules,
+                       SystemAllocator& systemAllocator)
         : schedules(schedules)
         , systemAllocator(systemAllocator)
     {

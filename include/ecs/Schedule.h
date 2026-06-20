@@ -47,18 +47,45 @@ struct IsSchedule<FixedSchedule<Enum, TickRate>> : std::true_type
 enum class PhysicsUpdate : uint32_t
 {
     First,
-    Pre,
+    PreUpdate,
     Update,
-    Post,
+    PostUpdate,
     Last
 };
 
 enum class MainUpdate : uint32_t
 {
     First,
-    Pre,
+    PreUpdate,
     Update,
-    Post,
+    PostUpdate,
+    Last
+};
+
+enum class Startup : uint32_t
+{
+    First,
+    PreStart,
+    Start,
+    PostStart,
+    Last
+};
+
+// There seems little reason to have TearDown be as complexly ordered as other
+// schedules
+enum class TearDown : uint32_t
+{
+    First,
+    Middle,
+    Last
+};
+
+enum class Render : uint32_t
+{
+    First,
+    PreUpdate,
+    Update,
+    PostUpdate,
     Last
 };
 

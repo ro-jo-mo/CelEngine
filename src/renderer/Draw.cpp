@@ -8,83 +8,9 @@ using namespace Cel;
 using namespace Cel::Renderer;
 
 void
-DrawGeometry(
-    Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
-    Query<With<Camera>>& cameras,
-    Resource<DrawImage>& drawImage,
-    Resource<DepthImage>& depthImage,
-    Resource<RenderExtent>& renderExtent,
-    VkCommandBuffer& cmd,
-    Resource<MeshPipeline>& pipeline,
-    Resource<AssetServer>& assetServer,
-    Resource<Camera>& camera,
-    Resource<GlobalDescriptorData>& globalDescriptors)
+DrawData::Draw()
 {
-    VkRenderingAttachmentInfo colourAttachment =
-        Initialisers::AttachmentInfo(drawImage->imageView,
-                                     nullptr,
-                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-    VkRenderingAttachmentInfo depthAttachment =
-        Initialisers::DepthAttachmentInfo(
-            depthImage->imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-
-    VkRenderingInfo renderInfo = Initialisers::RenderingInfo(
-        renderExtent->extent, &colourAttachment, &depthAttachment);
-
-    vkCmdBeginRendering(cmd, &renderInfo);
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
-
-    VkViewport viewport{};
-    viewport.x = 0;
-    viewport.y = 0;
-    viewport.width = renderExtent->extent.width;
-    viewport.height = renderExtent->extent.height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-
-    vkCmdSetViewport(cmd, 0, 1, &viewport);
-
-    VkRect2D scissor{};
-    scissor.offset.x = 0;
-    scissor.offset.y = 0;
-    scissor.extent.width = viewport.width;
-    scissor.extent.height = viewport.height;
-
-    vkCmdSetScissor(cmd, 0, 1, &scissor);
-
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline->layout,
-                            0,
-                            1,
-                            &globalDescriptors->sceneLayout,
-                            0,
-                            nullptr);
-
-    for (const auto& [transform, mesh, material] : renderables) {
-        // Get stuff from asset server
-        // Bind stuff
-        // Draw cmd
-    }
-    vkCmdEndRendering(cmd);
-}
-
-void
-Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
-     Query<With<Camera>>& cameras,
-     Resource<VulkanContext>& context,
-     Resource<Swapchain>& swapchain,
-     Resource<GraphicsQueue>& graphicsQueue,
-     Resource<DrawImage>& drawImage,
-     Resource<DepthImage>& depthImage,
-     Resource<MeshPipeline>& pipeline,
-     Resource<RenderExtent>& renderExtent,
-     Resource<CurrentFrameData>& currentFrameData,
-     Resource<AssetServer>& assetServer,
-     Resource<GlobalDescriptorData>& globalDescriptors)
-{
-    auto frameData = currentFrameData->Get();
+    frameData = currentFrameData->Get();
     VkCheck(vkWaitForFences(
         context->device, 1, &frameData.renderFence, VK_TRUE, UINT64_MAX));
 
@@ -104,7 +30,7 @@ Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
     VkCheck(vkResetFences(context->device, 1, &frameData.renderFence));
     VkCheck(vkResetCommandBuffer(frameData.commandBuffer, 0));
 
-    auto cmd = frameData.commandBuffer;
+    cmd = frameData.commandBuffer;
     VkCommandBufferBeginInfo beginInfo = Initialisers::CommandBufferBeginInfo(
         VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -120,7 +46,7 @@ Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
                                  VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
     // DRAW GEOMETRY HERE
 
-    DrawGeometry(renderables, drawImage, renderExtent, cmd, pipeline);
+    DrawGeometry();
 
     // DRAWING FINISHED
     Utils::TransitionImageLayout(cmd,
@@ -145,6 +71,9 @@ Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
 
     VkCheck(vkEndCommandBuffer(cmd));
 
+    // RENDERING FINISHED
+
+    // Finally submit the command buffer for execution
     VkCommandBufferSubmitInfo bufferSubmitInfo =
         Initialisers::CommandBufferSubmitInfo(cmd);
 
@@ -179,16 +108,174 @@ Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
 
     currentFrameData->Update();
 }
+void
+DrawData::DrawGeometry()
+{
+    // Rendering info setup
+    VkRenderingAttachmentInfo colourAttachment =
+        Initialisers::AttachmentInfo(drawImage->imageView,
+                                     nullptr,
+                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    VkRenderingAttachmentInfo depthAttachment =
+        Initialisers::DepthAttachmentInfo(
+            depthImage->imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+    VkRenderingInfo renderInfo = Initialisers::RenderingInfo(
+        renderExtent->extent, &colourAttachment, &depthAttachment);
+
+    vkCmdBeginRendering(cmd, &renderInfo);
+
+    // Scene setup
+    auto sceneBuffer = Utils::CreateBuffer(sizeof(SceneData),
+                                           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                           VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                           *allocator);
+    {
+        auto sceneBufferData =
+            static_cast<SceneData*>(sceneBuffer.info.pMappedData);
+
+        *sceneBufferData = { .viewMatrix = camera.GetViewMatrix(),
+                             .projectionMatrix = camera.GetProjectionMatrix(
+                                 swapchain->extent) };
+    }
+
+    VkDescriptorSetVariableDescriptorCountAllocateInfo allocArrayInfo;
+    allocArrayInfo.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
+    allocArrayInfo.pNext = nullptr;
+    allocArrayInfo.descriptorSetCount = 1;
+    const uint32_t descriptorCount =
+        assetServer->textureCache.descriptors.size();
+    allocArrayInfo.pDescriptorCounts = &descriptorCount;
+
+    VkDescriptorSet sceneDescriptor = frameData.descriptorAllocator.Allocate(
+        globalDescriptors->sceneLayout, &allocArrayInfo);
+
+    DescriptorWriter writer;
+    writer.WriteBuffer(0,
+                       sceneBuffer.buffer,
+                       sizeof(SceneData),
+                       0,
+                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+    VkWriteDescriptorSet arraySet;
+    arraySet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    arraySet.descriptorCount = descriptorCount;
+    arraySet.dstArrayElement = 0;
+    arraySet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    arraySet.dstBinding = 1;
+    arraySet.pImageInfo = assetServer->textureCache.descriptors.data();
+
+    writer.Write(arraySet);
+
+    writer.UpdateSet(context->device, sceneDescriptor);
+
+    // Bind pipeline, scene descriptor, scissor etc
+    BindSceneData(sceneDescriptor);
+
+    for (const auto& [transform, mesh, material] : renderables) {
+        DrawModel(transform, mesh, material);
+    }
+
+    vkCmdEndRendering(cmd);
+}
 
 void
-SetRenderExtent(Resource<RenderExtent>& renderExtent,
-                Resource<DrawImage>& drawImage,
-                Resource<Swapchain>& swapchain)
+DrawData::BindSceneData(VkDescriptorSet sceneDescriptor) const
 {
-    renderExtent->extent.height =
-        std::min(swapchain->extent.height, drawImage->imageExtent.height) *
-        renderExtent->renderScale;
-    renderExtent->extent.width =
-        std::min(swapchain->extent.width, drawImage->imageExtent.width) *
-        renderExtent->renderScale;
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipeline->layout,
+                            0,
+                            1,
+                            &sceneDescriptor,
+                            0,
+                            nullptr);
+
+    VkViewport viewport{};
+    viewport.x = 0;
+    viewport.y = 0;
+    viewport.width = static_cast<float>(renderExtent->extent.width);
+    viewport.height = static_cast<float>(renderExtent->extent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    scissor.extent = renderExtent->extent;
+
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
+}
+
+void
+DrawData::DrawModel(GlobalTransform& transform,
+                    Handle<Mesh> meshHandle,
+                    Handle<Material> matHandle) const
+{
+    // Get stuff from asset server
+    Material material = assetServer->GetMaterial(matHandle);
+    AllocatedMeshBuffer mesh = assetServer->GetMesh(meshHandle);
+    // Bind stuff
+    // Draw cmd
+
+    // Bind current material descriptor
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            pipeline->layout,
+                            1,
+                            1,
+                            &material.materialSet,
+                            0,
+                            nullptr);
+
+    // Bind current index buffer
+    vkCmdBindIndexBuffer(cmd, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+    // Upload push constants
+    EntityPushConstants pushConstants{ .transform = transform.transform,
+                                       .vertexBuffer =
+                                           mesh.vertexBufferAddress };
+
+    vkCmdPushConstants(cmd,
+                       pipeline->layout,
+                       VK_SHADER_STAGE_VERTEX_BIT,
+                       0,
+                       sizeof(EntityPushConstants),
+                       &pushConstants);
+
+    vkCmdDrawIndexed(cmd, mesh.indexCount, 1, 0, 0, 0);
+}
+
+void
+Renderer::Draw(
+    Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
+    Query<With<Camera>>& cameras,
+    Resource<VulkanContext>& context,
+    Resource<Swapchain>& swapchain,
+    Resource<GraphicsQueue>& graphicsQueue,
+    Resource<DrawImage>& drawImage,
+    Resource<DepthImage>& depthImage,
+    Resource<MeshPipeline>& pipeline,
+    Resource<RenderExtent>& renderExtent,
+    Resource<CurrentFrameData>& currentFrameData,
+    Resource<AssetServer>& assetServer,
+    Resource<GlobalDescriptorData>& globalDescriptors,
+    Resource<VmaAllocator>& allocator)
+{
+    auto [cam] = *cameras.begin();
+
+    DrawData data = { renderables,   cameras,
+                      context,       swapchain,
+                      graphicsQueue, drawImage,
+                      depthImage,    pipeline,
+                      renderExtent,  currentFrameData,
+                      assetServer,   globalDescriptors,
+                      allocator,     cam };
+
+    data.Draw();
 }

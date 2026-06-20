@@ -56,6 +56,9 @@ class AssetServer
     VkDescriptorSetLayout materialLayout;
 
   private:
+    Material GetMaterial(Handle<Material> material) const;
+    const AllocatedMeshBuffer& GetMesh(Handle<Mesh> mesh) const;
+
     void CreateDefaults();
 
     std::optional<AllocatedImage> LoadImage(fastgltf::Asset& asset,
@@ -85,13 +88,22 @@ class AssetServer
     // These might be combined into a single struct later?
     std::vector<AssetNode> assets;
     std::vector<DescriptorAllocator> allocators;
-    std::vector<AllocatedBuffer> materialBuffers;
 
-    std::vector<AllocatedImage> images;
-    std::vector<VkSampler> samplers;
-    std::vector<Mesh> meshes;
-    std::vector<AllocatedMeshBuffer> meshBuffers;
+    // The values that make up a material
+    // Materials simply store a reference to the material gpu buffer + offset in
+    // buffer
     std::vector<Material> materials;
+    // Colour, RoughnessMetallic, Normal textures
+    std::vector<AllocatedImage> images;
+    // Image samplers
+    std::vector<VkSampler> samplers;
+
+    // For now I am storing meshes, but a cpu side representation should not be
+    // necessary (i.e. I can remove meshes and just keep meshBuffers)
+    std::vector<Mesh> meshes;
+
+    std::vector<AllocatedMeshBuffer> meshBuffers;
+    std::vector<AllocatedBuffer> materialBuffers;
 
     DescriptorWriter descriptorWriter;
     TextureCache textureCache;
@@ -100,5 +112,7 @@ class AssetServer
     VmaAllocator& allocator;
     ImmediateSubmit& immediate;
     GraphicsQueue& graphicsQueue;
+
+    friend class DrawData;
 };
 }

@@ -16,6 +16,7 @@ struct Vertex
     float uv_y;
 };
 
+// Index into the material constants buffer
 struct Material
 {
     uint32_t bufferIndex;
@@ -24,6 +25,7 @@ struct Material
     VkDescriptorSet materialSet;
 };
 
+// Uploaded to a uniform buffer
 struct MaterialConstants
 {
     glm::vec4 baseColorFactors;

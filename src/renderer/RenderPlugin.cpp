@@ -12,8 +12,8 @@ Renderer::RenderPlugin::Build(Scheduler scheduler,
                               ResourceManager& resourceManager)
 {
     VulkanInitialiser::Initialise(resourceManager);
-    scheduler.AddSystem<CleanupRenderer>(Schedule::Cleanup);
-    scheduler.AddSystem<WindowSystem>(Schedule::Render);
-    scheduler.AddSystem<SetRenderExtent>(Schedule::Render);
-    scheduler.AddSystem<Draw>(Schedule::Render).After<SetRenderExtent>();
+    scheduler.AddSystem(TearDown::Middle, CleanupRenderer);
+    scheduler.AddSystem(Render::Update, WindowSystem);
+    scheduler.AddSystem(Render::Update, SetRenderExtent);
+    scheduler.AddSystem(Render::PostUpdate, Draw);
 }

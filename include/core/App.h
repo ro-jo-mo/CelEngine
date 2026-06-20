@@ -1,15 +1,16 @@
 #pragma once
 
-#include "../core/Plugin.h"
-#include "../core/Running.h"
-#include "ComponentsManager.h"
-#include "EntityManager.h"
-#include "QueryManager.h"
-#include "ResourceManager.h"
-#include "ScheduleGraph.h"
-#include "Scheduler.h"
+#include "Plugin.h"
+#include "Running.h"
 #include "core/Time.h"
 #include "core/World.h"
+#include "ecs/ComponentsManager.h"
+#include "ecs/EntityManager.h"
+#include "ecs/QueryManager.h"
+#include "ecs/ResourceManager.h"
+#include "ecs/ScheduleGraph.h"
+#include "ecs/Scheduler.h"
+
 #include <concepts>
 #include <map>
 
@@ -125,6 +126,8 @@ App::Loop()
     auto& world = resourceManager.GetResource<World>();
     auto& running = resourceManager.GetResource<Running>();
 
+    running->isRunning = true;
+
     while (running->isRunning) {
 
         (void(ExecuteLoopedSchedule<Schedules>(time)), ...);
@@ -151,7 +154,7 @@ template<typename T>
 App&
 App::AddPlugin()
 {
-    T().Build(Scheduler(schedules), resourceManager);
+    T().Build(Scheduler(schedules, systemAllocator), resourceManager);
     return *this;
 }
 

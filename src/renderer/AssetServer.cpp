@@ -397,7 +397,7 @@ CreateNodeTree(const size_t nodeIndex,
     newNode.children.reserve(node.children.size());
     newNode.name = node.name;
     if (node.meshIndex.has_value()) {
-        newNode.model = std::move(models[node.meshIndex.value()]);
+        newNode.model = models[node.meshIndex.value()];
     }
 
     std::visit(
@@ -494,7 +494,7 @@ AssetServer::LoadAsset(const char* filepath)
 
     LoadImages(asset);
     LoadMaterials(asset, descriptorAllocator, imageOffset, samplerOffset);
-    LoadModels(asset, materialOffset);
+
     auto models = LoadModels(asset, materialOffset);
     AssetNode newAsset = LoadNodes(asset, models);
 
@@ -543,4 +543,15 @@ AssetServer::AddAssetToEntity(const Entity entity,
     const auto& node = assets[assetHandle.index];
 
     AddNodeHierarchyToEntity(entity, node, world);
+}
+Material
+AssetServer::GetMaterial(const Handle<Material> material) const
+{
+    return materials[material.index];
+}
+
+const AllocatedMeshBuffer&
+AssetServer::GetMesh(const Handle<Mesh> mesh) const
+{
+    return meshBuffers[mesh.index];
 }

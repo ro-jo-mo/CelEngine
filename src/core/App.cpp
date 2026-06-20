@@ -1,3 +1,3 @@
-#include "ecs/App.h"
+#include "core/App.h"
 
 using namespace Cel;

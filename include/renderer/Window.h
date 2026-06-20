@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../core/Running.h"
+#include "VulkanTypes.h"
 #include "ecs/System.h"
 
 #include <SDL3/SDL.h>
@@ -16,4 +17,9 @@ struct Window
 
 void
 WindowSystem(Resource<Window>& window, Resource<Running>& isRunning);
+
+void
+SetRenderExtent(Resource<RenderExtent>& renderExtent,
+                Resource<DrawImage>& drawImage,
+                Resource<Swapchain>& swapchain);
 }

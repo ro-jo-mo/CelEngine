@@ -9,23 +9,53 @@
 
 namespace Cel::Renderer {
 
-void Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>&
-                 renderables,
-             Query<With<Camera>>& cameras,
-             Resource<VulkanContext>& context,
-             Resource<Swapchain>& swapchain,
-             Resource<GraphicsQueue>& graphicsQueue,
-             Resource<DrawImage>& drawImage,
-             Resource<DepthImage>& depthImage,
-             Resource<MeshPipeline>& pipeline,
-             Resource<RenderExtent>& renderExtent,
-             Resource<CurrentFrameData>& currentFrameData,
-             Resource<AssetServer>& assetServer,
-             Resource<GlobalDescriptorData>& globalDescriptors);
+// A wrapper around all the data needed for drawing
+// Easier to split up rendering code when I don't need to pass 10 arguments
+// around
+struct DrawData
+{
+    Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables;
+    Query<With<Camera>>& cameras;
+    Resource<VulkanContext>& context;
+    Resource<Swapchain>& swapchain;
+    Resource<GraphicsQueue>& graphicsQueue;
+    Resource<DrawImage>& drawImage;
+    Resource<DepthImage>& depthImage;
+    Resource<MeshPipeline>& pipeline;
+    Resource<RenderExtent>& renderExtent;
+    Resource<CurrentFrameData>& currentFrameData;
+    Resource<AssetServer>& assetServer;
+    Resource<GlobalDescriptorData>& globalDescriptors;
+    Resource<VmaAllocator>& allocator;
 
+    Camera& camera;
+    FrameData frameData;
+    VkCommandBuffer cmd;
+
+    void Draw();
+
+    void DrawGeometry();
+
+    void BindSceneData(VkDescriptorSet sceneDescriptor) const;
+
+    void DrawModel(GlobalTransform& transform,
+                   Handle<Mesh> meshHandle,
+                   Handle<Material> matHandle) const;
+};
 
 void
-SetRenderExtent(Resource<RenderExtent>& renderExtent,
-                Resource<DrawImage>& drawImage,
-                Resource<Swapchain>& swapchain);
+Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
+     Query<With<Camera>>& cameras,
+     Resource<VulkanContext>& context,
+     Resource<Swapchain>& swapchain,
+     Resource<GraphicsQueue>& graphicsQueue,
+     Resource<DrawImage>& drawImage,
+     Resource<DepthImage>& depthImage,
+     Resource<MeshPipeline>& pipeline,
+     Resource<RenderExtent>& renderExtent,
+     Resource<CurrentFrameData>& currentFrameData,
+     Resource<AssetServer>& assetServer,
+     Resource<GlobalDescriptorData>& globalDescriptors,
+     Resource<VmaAllocator>& allocator);
+
 }
