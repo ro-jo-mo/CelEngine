@@ -11,11 +11,9 @@ CleanupRenderer(Resource<FinalCleanup>& cleanup,
                 Resource<VulkanContext>& context);
 
 void
-CleanupAssetServer(Resource<AssetServer>& assetServer,
-                   Resource<VulkanContext>& context);
+CleanupAssetServer(Resource<AssetServer>& assetServer);
 
 void
-CleanupAfterDraw(Resource<CurrentFrameData>& frameData,
-                 Resource<VulkanContext>& context);
+CleanupAfterDraw(Resource<CurrentFrameData>& frameData);
 
 }

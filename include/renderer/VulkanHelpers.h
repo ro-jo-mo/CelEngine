@@ -20,6 +20,7 @@ VkCheck(VkResult err,
         abort();
     }
 }
+
 }
 
 namespace Cel::Renderer::Initialisers {

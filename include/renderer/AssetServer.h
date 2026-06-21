@@ -118,7 +118,6 @@ class AssetServer
     GlobalDescriptorData& globalDescriptorData;
 
     friend class DrawData;
-    friend void CleanupAssetServer(Resource<AssetServer>& assetServer,
-                                   Resource<VulkanContext>& context);
+    friend void CleanupAssetServer(Resource<AssetServer>& assetServer);
 };
 }

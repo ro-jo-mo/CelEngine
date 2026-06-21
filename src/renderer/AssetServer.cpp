@@ -555,11 +555,13 @@ AssetServer::GetMesh(const Handle<Mesh> mesh) const
 void
 AssetServer::Cleanup()
 {
+    vkDeviceWaitIdle(context.device);
     for (auto& sampler : samplers) {
         vkDestroySampler(context.device, sampler, nullptr);
     }
     for (auto& image : images) {
         vmaDestroyImage(allocator, image.image, image.allocation);
+        vkDestroyImageView(context.device, image.imageView, nullptr);
     }
     for (auto& buffer : meshBuffers) {
         vmaDestroyBuffer(allocator,

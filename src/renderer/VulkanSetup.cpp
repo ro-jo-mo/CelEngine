@@ -335,11 +335,13 @@ InitDescriptorData(ResourceManager& resourceManager)
     global.allocator.Init(context->device, 10, sizes);
 
     // Set material layout, initially handled by the asset server
-    DescriptorLayoutBuilder builder;
-    builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    global.materialLayout = builder.Build(context->device,
-                                          VK_SHADER_STAGE_VERTEX_BIT |
-                                              VK_SHADER_STAGE_FRAGMENT_BIT);
+    {
+        DescriptorLayoutBuilder builder;
+        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        global.materialLayout = builder.Build(context->device,
+                                              VK_SHADER_STAGE_VERTEX_BIT |
+                                                  VK_SHADER_STAGE_FRAGMENT_BIT);
+    }
 
     // Set scene layout
     {
@@ -387,13 +389,14 @@ InitDescriptorData(ResourceManager& resourceManager)
             [&, i]() { frames[i].descriptorAllocator.DestroyPools(); });
     }
 
-    resourceManager.InsertResource(global);
+    auto& globalRes = resourceManager.InsertResource(global);
 
     cleanup->Push([&]() {
         vkDestroyDescriptorSetLayout(
-            context->device, global.sceneLayout, nullptr);
+            context->device, globalRes->sceneLayout, nullptr);
         vkDestroyDescriptorSetLayout(
-            context->device, global.materialLayout, nullptr);
+            context->device, globalRes->materialLayout, nullptr);
+        globalRes->allocator.DestroyPools();
     });
 }
 
@@ -498,7 +501,7 @@ InitPipeline(ResourceManager& resourceManager)
 void
 VulkanInitialiser::Initialise(ResourceManager& resourceManager)
 {
-    resourceManager.InsertResource<FinalCleanup>();
+    auto& c = resourceManager.InsertResource<FinalCleanup>();
     resourceManager.InsertResource<RenderExtent>();
 
     InitVulkan(resourceManager);
@@ -507,5 +510,6 @@ VulkanInitialiser::Initialise(ResourceManager& resourceManager)
     InitFrameData(resourceManager);
     InitDescriptorData(resourceManager);
     InitAssetServer(resourceManager);
+
     InitPipeline(resourceManager);
 }

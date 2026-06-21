@@ -9,14 +9,12 @@ Cel::Renderer::CleanupRenderer(Resource<FinalCleanup>& cleanup,
 }
 
 void
-Cel::Renderer::CleanupAssetServer(Resource<AssetServer>& assetServer,
-                                  Resource<VulkanContext>& context)
+Cel::Renderer::CleanupAssetServer(Resource<AssetServer>& assetServer)
 {
     assetServer->Cleanup();
 }
 void
-Cel::Renderer::CleanupAfterDraw(Resource<CurrentFrameData>& frameData,
-                                Resource<VulkanContext>& context)
+Cel::Renderer::CleanupAfterDraw(Resource<CurrentFrameData>& frameData)
 {
     frameData->Get().toDelete.Flush();
     frameData->Update();
