@@ -41,10 +41,11 @@ class DescriptorLayoutBuilder
   public:
     void AddBinding(uint32_t binding, VkDescriptorType type);
     void Clear();
-    VkDescriptorSetLayout Build(VkDevice device,
-                                VkShaderStageFlags shaderStages,
-                                const void* pNext = nullptr,
-                                VkDescriptorSetLayoutCreateFlags flags = 0);
+    [[nodiscard]] VkDescriptorSetLayout Build(
+        VkDevice device,
+        VkShaderStageFlags shaderStages,
+        const void* pNext = nullptr,
+        VkDescriptorSetLayoutCreateFlags flags = 0);
 
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 };

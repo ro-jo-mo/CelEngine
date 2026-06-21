@@ -21,6 +21,7 @@ template<ScheduleEnum Enum, uint32_t TickRate>
 struct FixedSchedule
 {
     using ScheduleEnum = Enum;
+    static constexpr uint32_t Tick = TickRate;
     static constexpr bool IsFixed = true;
 };
 

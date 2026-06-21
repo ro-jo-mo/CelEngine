@@ -31,8 +31,8 @@ class Time
     [[nodiscard]] float DeltaTime() const;
 
   private:
-    template<ScheduleEnum Enum>
-    void RegisterSchedule(float timestep);
+    template<typename Schedule>
+    void RegisterSchedule();
     /**
      * @brief Switch to fixed timestep
      */
@@ -83,12 +83,15 @@ class Time
     friend class App;
 };
 
-template<ScheduleEnum Enum>
+template<typename Schedule>
 void
-Time::RegisterSchedule(const float timestep)
+Time::RegisterSchedule()
 {
-    fixedDeltas[typeid(Enum)] = timestep;
-    fixedUpdateIntervals[typeid(Enum)] = std::chrono::steady_clock::now();
+    if constexpr (Schedule::IsFixed) {
+        fixedDeltas[typeid(typename Schedule::ScheduleEnum)] = Schedule::Tick;
+        fixedUpdateIntervals[typeid(typename Schedule::ScheduleEnum)] =
+            std::chrono::steady_clock::now();
+    }
 }
 
 template<ScheduleEnum Enum>

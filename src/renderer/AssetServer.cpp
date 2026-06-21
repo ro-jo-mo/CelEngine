@@ -50,11 +50,6 @@ AssetServer::CreateDefaults()
     vkCreateSampler(context.device, &samplerInfo, nullptr, &defaultSampler);
 
     samplers.push_back(defaultSampler);
-
-    DescriptorLayoutBuilder builder;
-    builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    builder.Build(context.device,
-                  VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
 std::vector<Model>
@@ -287,7 +282,8 @@ void
 AssetServer::WriteMaterialDescriptors(Material& material,
                                       DescriptorAllocator& descriptorAllocator)
 {
-    material.materialSet = descriptorAllocator.Allocate(materialLayout);
+    material.materialSet =
+        descriptorAllocator.Allocate(globalDescriptorData.materialLayout);
 
     descriptorWriter.Clear();
 
@@ -554,4 +550,26 @@ const AllocatedMeshBuffer&
 AssetServer::GetMesh(const Handle<Mesh> mesh) const
 {
     return meshBuffers[mesh.index];
+}
+
+void
+AssetServer::Cleanup()
+{
+    for (auto& sampler : samplers) {
+        vkDestroySampler(context.device, sampler, nullptr);
+    }
+    for (auto& image : images) {
+        vmaDestroyImage(allocator, image.image, image.allocation);
+    }
+    for (auto& buffer : meshBuffers) {
+        vmaDestroyBuffer(allocator,
+                         buffer.vertexBuffer.buffer,
+                         buffer.vertexBuffer.allocation);
+        vmaDestroyBuffer(allocator,
+                         buffer.indexBuffer.buffer,
+                         buffer.indexBuffer.allocation);
+    }
+    for (auto& pools : allocators) {
+        pools.DestroyPools();
+    }
 }

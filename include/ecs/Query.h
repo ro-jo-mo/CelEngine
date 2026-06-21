@@ -242,6 +242,11 @@ class Query<With<Include...>, Without<Exclude...>>::Iterator
         return current != other.current;
     }
 
+    bool operator==(const Iterator& other) const
+    {
+        return current == other.current;
+    }
+
     Iterator& operator++()
     {
         ++current;

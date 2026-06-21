@@ -103,10 +103,7 @@ DrawData::Draw()
 
     if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
         fmt::println("Out of date swapchain, needs resizing");
-        return;
     }
-
-    currentFrameData->Update();
 }
 void
 DrawData::DrawGeometry()
@@ -179,6 +176,10 @@ DrawData::DrawGeometry()
     }
 
     vkCmdEndRendering(cmd);
+
+    frameData.toDelete.Push([=, allocator = *allocator]() {
+        vmaDestroyBuffer(allocator, sceneBuffer.buffer, sceneBuffer.allocation);
+    });
 }
 
 void
@@ -267,8 +268,12 @@ Renderer::Draw(
     Resource<GlobalDescriptorData>& globalDescriptors,
     Resource<VmaAllocator>& allocator)
 {
-    auto [cam] = *cameras.begin();
+    if (cameras.begin() == cameras.end()) {
+        // No camera, no draw
+        return;
+    }
 
+    auto [cam] = *cameras.begin();
     DrawData data = { renderables,   cameras,
                       context,       swapchain,
                       graphicsQueue, drawImage,

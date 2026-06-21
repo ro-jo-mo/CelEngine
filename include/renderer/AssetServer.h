@@ -40,11 +40,13 @@ class AssetServer
     AssetServer(Resource<VulkanContext>& context,
                 Resource<VmaAllocator>& allocator,
                 Resource<ImmediateSubmit>& immediate,
-                Resource<GraphicsQueue>& graphicsQueue)
+                Resource<GraphicsQueue>& graphicsQueue,
+                Resource<GlobalDescriptorData>& globalDescriptorData)
         : context(*context)
         , allocator(*allocator)
         , immediate(*immediate)
         , graphicsQueue(*graphicsQueue)
+        , globalDescriptorData(*globalDescriptorData)
     {
         CreateDefaults();
     }
@@ -53,7 +55,6 @@ class AssetServer
     void AddAssetToEntity(Entity entity,
                           Handle<AssetNode> assetHandle,
                           Resource<World>& world) const;
-    VkDescriptorSetLayout materialLayout;
 
   private:
     Material GetMaterial(Handle<Material> material) const;
@@ -81,6 +82,8 @@ class AssetServer
     AssetNode LoadNodes(fastgltf::Asset& asset, std::vector<Model>& models);
     std::vector<Model> LoadModels(fastgltf::Asset& asset,
                                   size_t materialOffset);
+
+    void Cleanup();
 
     std::unordered_map<const char*, Handle<AssetNode>> pathToAssetMap;
 
@@ -112,7 +115,10 @@ class AssetServer
     VmaAllocator& allocator;
     ImmediateSubmit& immediate;
     GraphicsQueue& graphicsQueue;
+    GlobalDescriptorData& globalDescriptorData;
 
     friend class DrawData;
+    friend void CleanupAssetServer(Resource<AssetServer>& assetServer,
+                                   Resource<VulkanContext>& context);
 };
 }

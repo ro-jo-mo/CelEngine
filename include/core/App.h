@@ -93,7 +93,7 @@ App::ExecuteLoopedSchedule(Resource<Time>& time)
 {
     using Enum = Schedule::ScheduleEnum;
 
-    if (Schedule::IsFixed) {
+    if constexpr (Schedule::IsFixed) {
         time->SwitchToFixed<Enum>();
 
         while (time->FixedUpdateRequired<Enum>()) {
@@ -125,6 +125,8 @@ App::Loop()
     auto& time = resourceManager.GetResource<Time>();
     auto& world = resourceManager.GetResource<World>();
     auto& running = resourceManager.GetResource<Running>();
+
+    (void(time->RegisterSchedule<Schedules>()), ...);
 
     running->isRunning = true;
 

@@ -43,7 +43,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
 target_sources(${PROJECT_NAME}
         PRIVATE
         "src/ecs/EntityManager.cpp"
-        "src/core/App.cpp"
         "src/ecs/ComponentsManager.cpp"
         "src/ecs/ScheduleGraph.cpp"
         "src/ecs/Scheduler.cpp"

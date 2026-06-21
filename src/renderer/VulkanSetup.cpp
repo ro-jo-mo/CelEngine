@@ -35,22 +35,25 @@ InitVulkan(ResourceManager& resourceManager)
 
     SDL_Vulkan_CreateSurface(window->window, instanceBuild, nullptr, &surface);
 
-    VkPhysicalDeviceVulkan13Features features{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES
-    };
-    features.dynamicRendering = true;
-    features.synchronization2 = true;
-
     VkPhysicalDeviceVulkan12Features features12{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES
     };
     features12.bufferDeviceAddress = true;
     features12.descriptorIndexing = true;
+    features12.descriptorBindingPartiallyBound = true;
+    features12.descriptorBindingVariableDescriptorCount = true;
+    features12.runtimeDescriptorArray = true;
+
+    VkPhysicalDeviceVulkan13Features features13{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES
+    };
+    features13.dynamicRendering = true;
+    features13.synchronization2 = true;
 
     vkb::PhysicalDeviceSelector selector{ instanceBuild };
     vkb::PhysicalDevice physicalDevice =
         selector.set_minimum_version(1, 3)
-            .set_required_features_13(features)
+            .set_required_features_13(features13)
             .set_required_features_12(features12)
             .set_surface(surface)
             .select()
@@ -64,7 +67,7 @@ InitVulkan(ResourceManager& resourceManager)
                            .device = deviceBuild.device,
                            .surface = surface };
 
-    resourceManager.InsertResource<>(context);
+    resourceManager.InsertResource(context);
 
     auto graphicsQueue =
         deviceBuild.get_queue(vkb::QueueType::graphics).value();
@@ -73,7 +76,7 @@ InitVulkan(ResourceManager& resourceManager)
 
     GraphicsQueue queue{ graphicsQueue, graphicsQueueFamily };
 
-    resourceManager.InsertResource<>(queue);
+    resourceManager.InsertResource(queue);
 
     VmaAllocator allocator;
     VmaAllocatorCreateInfo allocatorInfo = {};
@@ -83,7 +86,7 @@ InitVulkan(ResourceManager& resourceManager)
     allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     vmaCreateAllocator(&allocatorInfo, &allocator);
 
-    resourceManager.InsertResource<>(allocator);
+    resourceManager.InsertResource(allocator);
 
     auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
@@ -316,23 +319,10 @@ InitFrameData(ResourceManager& resourceManager)
 }
 
 void
-InitAssetServer(ResourceManager& resourceManager)
-{
-    auto& context = resourceManager.GetResource<VulkanContext>();
-    auto& queue = resourceManager.GetResource<GraphicsQueue>();
-    auto& allocator = resourceManager.GetResource<VmaAllocator>();
-    auto& immediate = resourceManager.GetResource<ImmediateSubmit>();
-
-    resourceManager.InsertResource<AssetServer>(
-        context, allocator, immediate, queue);
-}
-
-void
 InitDescriptorData(ResourceManager& resourceManager)
 {
     auto& context = resourceManager.GetResource<VulkanContext>();
     auto& frameData = resourceManager.GetResource<CurrentFrameData>();
-    auto& assetServer = resourceManager.GetResource<AssetServer>();
 
     GlobalDescriptorData global{};
 
@@ -345,7 +335,11 @@ InitDescriptorData(ResourceManager& resourceManager)
     global.allocator.Init(context->device, 10, sizes);
 
     // Set material layout, initially handled by the asset server
-    global.materialLayout = assetServer->materialLayout;
+    DescriptorLayoutBuilder builder;
+    builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    global.materialLayout = builder.Build(context->device,
+                                          VK_SHADER_STAGE_VERTEX_BIT |
+                                              VK_SHADER_STAGE_FRAGMENT_BIT);
 
     // Set scene layout
     {
@@ -404,6 +398,19 @@ InitDescriptorData(ResourceManager& resourceManager)
 }
 
 void
+InitAssetServer(ResourceManager& resourceManager)
+{
+    auto& context = resourceManager.GetResource<VulkanContext>();
+    auto& queue = resourceManager.GetResource<GraphicsQueue>();
+    auto& allocator = resourceManager.GetResource<VmaAllocator>();
+    auto& immediate = resourceManager.GetResource<ImmediateSubmit>();
+    auto& global = resourceManager.GetResource<GlobalDescriptorData>();
+
+    resourceManager.InsertResource<AssetServer>(
+        context, allocator, immediate, queue, global);
+}
+
+void
 InitPipeline(ResourceManager& resourceManager)
 {
     auto& context = resourceManager.GetResource<VulkanContext>();
@@ -429,12 +436,6 @@ InitPipeline(ResourceManager& resourceManager)
     matrixRange.offset = 0;
     matrixRange.size = sizeof(EntityPushConstants);
     matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-    DescriptorLayoutBuilder layoutBuilder;
-    layoutBuilder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    layoutBuilder.Build(context->device,
-                        VK_SHADER_STAGE_VERTEX_BIT |
-                            VK_SHADER_STAGE_FRAGMENT_BIT);
 
     VkDescriptorSetLayout layouts[] = { global->sceneLayout,
                                         global->materialLayout };
@@ -497,14 +498,14 @@ InitPipeline(ResourceManager& resourceManager)
 void
 VulkanInitialiser::Initialise(ResourceManager& resourceManager)
 {
-    resourceManager.InsertResource(FinalCleanup{});
+    resourceManager.InsertResource<FinalCleanup>();
     resourceManager.InsertResource<RenderExtent>();
 
     InitVulkan(resourceManager);
     InitSwapchain(resourceManager);
     InitDrawImages(resourceManager);
     InitFrameData(resourceManager);
-    InitAssetServer(resourceManager);
     InitDescriptorData(resourceManager);
+    InitAssetServer(resourceManager);
     InitPipeline(resourceManager);
 }
