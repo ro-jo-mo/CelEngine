@@ -86,6 +86,7 @@ struct SceneData
 {
     glm::mat4 viewMatrix;
     glm::mat4 projectionMatrix;
+    glm::mat4 viewProjMatrix;
 };
 
 struct GlobalDescriptorData

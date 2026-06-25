@@ -176,7 +176,7 @@ Scheduler::AddChain(Schedule schedule, Systems... systems)
 
     [&]<size_t... Index>(std::index_sequence<Index...>) {
         (void(
-             graph.AddEdge(std::get<Index>(tuple), std::get<Index + 1>(tuple))),
+             graph.AddEdge(reinterpret_cast<void*>(std::get<Index>(tuple)), reinterpret_cast<void*>(std::get<Index + 1>(tuple)))),
          ...);
     }(std::make_index_sequence<SIZE - 1>{});
 
@@ -187,5 +187,4 @@ Scheduler::AddChain(Schedule schedule, Systems... systems)
                               reinterpret_cast<void*>(first),
                               reinterpret_cast<void*>(last) };
 }
-
 }

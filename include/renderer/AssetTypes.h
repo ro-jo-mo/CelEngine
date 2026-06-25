@@ -30,11 +30,11 @@ struct MaterialConstants
 {
     glm::vec4 baseColorFactors;
     glm::vec4 metalRoughnessFactors;
-    // padding, we need it anyway for uniform buffers
     uint32_t colorTextureIndex;
     uint32_t metalRoughnessTextureIndex;
     uint32_t normalTextureIndex;
     uint32_t pad1;
+    // padding, required to meet the 256 byte alignment requirements
     glm::vec4 extra[13];
 };
 

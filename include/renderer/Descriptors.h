@@ -52,7 +52,7 @@ class DescriptorLayoutBuilder
 
 class DescriptorWriter
 {
-  public:
+public:
     void WriteImage(int binding,
                     VkImageView image,
                     VkSampler sampler,

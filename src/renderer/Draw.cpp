@@ -108,6 +108,15 @@ DrawData::Draw()
 void
 DrawData::DrawGeometry()
 {
+    // Early return if there's no geometry to render
+
+    const uint32_t textureDescriptorCount =
+        assetServer->textureCache.descriptors.size();
+
+    if (textureDescriptorCount == 0) {
+        return;
+    }
+    
     // Rendering info setup
     VkRenderingAttachmentInfo colourAttachment =
         Initialisers::AttachmentInfo(drawImage->imageView,
@@ -131,10 +140,11 @@ DrawData::DrawGeometry()
     {
         auto sceneBufferData =
             static_cast<SceneData*>(sceneBuffer.info.pMappedData);
-
-        *sceneBufferData = { .viewMatrix = camera.GetViewMatrix(),
-                             .projectionMatrix = camera.GetProjectionMatrix(
-                                 swapchain->extent) };
+        SceneData data{ .viewMatrix = camera.GetViewMatrix(),
+                        .projectionMatrix =
+                            camera.GetProjectionMatrix(swapchain->extent) };
+        data.viewProjMatrix = data.projectionMatrix * data.viewMatrix;
+        *sceneBufferData = data;
     }
 
     VkDescriptorSetVariableDescriptorCountAllocateInfo allocArrayInfo;
@@ -142,9 +152,7 @@ DrawData::DrawGeometry()
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
     allocArrayInfo.pNext = nullptr;
     allocArrayInfo.descriptorSetCount = 1;
-    const uint32_t descriptorCount =
-        assetServer->textureCache.descriptors.size();
-    allocArrayInfo.pDescriptorCounts = &descriptorCount;
+    allocArrayInfo.pDescriptorCounts = &textureDescriptorCount;
 
     VkDescriptorSet sceneDescriptor = frameData.descriptorAllocator.Allocate(
         globalDescriptors->sceneLayout, &allocArrayInfo);
@@ -158,16 +166,16 @@ DrawData::DrawGeometry()
 
     VkWriteDescriptorSet arraySet;
     arraySet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    arraySet.descriptorCount = descriptorCount;
+    arraySet.descriptorCount = textureDescriptorCount;
     arraySet.dstArrayElement = 0;
     arraySet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    arraySet.dstBinding = 1;
     arraySet.pImageInfo = assetServer->textureCache.descriptors.data();
 
     writer.Write(arraySet);
-
+    fmt::println("here");
     writer.UpdateSet(context->device, sceneDescriptor);
 
+    fmt::println("there");
     // Bind pipeline, scene descriptor, scissor etc
     BindSceneData(sceneDescriptor);
 
@@ -221,8 +229,6 @@ DrawData::DrawModel(GlobalTransform& transform,
     // Get stuff from asset server
     Material material = assetServer->GetMaterial(matHandle);
     AllocatedMeshBuffer mesh = assetServer->GetMesh(meshHandle);
-    // Bind stuff
-    // Draw cmd
 
     // Bind current material descriptor
     vkCmdBindDescriptorSets(cmd,

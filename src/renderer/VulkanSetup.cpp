@@ -423,13 +423,13 @@ InitPipeline(ResourceManager& resourceManager)
 
     VkShaderModule vertShader;
     if (!Utils::LoadShader(
-            "../../shaders/shader.vert.spv", context->device, &vertShader)) {
+            "../../shaders/mesh.vert.spv", context->device, &vertShader)) {
         ThrowError("Failed to load vertex shader");
     }
 
     VkShaderModule fragShader;
     if (!Utils::LoadShader(
-            "../../shaders/shader.frag.spv", context->device, &fragShader)) {
+            "../../shaders/mesh.frag.spv", context->device, &fragShader)) {
         ThrowError("Failed to load vertex shader");
     }
 

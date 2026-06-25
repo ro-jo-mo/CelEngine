@@ -1,6 +1,7 @@
 #include "renderer/Descriptors.h"
 #include "renderer/VulkanHelpers.h"
 
+#include <cassert>
 #include <ranges>
 #include <vulkan/vulkan_core.h>
 
@@ -239,7 +240,7 @@ Cel::Renderer::DescriptorWriter::UpdateSet(VkDevice device, VkDescriptorSet set)
     for (VkWriteDescriptorSet& write : writes) {
         write.dstSet = set;
     }
-
+    
     vkUpdateDescriptorSets(device,
                            static_cast<uint32_t>(writes.size()),
                            writes.data(),

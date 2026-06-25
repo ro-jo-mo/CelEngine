@@ -20,6 +20,7 @@ void
 Renderer::WindowSystem(Resource<Window>& window, Resource<Running>& isRunning)
 {
     SDL_Event event;
+
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT) {
             isRunning->isRunning = false;

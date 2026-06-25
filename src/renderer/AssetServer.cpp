@@ -2,6 +2,7 @@
 
 #include "renderer/AssetServer.h"
 
+#include "core/Error.h"
 #include "renderer/VulkanUtils.h"
 
 #include <fastgltf/core.hpp>
@@ -155,24 +156,24 @@ AssetServer::LoadImage(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
 
     std::vector<std::byte> imageData;
 
-    std::visit(
-        fastgltf::visitor{
-            [&](const fastgltf::sources::Array& array) {
-                imageData.assign(array.bytes.begin(), array.bytes.end());
-            },
-            [&](const fastgltf::sources::BufferView& bufferView) {
-                auto& view = asset.bufferViews[bufferView.bufferViewIndex];
-                auto& buffer = asset.buffers[view.bufferIndex];
-                auto& data = std::get<fastgltf::sources::Array>(buffer.data);
-                auto begin = data.bytes.begin() + view.byteOffset;
-                imageData.assign(begin, begin + view.byteLength);
-            },
-            [&](auto& image) {
-                fmt::println(stderr, "Unexpected type in load gltf image");
-                throw std::runtime_error("Unexpected type in load gltf image");
-            },
-        },
-        gltfImage.data);
+    std::visit(fastgltf::visitor{
+                   [&](const fastgltf::sources::Array& array) {
+                       imageData.assign(array.bytes.begin(), array.bytes.end());
+                   },
+                   [&](const fastgltf::sources::BufferView& bufferView) {
+                       auto& view =
+                           asset.bufferViews[bufferView.bufferViewIndex];
+                       auto& buffer = asset.buffers[view.bufferIndex];
+                       auto& data =
+                           std::get<fastgltf::sources::Array>(buffer.data);
+                       auto begin = data.bytes.begin() + view.byteOffset;
+                       imageData.assign(begin, begin + view.byteLength);
+                   },
+                   [&](auto& image) {
+                       ThrowError("Unexpected type in load gltf image");
+                   },
+               },
+               gltfImage.data);
 
     if (imageData.size() == 0) {
         return {};
@@ -458,8 +459,9 @@ AssetServer::LoadAsset(const char* filepath)
     auto data = fastgltf::GltfDataBuffer::FromPath(path);
 
     if (data.error() != fastgltf::Error::None) {
-        fmt::println(stderr, "Failed to load asset {}", filepath);
-        throw std::runtime_error("Failed to load asset");
+        ThrowError("Failed to load asset {}\nError: {}",
+                   absolute(path).string(),
+                   getErrorMessage(data.error()));
     }
     constexpr auto options = fastgltf::Options::DecomposeNodeMatrices |
                              fastgltf::Options::LoadExternalBuffers |
