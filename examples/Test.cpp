@@ -20,11 +20,13 @@ struct RotateMe
 void
 SpawnAsset(Resource<World>& world, Resource<Renderer::AssetServer>& server)
 {
-    auto handle = server->LoadAsset("../../examples/assets/Horse.glb");
+    auto handle = server->LoadAsset("../../examples/assets/horse.glb");
 
     // Spawn a parent class that we rotate for fun (test transform propagation)
     world->Spawn(RotateMe{}).WithChildren([&](ChildBuilder builder) {
-        auto child = builder.Spawn(Position{ 1, 0, 0 });
+        // astoundingly large horse
+        // In order to view it we must bring it to a 100th scale
+        auto child = builder.Spawn(Position{ 2, 0, 0 }, Scale{ 0.01 });
         server->AddAssetToEntity(child.Get(), handle, world);
     });
 }

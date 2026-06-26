@@ -240,7 +240,20 @@ Cel::Renderer::DescriptorWriter::UpdateSet(VkDevice device, VkDescriptorSet set)
     for (VkWriteDescriptorSet& write : writes) {
         write.dstSet = set;
     }
-    
+    for (auto& w : writes) {
+        assert(w.sType == VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET);
+        assert(w.dstSet != VK_NULL_HANDLE);
+        assert(w.descriptorCount > 0);
+
+        if (w.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+            w.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
+            w.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+            assert(w.pImageInfo != nullptr);
+
+        if (w.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+            w.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+            assert(w.pBufferInfo != nullptr);
+    }
     vkUpdateDescriptorSets(device,
                            static_cast<uint32_t>(writes.size()),
                            writes.data(),

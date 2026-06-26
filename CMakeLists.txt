@@ -19,8 +19,14 @@ find_package(VulkanUtilityLibraries REQUIRED)
 find_package(fastgltf CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+enable_testing()
+find_package(GTest CONFIG REQUIRED)
+
 add_library(${PROJECT_NAME} STATIC)
 add_subdirectory(examples)
+add_subdirectory(tests)
+
 
 target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -36,6 +42,7 @@ target_link_libraries(${PROJECT_NAME}
         vk-bootstrap::vk-bootstrap
         Vulkan::UtilityHeaders
         fastgltf::fastgltf
+        GTest::gtest GTest::gtest_main
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})

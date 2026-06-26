@@ -121,6 +121,9 @@ Cel::HierarchyPropagation(
     // Every entity has its global transform recalculated each frame
     // This should be optimised once a form of change detection is implemented
 
+    // For a given node, with no children, no parent, do we set global
+    // transform?
+
     for (auto [parentTransform,
                parentPos,
                parentRot,

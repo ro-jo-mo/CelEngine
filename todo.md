@@ -13,6 +13,7 @@
 - Move to Query<Get<a,b,c>,With<d,e,f>,Without<x,y,z>>
 - Update Time resource to be less silly
 - Adding systems should be queued, and done after all resources are inserted
+- Alter commands to stored type index instead of using polymorphism (also update component arrays to support this)
 
 # Later
 

@@ -1,2 +1,2 @@
-add_executable(test Test.cpp)
-target_link_libraries(test PRIVATE CelEngine)
+add_executable(example Test.cpp)
+target_link_libraries(example PRIVATE CelEngine)

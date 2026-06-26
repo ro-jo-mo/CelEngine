@@ -16,9 +16,9 @@ class EntityBuilder;
 class World
 {
   public:
-    World(ComponentsManager& components_manager, EntityManager& entity_manager)
-        : componentsManager(components_manager)
-        , entityManager(entity_manager)
+    World(ComponentsManager& componentsManager, EntityManager& entityManager)
+        : componentsManager(componentsManager)
+        , entityManager(entityManager)
     {
     }
 
@@ -91,9 +91,38 @@ class World
     template<typename T>
     class RemoveCommand;
 
-    class AddChildCommand;
+    class AddChildCommand
+    {
+      public:
+        AddChildCommand(const Entity parent, const Entity child, World& world)
+            : parent(parent)
+            , child(child)
+            , world(world) {};
+        void Execute() const;
 
-    class RemoveChildCommand;
+      private:
+        Entity parent;
+        Entity child;
+        std::reference_wrapper<World> world;
+    };
+
+    class RemoveChildCommand
+    {
+      public:
+        RemoveChildCommand(const Entity parent,
+                           const Entity child,
+                           World& world)
+            : parent(parent)
+            , child(child)
+            , world(world) {};
+
+        void Execute() const;
+
+      private:
+        Entity parent;
+        Entity child;
+        std::reference_wrapper<World> world;
+    };
 
     void ExecuteDestroy(Entity entity) const;
 
@@ -101,7 +130,7 @@ class World
     EntityManager& entityManager;
     std::vector<std::unique_ptr<Command>> toAdd;
     std::vector<std::unique_ptr<Command>> toRemove;
-    std::vector<AddChildCommand> toAddChild;
+    std::vector<AddChildCommand> toAddChild{};
     std::vector<RemoveChildCommand> toRemoveChild;
     std::vector<Entity> toDestroy;
 };
@@ -115,8 +144,8 @@ class EntityBuilder
     {
     }
 
-    Entity Get() const;
-    EntityBuilder& WithChildren(auto func);
+    [[nodiscard]] Entity Get() const;
+    EntityBuilder WithChildren(auto func);
 
   private:
     Entity entity;
@@ -132,6 +161,8 @@ class ChildBuilder
     {
     }
 
+    [[nodiscard]] Entity Get() const;
+
     template<typename... Components>
     EntityBuilder Spawn(Components... components);
 
@@ -140,38 +171,8 @@ class ChildBuilder
     World& world;
 };
 
-class World::AddChildCommand
-{
-  public:
-    AddChildCommand(const Entity parent, const Entity child, World& world)
-        : parent(parent)
-        , child(child)
-        , world(world) {};
-    void Execute() const;
-
-  private:
-    Entity parent;
-    Entity child;
-    World& world;
-};
-
-class World::RemoveChildCommand
-{
-  public:
-    RemoveChildCommand(const Entity parent, const Entity child, World& world)
-        : parent(parent)
-        , child(child)
-        , world(world) {};
-    void Execute() const;
-
-  private:
-    Entity parent;
-    Entity child;
-    World& world;
-};
-
 template<typename T>
-class World::AddCommand final : public World::Command
+class World::AddCommand final : public Command
 {
   public:
     AddCommand(const Entity ent, T comp, World& wld)
@@ -188,7 +189,7 @@ class World::AddCommand final : public World::Command
 };
 
 template<typename T>
-class World::RemoveCommand final : public World::Command
+class World::RemoveCommand final : public Command
 {
   public:
     RemoveCommand(const Entity ent, World& wld)
@@ -228,10 +229,8 @@ World::Spawn(Components... components)
     if (!hasGlobalTransform) {
         AddComponent(entity, GlobalTransform{});
     }
-    World w = World(componentsManager, entityManager);
-    EntityBuilder e = EntityBuilder(entity, w);
 
-    return EntityBuilder(entity, w);
+    return { entity, *this };
 }
 
 template<typename Component>
@@ -264,12 +263,12 @@ World::RemoveCommand<T>::Execute()
     world.componentsManager.RemoveComponent<T>(entity);
 }
 
-EntityBuilder&
+EntityBuilder
 EntityBuilder::WithChildren(auto func)
 {
     func(ChildBuilder(entity, world));
 
-    return *this;
+    return EntityBuilder{ entity, world };
 }
 
 template<typename... Components>

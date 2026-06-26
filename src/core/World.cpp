@@ -88,33 +88,41 @@ World::ExecuteDestroy(const Entity entity) const
 void
 World::AddChildCommand::Execute() const
 {
+    world.get().componentsManager;
     // If parent has no children, add component
-    if (!world.componentsManager.HasComponent<Children>(parent)) {
-        world.componentsManager.AddComponent(parent, Children{});
+    if (!world.get().componentsManager.HasComponent<Children>(parent)) {
+        world.get().componentsManager.AddComponent(parent, Children{});
     }
 
-    if (world.componentsManager.HasComponent<Parent>(child)) {
+    if (world.get().componentsManager.HasComponent<Parent>(child)) {
         throw std::runtime_error(
             "Child entity already has a parent! Unparent the object first if "
             "you want to change its parent");
     }
 
-    world.componentsManager.AddComponent(child, Parent{ parent });
-    auto [children] = world.componentsManager.GetComponent<Children>(parent);
+    world.get().componentsManager.AddComponent(child, Parent{ parent });
+    auto [children] =
+        world.get().componentsManager.GetComponent<Children>(parent);
     children.insert(child);
 }
 void
 World::RemoveChildCommand::Execute() const
 {
-    world.componentsManager.RemoveComponent<Parent>(child);
-    auto [children] = world.componentsManager.GetComponent<Children>(parent);
+    world.get().componentsManager.RemoveComponent<Parent>(child);
+    auto [children] =
+        world.get().componentsManager.GetComponent<Children>(parent);
     children.erase(child);
     if (children.empty()) {
-        world.componentsManager.RemoveComponent<Children>(parent);
+        world.get().componentsManager.RemoveComponent<Children>(parent);
     }
 }
 Entity
 EntityBuilder::Get() const
 {
     return entity;
+}
+Entity
+ChildBuilder::Get() const
+{
+    return parent;
 }

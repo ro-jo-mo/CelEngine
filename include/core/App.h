@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Plugin.h"
- #include "Running.h"
+#include "Running.h"
 #include "core/Time.h"
 #include "core/World.h"
 #include "ecs/ComponentsManager.h"
@@ -115,6 +115,7 @@ App::Start(bool multithread)
     (void(ExecuteSchedule<ScheduleEnums>()), ...);
 
     resourceManager.GetResource<World>()->Flush();
+    queryManager.UpdateQueries();
 
     return *this;
 }
@@ -149,8 +150,9 @@ App&
 App::End(bool multithread)
 {
     (void(ExecuteSchedule<ScheduleEnums>()), ...);
-    
+
     resourceManager.GetResource<World>()->Flush();
+    queryManager.UpdateQueries();
 
     return *this;
 }

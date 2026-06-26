@@ -108,15 +108,6 @@ DrawData::Draw()
 void
 DrawData::DrawGeometry()
 {
-    // Early return if there's no geometry to render
-
-    const uint32_t textureDescriptorCount =
-        assetServer->textureCache.descriptors.size();
-
-    if (textureDescriptorCount == 0) {
-        return;
-    }
-    
     // Rendering info setup
     VkRenderingAttachmentInfo colourAttachment =
         Initialisers::AttachmentInfo(drawImage->imageView,
@@ -147,6 +138,9 @@ DrawData::DrawGeometry()
         *sceneBufferData = data;
     }
 
+    const uint32_t textureDescriptorCount =
+        assetServer->textureCache.descriptors.size();
+
     VkDescriptorSetVariableDescriptorCountAllocateInfo allocArrayInfo;
     allocArrayInfo.sType =
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO;
@@ -164,18 +158,21 @@ DrawData::DrawGeometry()
                        0,
                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-    VkWriteDescriptorSet arraySet;
-    arraySet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    arraySet.descriptorCount = textureDescriptorCount;
-    arraySet.dstArrayElement = 0;
-    arraySet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    arraySet.pImageInfo = assetServer->textureCache.descriptors.data();
+    if (textureDescriptorCount > 0) {
+        VkWriteDescriptorSet arraySet;
+        arraySet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        arraySet.descriptorCount = textureDescriptorCount;
+        arraySet.dstArrayElement = 0;
+        arraySet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        arraySet.dstBinding = 1;
+        arraySet.pImageInfo = assetServer->textureCache.descriptors.data();
+        arraySet.pNext = nullptr;
 
-    writer.Write(arraySet);
-    fmt::println("here");
+        writer.Write(arraySet);
+    }
+
     writer.UpdateSet(context->device, sceneDescriptor);
 
-    fmt::println("there");
     // Bind pipeline, scene descriptor, scissor etc
     BindSceneData(sceneDescriptor);
 

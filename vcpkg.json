@@ -14,6 +14,7 @@
     "fmt",
     "vulkan-utility-libraries",
     "fastgltf",
-    "stb"
+    "stb",
+    "gtest"
   ]
 }

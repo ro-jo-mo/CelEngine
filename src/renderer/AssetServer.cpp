@@ -169,9 +169,15 @@ AssetServer::LoadImage(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
                        auto begin = data.bytes.begin() + view.byteOffset;
                        imageData.assign(begin, begin + view.byteLength);
                    },
-                   [&](auto& image) {
-                       ThrowError("Unexpected type in load gltf image");
+                   [&](fastgltf::URI&) {
+                       ThrowError("Error loading gltf image. Attempted to use "
+                                  "a URI for some reason?");
                    },
+                   [&](fastgltf::sources::Vector& vector) {
+                       ThrowError("Error loading gltf image. Attempted to use "
+                                  "a Vector for some reason?");
+                   },
+                   [&](auto&) {},
                },
                gltfImage.data);
 
@@ -216,6 +222,11 @@ AssetServer::LoadImages(fastgltf::Asset& asset)
         auto img = LoadImage(asset, image);
         if (img.has_value()) {
             images.push_back(img.value());
+        } else {
+            fmt::println(stderr,
+                         "Failed to load an image ({}) in gltf asset",
+                         image.name);
+            images.push_back(images[0]);
         }
     }
 }
@@ -469,7 +480,10 @@ AssetServer::LoadAsset(const char* filepath)
 
     auto result = parser.loadGltf(data.get(), path.parent_path(), options);
     if (result.error() != fastgltf::Error::None) {
-        fmt::println(stderr, "Failed to load asset {}", filepath);
+        fmt::println(stderr,
+                     "Failed to load asset {} \n{}",
+                     filepath,
+                     getErrorMessage(result.error()));
         throw std::runtime_error("Failed to load asset");
     }
 
@@ -491,6 +505,7 @@ AssetServer::LoadAsset(const char* filepath)
     descriptorAllocator.Init(context.device, 1024, sizes);
 
     LoadImages(asset);
+    LoadSamplers(asset);
     LoadMaterials(asset, descriptorAllocator, imageOffset, samplerOffset);
 
     auto models = LoadModels(asset, materialOffset);
@@ -557,6 +572,7 @@ AssetServer::GetMesh(const Handle<Mesh> mesh) const
 void
 AssetServer::Cleanup()
 {
+    fmt::println("Asset cleanup start");
     vkDeviceWaitIdle(context.device);
     for (auto& sampler : samplers) {
         vkDestroySampler(context.device, sampler, nullptr);
@@ -576,4 +592,6 @@ AssetServer::Cleanup()
     for (auto& pools : allocators) {
         pools.DestroyPools();
     }
+
+    fmt::println("Asset cleanup end");
 }
