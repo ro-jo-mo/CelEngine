@@ -102,12 +102,8 @@ PropagateThroughChildren(
 
 void
 Cel::HierarchyPropagation(
-    Query<With<GlobalTransform,
-               const Position,
-               const Rotation,
-               const Scale,
-               const Children>,
-          Without<Parent>>& rootParentQuery,
+    Query<With<const GlobalTransform, const Children>, Without<Parent>>&
+        rootQuery,
     Query<With<const Children>>& parentQuery,
     Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery)
@@ -121,21 +117,22 @@ Cel::HierarchyPropagation(
     // Every entity has its global transform recalculated each frame
     // This should be optimised once a form of change detection is implemented
 
-    // For a given node, with no children, no parent, do we set global
-    // transform?
-
-    for (auto [parentTransform,
-               parentPos,
-               parentRot,
-               parentScale,
-               parentsChildren] : rootParentQuery) {
-        parentTransform.transform = GlobalTransform::TransformFromLocal(
-            parentPos, parentRot, parentScale);
+    for (const auto& [parentTransform, parentsChildren] : rootQuery) {
         for (auto childId : parentsChildren.children) {
             auto [transform, pos, rot, scale] = childQuery.Get(childId);
             transform.TransformPropagation(parentTransform, pos, rot, scale);
 
             PropagateThroughChildren(childId, parentQuery, childQuery);
         }
+    }
+}
+
+void
+Cel::ComputeRootGlobalTransform(
+    Query<With<GlobalTransform, Position, Rotation, Scale>, Without<Parent>>&
+        rootQuery)
+{
+    for (auto [global, pos, rot, scale] : rootQuery) {
+        global.transform = GlobalTransform::TransformFromLocal(pos, rot, scale);
     }
 }

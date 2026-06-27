@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.30)
+﻿cmake_minimum_required(VERSION 3.41)
 
 project("CelEngine"
         VERSION 0.1.0)

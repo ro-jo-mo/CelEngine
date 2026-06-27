@@ -57,6 +57,8 @@ class App
         requires(IsSchedule<Schedule>::value)
     void ExecuteLoopedSchedule(Resource<Time>& time);
 
+    void Flush();
+
     ComponentsManager componentsManager;
     EntityManager entityManager;
     ResourceManager resourceManager;
@@ -78,6 +80,8 @@ App::ExecuteSchedule()
         if (key.schedule == id) {
             executionGraph.Execute();
             found = true;
+
+            Flush();
             continue;
         }
         if (found == true) {
@@ -126,7 +130,6 @@ App&
 App::Loop()
 {
     auto& time = resourceManager.GetResource<Time>();
-    auto& world = resourceManager.GetResource<World>();
     auto& running = resourceManager.GetResource<Running>();
 
     (void(time->RegisterSchedule<Schedules>()), ...);
@@ -137,8 +140,7 @@ App::Loop()
 
         (void(ExecuteLoopedSchedule<Schedules>(time)), ...);
 
-        world->Flush();
-        queryManager.UpdateQueries();
+        Flush();
         time->Tick();
     }
 
@@ -164,6 +166,13 @@ App::AddPlugin()
 {
     T().Build(Scheduler(schedules, systemAllocator), resourceManager);
     return *this;
+}
+
+inline void
+App::Flush()
+{
+    resourceManager.GetResource<World>()->Flush();
+    queryManager.UpdateQueries();
 }
 
 }

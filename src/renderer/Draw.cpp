@@ -176,7 +176,7 @@ DrawData::DrawGeometry()
     // Bind pipeline, scene descriptor, scissor etc
     BindSceneData(sceneDescriptor);
 
-    for (const auto& [transform, mesh, material] : renderables) {
+    for (auto [transform, mesh, material] : renderables) {
         DrawModel(transform, mesh, material);
     }
 

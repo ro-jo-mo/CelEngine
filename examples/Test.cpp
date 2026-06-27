@@ -35,7 +35,7 @@ void
 SpinIt(Query<With<RotateMe, Rotation>>& query, Resource<Time>& time)
 {
     const auto rot = glm::angleAxis(time->DeltaTime(), glm::vec3(0, 1, 0));
-    for (const auto& [_, rotation] : query) {
+    for (auto [_, rotation] : query) {
         rotation.rotation *= rot;
     }
 }

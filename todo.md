@@ -17,6 +17,7 @@
 
 # Later
 
+- Enforce query data being accessed as references
 - When several systems are run sequentially, this can be tasked to a single thread
 - Might merge immediate submit data into vk context
 - Update default textures for materials

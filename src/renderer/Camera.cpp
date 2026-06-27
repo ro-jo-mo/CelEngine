@@ -59,7 +59,7 @@ Cel::Renderer::Camera::GetProjectionMatrix(const VkExtent2D extent) const
 void
 Cel::Renderer::CameraSystem(Query<With<Camera, GlobalTransform>>& cameras)
 {
-    for (const auto& [camera, transform] : cameras) {
+    for (auto [camera, transform] : cameras) {
         camera.UpdateViewMatrix(transform.transform);
     }
 }

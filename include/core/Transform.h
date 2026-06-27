@@ -121,14 +121,15 @@ struct Scale
 
 void
 HierarchyPropagation(
-    Query<With<GlobalTransform,
-               const Position,
-               const Rotation,
-               const Scale,
-               const Children>,
-          Without<Parent>>& rootParentQuery,
+    Query<With<const GlobalTransform, const Children>, Without<Parent>>&
+        rootQuery,
     Query<With<const Children>>& parentQuery,
     Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery);
+
+void
+ComputeRootGlobalTransform(
+    Query<With<GlobalTransform, Position, Rotation, Scale>, Without<Parent>>&
+        rootQuery);
 
 }

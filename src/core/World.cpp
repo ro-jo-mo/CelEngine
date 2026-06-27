@@ -88,7 +88,6 @@ World::ExecuteDestroy(const Entity entity) const
 void
 World::AddChildCommand::Execute() const
 {
-    world.get().componentsManager;
     // If parent has no children, add component
     if (!world.get().componentsManager.HasComponent<Children>(parent)) {
         world.get().componentsManager.AddComponent(parent, Children{});
@@ -101,7 +100,7 @@ World::AddChildCommand::Execute() const
     }
 
     world.get().componentsManager.AddComponent(child, Parent{ parent });
-    auto [children] =
+    auto& [children] =
         world.get().componentsManager.GetComponent<Children>(parent);
     children.insert(child);
 }
@@ -109,7 +108,7 @@ void
 World::RemoveChildCommand::Execute() const
 {
     world.get().componentsManager.RemoveComponent<Parent>(child);
-    auto [children] =
+    auto& [children] =
         world.get().componentsManager.GetComponent<Children>(parent);
     children.erase(child);
     if (children.empty()) {

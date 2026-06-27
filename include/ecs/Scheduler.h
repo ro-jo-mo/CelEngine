@@ -96,6 +96,10 @@ RelativeScheduler::Before(System runsAfter)
 
 /**
  * @brief A class for scheduling new systems
+ * LIMITATIONS
+ * While a system can run in multiple schedules, for example hierarchy
+ * propagation runs at the end of start and at the end of the main update, a
+ * system cannot run twice in the same schedule
  */
 class Scheduler
 {
@@ -175,8 +179,9 @@ Scheduler::AddChain(Schedule schedule, Systems... systems)
     constexpr size_t SIZE = sizeof...(Systems);
 
     [&]<size_t... Index>(std::index_sequence<Index...>) {
-        (void(
-             graph.AddEdge(reinterpret_cast<void*>(std::get<Index>(tuple)), reinterpret_cast<void*>(std::get<Index + 1>(tuple)))),
+        (void(graph.AddEdge(
+             reinterpret_cast<void*>(std::get<Index>(tuple)),
+             reinterpret_cast<void*>(std::get<Index + 1>(tuple)))),
          ...);
     }(std::make_index_sequence<SIZE - 1>{});
 
