@@ -577,7 +577,17 @@ AssetServer::Cleanup()
     for (auto& sampler : samplers) {
         vkDestroySampler(context.device, sampler, nullptr);
     }
+
+    // For now as a lazy work around, as missing textures use the default
+    // The default texture will occasionally be deleted twice (and crash vma)
+    // Store a set to not do that
+
+    std::unordered_set<VkImage> deleted;
     for (auto& image : images) {
+        if (deleted.contains(image.image)) {
+            continue;
+        }
+        deleted.insert(image.image);
         vmaDestroyImage(allocator, image.image, image.allocation);
         vkDestroyImageView(context.device, image.imageView, nullptr);
     }

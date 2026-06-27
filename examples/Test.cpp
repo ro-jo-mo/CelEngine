@@ -4,7 +4,9 @@
 #include "renderer/Camera.h"
 #include "renderer/RenderPlugin.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <fastgltf/types.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 using namespace Cel;
 
@@ -17,6 +19,9 @@ SpawnCamera(Resource<World>& world)
 struct RotateMe
 {};
 
+struct MyAsset
+{};
+
 void
 SpawnAsset(Resource<World>& world, Resource<Renderer::AssetServer>& server)
 {
@@ -26,7 +31,8 @@ SpawnAsset(Resource<World>& world, Resource<Renderer::AssetServer>& server)
     world->Spawn(RotateMe{}).WithChildren([&](ChildBuilder builder) {
         // astoundingly large horse
         // In order to view it we must bring it to a 100th scale
-        auto child = builder.Spawn(Position{ 2, 0, 0 }, Scale{ 0.01 });
+        auto child =
+            builder.Spawn(Position{ 2, 0, 0 }, Scale{ 0.01 }, MyAsset{});
         server->AddAssetToEntity(child.Get(), handle, world);
     });
 }
@@ -40,6 +46,14 @@ SpinIt(Query<With<RotateMe, Rotation>>& query, Resource<Time>& time)
     }
 }
 
+void
+HelpMe(Query<With<MyAsset, GlobalTransform>>& query)
+{
+    for (auto [_, trans] : query) {
+        fmt::println("horse rot: {}", glm::to_string(trans.GetRotation()));
+    }
+}
+
 class MyPlugin : public Plugin
 {
   public:
@@ -48,6 +62,7 @@ class MyPlugin : public Plugin
         scheduler.AddSystem(Startup::Start, SpawnCamera);
         scheduler.AddSystem(Startup::Start, SpawnAsset);
         scheduler.AddSystem(MainUpdate::Update, SpinIt);
+        scheduler.AddSystem(MainUpdate::Update, HelpMe);
     }
 };
 

@@ -3,164 +3,29 @@
 project("CelEngine"
         VERSION 0.1.0)
 
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+if (PROJECT_IS_TOP_LEVEL)
+    set(CMAKE_CXX_STANDARD 23)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(namespace "CelEngine")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-find_package(Vulkan REQUIRED)
-find_package(SDL3 CONFIG REQUIRED)
-find_package(glm REQUIRED)
-find_package(VulkanMemoryAllocator CONFIG REQUIRED)
-find_package(vk-bootstrap CONFIG REQUIRED)
-find_package(fmt CONFIG REQUIRED)
-find_package(VulkanUtilityLibraries REQUIRED)
-find_package(fastgltf CONFIG REQUIRED)
-find_package(Stb REQUIRED)
+    set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+    set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+endif ()
 
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-enable_testing()
-find_package(GTest CONFIG REQUIRED)
+option(CEL_BUILD_TESTS "Build the test suite" ${PROJECT_IS_TOP_LEVEL})
+option(CEL_BUILD_EXAMPLES "Build the examples" ${PROJECT_IS_TOP_LEVEL})
 
-add_library(${PROJECT_NAME} STATIC)
-add_subdirectory(examples)
-add_subdirectory(tests)
+add_subdirectory(src)
 
+if (CEL_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif ()
 
-target_link_libraries(${PROJECT_NAME}
-        PUBLIC
-        fmt::fmt
-        glm::glm
-        Vulkan::Vulkan
-        GPUOpen::VulkanMemoryAllocator
-)
-
-target_link_libraries(${PROJECT_NAME}
-        PRIVATE
-        SDL3::SDL3
-        vk-bootstrap::vk-bootstrap
-        Vulkan::UtilityHeaders
-        fastgltf::fastgltf
-        GTest::gtest GTest::gtest_main
-)
-
-target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
-
-target_sources(${PROJECT_NAME}
-        PRIVATE
-        "src/ecs/EntityManager.cpp"
-        "src/ecs/ComponentsManager.cpp"
-        "src/ecs/ScheduleGraph.cpp"
-        "src/ecs/Scheduler.cpp"
-        "src/ecs/QueryManager.cpp"
-
-        "src/core/World.cpp"
-        "src/core/Time.cpp"
-        "src/core/Transform.cpp"
-        "src/core/CorePlugin.cpp"
-
-        "src/renderer/Vma.cpp"
-        "src/renderer/RenderPlugin.cpp"
-        "src/renderer/CleanupRenderer.cpp"
-        "src/renderer/Window.cpp"
-        "src/renderer/VulkanSetup.cpp"
-        "src/renderer/PipelineBuilder.cpp"
-        "src/renderer/VulkanHelpers.cpp"
-        "src/renderer/Draw.cpp"
-        "src/renderer/VulkanUtils.cpp"
-        "src/renderer/AssetServer.cpp"
-        "src/renderer/Descriptors.cpp"
-        "src/renderer/Camera.cpp"
-)
-
-target_include_directories(${PROJECT_NAME}
-        PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-        PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-
-)
-
-
-set(public_headers
-        include/ecs/ComponentArray.h
-        include/ecs/ComponentsManager.h
-        include/core/App.h
-        include/ecs/EntityManager.h
-        include/ecs/Helpers.h
-        include/ecs/IResource.h
-        include/ecs/IQuery.h
-        include/ecs/Locks.h
-        include/ecs/Resource.h
-        include/ecs/ResourceManager.h
-        include/ecs/Schedule.h
-        include/ecs/ScheduleGraph.h
-        include/ecs/Scheduler.h
-        include/ecs/System.h
-        include/ecs/QueryManager.h
-        include/ecs/Types.h
-        include/ecs/Query.h
-
-        include/core/Plugin.h
-        include/core/World.h
-        include/core/Time.h
-        include/core/Transform.h
-        include/core/Hierarchy.h
-        include/core/CorePlugin.h
-        include/core/Running.h
-
-        include/common/SlotMap.h
-
-        include/renderer/AssetServer.h
-        include/renderer/DeletionQueue.h
-        include/renderer/RenderPlugin.h
-        include/renderer/VulkanSetup.h
-        include/renderer/Window.h
-        include/renderer/PipelineBuilder.h
-        include/renderer/VulkanHelpers.h
-        include/renderer/VulkanTypes.h
-        include/renderer/Draw.h
-        include/renderer/VulkanUtils.h
-        include/renderer/AssetTypes.h
-        include/renderer/Descriptors.h
-        include/renderer/Camera.h
-)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")
-
-include(GNUInstallDirs)
-
-install(TARGETS ${PROJECT_NAME}
-        EXPORT "${PROJECT_NAME}Targets"
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
-
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-
-install(EXPORT "${PROJECT_NAME}Targets"
-        FILE "${PROJECT_NAME}Targets.cmake"
-        NAMESPACE ${namespace}::
-        DESTINATION cmake
-)
-
-include(CMakePackageConfigHelpers)
-
-write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-        VERSION " ${version} "
-        COMPATIBILITY AnyNewerVersion
-)
-
-configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-        INSTALL_DESTINATION cmake
-)
-
-install(FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-        DESTINATION cmake
-)
+if (CEL_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif ()
