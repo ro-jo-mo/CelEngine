@@ -6,6 +6,7 @@
 #include "core/Transform.h"
 
 #include <glm/glm.hpp>
+#include <glm/gtc/constants.hpp>
 #include <glm/gtc/epsilon.hpp>
 
 #include <gtest/gtest.h>
@@ -14,12 +15,18 @@ using namespace Cel;
 
 static constexpr float kEpsilon = 1e-4f;
 
-// Avoid floating point variations
-// Roughly close to each other
 inline bool
 Vec3Near(const glm::vec3& a, const glm::vec3& b)
 {
     return glm::all(glm::epsilonEqual(a, b, kEpsilon));
+}
+
+// Quaternions q and -q represent the same rotation
+inline bool
+QuatNear(const glm::quat& a, const glm::quat& b)
+{
+    return glm::all(glm::epsilonEqual(a, b, kEpsilon)) ||
+           glm::all(glm::epsilonEqual(a, -b, kEpsilon));
 }
 
 // ========================================
@@ -29,7 +36,10 @@ inline Entity gRootEntity = 0;
 inline void
 SpawnRootWithPosition(Resource<World>& world)
 {
-    gRootEntity = world->Spawn(Position{ 1.f, 2.f, 3.f })
+    gRootEntity = world
+                      ->Spawn(Position{ 1.f, 2.f, 3.f },
+                              Rotation{ 0.f, glm::half_pi<float>(), 0.f },
+                              Scale{ 2.f })
                       .WithChildren([&](ChildBuilder b) {
                           b.Spawn(Position{ 0.f, 0.f, 0.f });
                       })
@@ -50,65 +60,121 @@ VerifyRootGlobalTransform(Query<With<GlobalTransform,
     const glm::vec3 translation = gt.GetTranslation();
     ASSERT_TRUE(Vec3Near(translation, glm::vec3(1.f, 2.f, 3.f)))
         << "Root GlobalTransform translation should match local Position";
+
+    const glm::quat worldRot = gt.GetRotation();
+    const glm::quat expectedRot{ glm::vec3(0.f, glm::half_pi<float>(), 0.f) };
+    ASSERT_TRUE(QuatNear(worldRot, expectedRot))
+        << "Root GlobalTransform rotation should match local Rotation";
+
+    const glm::vec3 worldScale = gt.GetScale();
+    ASSERT_TRUE(Vec3Near(worldScale, glm::vec3(2.f, 2.f, 2.f)))
+        << "Root GlobalTransform scale should match local Scale";
 }
 
 // ========================================
 inline Entity gChildOfRoot = 0;
 
-// Ensure translation is propagated to a child entity
+// Ensure the full transform (translation, rotation, scale) is propagated to a
+// child entity
 inline void
 SpawnParentChildForPropagation(Resource<World>& world)
 {
     gChildOfRoot = 0;
-    world->Spawn(Position{ 10.f, 0.f, 0.f }).WithChildren([&](ChildBuilder b) {
-        gChildOfRoot = b.Spawn(Position{ 5.f, 0.f, 0.f }).Get();
-    });
+    world
+        ->Spawn(Position{ 10.f, 0.f, 0.f },
+                Rotation{ 0.f, glm::half_pi<float>(), 0.f },
+                Scale{ 2.f })
+        .WithChildren([&](ChildBuilder b) {
+            gChildOfRoot = b.Spawn(Position{ 5.f, 0.f, 0.f },
+                                   Rotation{ 0.f, glm::half_pi<float>(), 0.f })
+                               .Get();
+        });
 }
 
 inline void
-VerifyChildInheritsParentTranslation(
+VerifyChildInheritsParentTransform(
     Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery)
 {
     ASSERT_TRUE(childQuery.Has(gChildOfRoot));
 
     auto [gt, pos, rot, scale] = childQuery.Get(gChildOfRoot);
-    const glm::vec3 worldPos = gt.GetTranslation();
 
-    // child local (5,0,0) + parent local (10,0,0) = (15,0,0) in world space
-    ASSERT_TRUE(Vec3Near(worldPos, glm::vec3(15.f, 0.f, 0.f)))
-        << "Child world position should be parent pos + child local pos. Got: ("
+    // Parent: pos(10,0,0), rot(90°Y), scale(2). Child local: pos(5,0,0),
+    // rot(90°Y). Parent 90°Y rotates child offset (5,0,0) → (0,0,-5), parent
+    // scale 2 → (0,0,-10),
+    // + parent translation (10,0,0) = (10,0,-10).
+    const glm::vec3 worldPos = gt.GetTranslation();
+    ASSERT_TRUE(Vec3Near(worldPos, glm::vec3(10.f, 0.f, -10.f)))
+        << "Child world position should reflect parent rotation applied to "
+           "local offset. Got: ("
         << worldPos.x << ", " << worldPos.y << ", " << worldPos.z << ")";
+
+    // world rot = parent_rot(90°Y) * child_local_rot(90°Y) = 180°Y
+    const glm::quat worldRot = gt.GetRotation();
+    const glm::quat expectedRot{ glm::vec3(0.f, glm::pi<float>(), 0.f) };
+    ASSERT_TRUE(QuatNear(worldRot, expectedRot))
+        << "Child world rotation should be parent_rot * child_local_rot";
+
+    // world scale = parent_scale(2) * child_local_scale(1) = (2,2,2)
+    const glm::vec3 worldScale = gt.GetScale();
+    ASSERT_TRUE(Vec3Near(worldScale, glm::vec3(2.f, 2.f, 2.f)))
+        << "Child world scale should be parent scale * child local scale";
 }
 // ========================================
 inline Entity gGrandchild = 0;
 
-// Ensure hierarchy is propagated throughout a deeper hierarchy
+// Ensure the full transform accumulates correctly through a 3-level hierarchy
 inline void
 SpawnDeepHierarchy(Resource<World>& world)
 {
     gGrandchild = 0;
     world->Spawn(Position{ 1.f, 0.f, 0.f }).WithChildren([&](ChildBuilder b) {
-        b.Spawn(Position{ 2.f, 0.f, 0.f }).WithChildren([&](ChildBuilder b2) {
-            gGrandchild = b2.Spawn(Position{ 3.f, 0.f, 0.f }).Get();
-        });
+        b.Spawn(Position{ 2.f, 0.f, 0.f },
+                Rotation{ 0.f, glm::half_pi<float>(), 0.f },
+                Scale{ 2.f })
+            .WithChildren([&](ChildBuilder b2) {
+                gGrandchild =
+                    b2.Spawn(Position{ 3.f, 0.f, 0.f },
+                             Rotation{ 0.f, glm::half_pi<float>(), 0.f })
+                        .Get();
+            });
     });
 }
 
 inline void
-VerifyGrandchildTranslation(
+VerifyGrandchildTransform(
     Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery)
 {
     ASSERT_TRUE(childQuery.Has(gGrandchild));
 
     auto [gt, pos, rot, scale] = childQuery.Get(gGrandchild);
-    const glm::vec3 worldPos = gt.GetTranslation();
 
-    // 1 + 2 + 3 = 6 along X
-    ASSERT_TRUE(Vec3Near(worldPos, glm::vec3(6.f, 0.f, 0.f)))
-        << "Grandchild world position should be 6 along X. Got: (" << worldPos.x
-        << ", " << worldPos.y << ", " << worldPos.z << ")";
+    // Root: pos(1,0,0), identity rot, scale 1.
+    // Middle: local pos(2,0,0), rot(90°Y), scale 2.
+    //   Middle world pos = (2,0,0) + (1,0,0) = (3,0,0). World rot = 90°Y. World
+    //   scale = 2.
+    // Grandchild: local pos(3,0,0), rot(90°Y).
+    //   Middle 90°Y rotates grandchild offset (3,0,0) → (0,0,-3), scaled by 2 →
+    //   (0,0,-6),
+    //   + middle world pos (3,0,0) = (3,0,-6).
+    const glm::vec3 worldPos = gt.GetTranslation();
+    ASSERT_TRUE(Vec3Near(worldPos, glm::vec3(3.f, 0.f, -6.f)))
+        << "Grandchild world position should reflect accumulated rotations and "
+           "scales. Got: ("
+        << worldPos.x << ", " << worldPos.y << ", " << worldPos.z << ")";
+
+    // world rot = middle_world_rot(90°Y) * grandchild_local_rot(90°Y) = 180°Y
+    const glm::quat worldRot = gt.GetRotation();
+    const glm::quat expectedRot{ glm::vec3(0.f, glm::pi<float>(), 0.f) };
+    ASSERT_TRUE(QuatNear(worldRot, expectedRot))
+        << "Grandchild world rotation should be accumulated from the hierarchy";
+
+    // root scale 1, middle scale 2, grandchild scale 1 → world scale (2,2,2)
+    const glm::vec3 worldScale = gt.GetScale();
+    ASSERT_TRUE(Vec3Near(worldScale, glm::vec3(2.f, 2.f, 2.f)))
+        << "Grandchild world scale should be accumulated from the hierarchy";
 }
 
 // ========================================
@@ -147,10 +213,11 @@ inline Entity gStandaloneEntity = 0;
 inline void
 SpawnStandaloneEntity(Resource<World>& world)
 {
-    // A standalone entity has no parent and no children — its GlobalTransform
-    // should simply reflect its own local position.
-    // We manually add Children so HierarchyPropagation visits it as a root.
-    gStandaloneEntity = world->Spawn(Position{ 7.f, 8.f, 9.f }).Get();
+    gStandaloneEntity = world
+                            ->Spawn(Position{ 7.f, 8.f, 9.f },
+                                    Rotation{ 0.f, glm::half_pi<float>(), 0.f },
+                                    Scale{ 3.f })
+                            .Get();
 }
 
 inline void
@@ -161,5 +228,15 @@ VerifyStandaloneGlobalTransform(
     ASSERT_TRUE(rootQuery.Has(gStandaloneEntity));
     auto [gt, pos, rot, scale] = rootQuery.Get(gStandaloneEntity);
     const glm::vec3 translation = gt.GetTranslation();
-    ASSERT_TRUE(Vec3Near(translation, glm::vec3(7.f, 8.f, 9.f)));
+    ASSERT_TRUE(Vec3Near(translation, glm::vec3(7.f, 8.f, 9.f)))
+        << "Standalone entity translation should match local Position";
+
+    const glm::quat worldRot = gt.GetRotation();
+    const glm::quat expectedRot{ glm::vec3(0.f, glm::half_pi<float>(), 0.f) };
+    ASSERT_TRUE(QuatNear(worldRot, expectedRot))
+        << "Standalone entity rotation should match local Rotation";
+
+    const glm::vec3 worldScale = gt.GetScale();
+    ASSERT_TRUE(Vec3Near(worldScale, glm::vec3(3.f, 3.f, 3.f)))
+        << "Standalone entity scale should match local Scale";
 }

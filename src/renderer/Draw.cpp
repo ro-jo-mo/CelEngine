@@ -10,15 +10,17 @@ using namespace Cel::Renderer;
 void
 DrawData::Draw()
 {
-    frameData = currentFrameData->Get();
+    frame = &frameData->Get();
     VkCheck(vkWaitForFences(
-        context->device, 1, &frameData.renderFence, VK_TRUE, UINT64_MAX));
+        context->device, 1, &frame->renderFence, VK_TRUE, UINT64_MAX));
+
+    CleanupDraw();
 
     uint32_t swapchainIndex;
     VkResult result = vkAcquireNextImageKHR(context->device,
                                             swapchain->swapchain,
                                             UINT64_MAX,
-                                            frameData.acquireSemaphore,
+                                            frame->acquireSemaphore,
                                             VK_NULL_HANDLE,
                                             &swapchainIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
@@ -27,10 +29,10 @@ DrawData::Draw()
         return;
     }
 
-    VkCheck(vkResetFences(context->device, 1, &frameData.renderFence));
-    VkCheck(vkResetCommandBuffer(frameData.commandBuffer, 0));
+    VkCheck(vkResetFences(context->device, 1, &frame->renderFence));
+    VkCheck(vkResetCommandBuffer(frame->commandBuffer, 0));
 
-    cmd = frameData.commandBuffer;
+    cmd = frame->commandBuffer;
     VkCommandBufferBeginInfo beginInfo = Initialisers::CommandBufferBeginInfo(
         VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -79,7 +81,7 @@ DrawData::Draw()
 
     VkSemaphoreSubmitInfo waitInfo = Initialisers::SemaphoreSubmitInfo(
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
-        frameData.acquireSemaphore);
+        frame->acquireSemaphore);
 
     VkSemaphoreSubmitInfo signalInfo = Initialisers::SemaphoreSubmitInfo(
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
@@ -89,7 +91,7 @@ DrawData::Draw()
         Initialisers::SubmitInfo(&bufferSubmitInfo, &signalInfo, &waitInfo);
 
     VkCheck(vkQueueSubmit2(
-        graphicsQueue->queue, 1, &submitInfo, frameData.renderFence));
+        graphicsQueue->queue, 1, &submitInfo, frame->renderFence));
 
     VkPresentInfoKHR presentInfo = Initialisers::PresentInfo();
     presentInfo.pSwapchains = &swapchain->swapchain;
@@ -104,7 +106,17 @@ DrawData::Draw()
     if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
         fmt::println("Out of date swapchain, needs resizing");
     }
+
+    frameData->Tick();
 }
+
+void
+DrawData::CleanupDraw()
+{
+    frameData->Get().toDelete.Flush();
+    frameData->Get().descriptorAllocator.ClearPools();
+}
+
 void
 DrawData::DrawGeometry()
 {
@@ -127,6 +139,7 @@ DrawData::DrawGeometry()
     auto sceneBuffer = Utils::CreateBuffer(sizeof(SceneData),
                                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                            VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                           "scene_buffer_alloc",
                                            *allocator);
     {
         auto sceneBufferData =
@@ -148,7 +161,7 @@ DrawData::DrawGeometry()
     allocArrayInfo.descriptorSetCount = 1;
     allocArrayInfo.pDescriptorCounts = &textureDescriptorCount;
 
-    VkDescriptorSet sceneDescriptor = frameData.descriptorAllocator.Allocate(
+    VkDescriptorSet sceneDescriptor = frame->descriptorAllocator.Allocate(
         globalDescriptors->sceneLayout, &allocArrayInfo);
 
     DescriptorWriter writer;
@@ -182,7 +195,7 @@ DrawData::DrawGeometry()
 
     vkCmdEndRendering(cmd);
 
-    frameData.toDelete.Push([=, allocator = *allocator]() {
+    frame->toDelete.Push([=, allocator = *allocator]() {
         vmaDestroyBuffer(allocator, sceneBuffer.buffer, sceneBuffer.allocation);
     });
 }
@@ -266,7 +279,7 @@ Renderer::Draw(
     Resource<DepthImage>& depthImage,
     Resource<MeshPipeline>& pipeline,
     Resource<RenderExtent>& renderExtent,
-    Resource<CurrentFrameData>& currentFrameData,
+    Resource<FrameData>& frameData,
     Resource<AssetServer>& assetServer,
     Resource<GlobalDescriptorData>& globalDescriptors,
     Resource<VmaAllocator>& allocator)
@@ -277,12 +290,9 @@ Renderer::Draw(
     }
 
     auto [cam] = *cameras.begin();
-    DrawData data = { renderables,   cameras,
-                      context,       swapchain,
-                      graphicsQueue, drawImage,
-                      depthImage,    pipeline,
-                      renderExtent,  currentFrameData,
-                      assetServer,   globalDescriptors,
+    DrawData data = { renderables,   cameras,   context,     swapchain,
+                      graphicsQueue, drawImage, depthImage,  pipeline,
+                      renderExtent,  frameData, assetServer, globalDescriptors,
                       allocator,     cam };
 
     data.Draw();

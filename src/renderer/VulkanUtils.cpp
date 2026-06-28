@@ -142,16 +142,19 @@ Cel::Renderer::Utils::CreateImage(const void* data,
                                   VkFormat format,
                                   VkImageUsageFlags usage,
                                   bool mipmapped,
+                                  const char* allocName,
                                   VulkanContext& context,
                                   VmaAllocator& allocator,
                                   const ImmediateSubmit& immediate,
                                   const GraphicsQueue& graphicsQueue)
 {
+
     size_t dataSize = size.depth * size.width * size.height * 4;
     AllocatedBuffer uploadBuffer =
         CreateBuffer(dataSize,
                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                      VMA_MEMORY_USAGE_CPU_TO_GPU,
+                     "image_upload_buffer_alloc",
                      allocator);
 
     memcpy(uploadBuffer.info.pMappedData, data, dataSize);
@@ -162,6 +165,7 @@ Cel::Renderer::Utils::CreateImage(const void* data,
                     usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                         VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                     mipmapped,
+                    allocName,
                     context,
                     allocator);
 
@@ -218,6 +222,7 @@ Cel::Renderer::Utils::CreateImage(VkExtent3D size,
                                   VkFormat format,
                                   VkImageUsageFlags usage,
                                   bool mipmapped,
+                                  const char* allocName,
                                   VulkanContext& context,
                                   VmaAllocator& allocator)
 {
@@ -236,15 +241,15 @@ Cel::Renderer::Utils::CreateImage(VkExtent3D size,
     }
 
     // always allocate images on dedicated GPU memory
-    VmaAllocationCreateInfo allocinfo = {};
-    allocinfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    allocinfo.requiredFlags =
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags =
         VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // allocate and create the image
     VkCheck(vmaCreateImage(allocator,
                            &img_info,
-                           &allocinfo,
+                           &allocInfo,
                            &newImage.image,
                            &newImage.allocation,
                            nullptr));
@@ -264,6 +269,8 @@ Cel::Renderer::Utils::CreateImage(VkExtent3D size,
     VkCheck(vkCreateImageView(
         context.device, &view_info, nullptr, &newImage.imageView));
 
+    vmaSetAllocationName(allocator, newImage.allocation, allocName);
+
     return newImage;
 }
 
@@ -271,6 +278,7 @@ Cel::Renderer::AllocatedBuffer
 Cel::Renderer::Utils::CreateBuffer(const size_t allocSize,
                                    const VkBufferUsageFlags usage,
                                    const VmaMemoryUsage memoryUsage,
+                                   const char* allocName,
                                    const VmaAllocator& allocator)
 {
     VkBufferCreateInfo bufferInfo = {};
@@ -291,6 +299,8 @@ Cel::Renderer::Utils::CreateBuffer(const size_t allocSize,
                             &newBuffer.buffer,
                             &newBuffer.allocation,
                             &newBuffer.info));
+
+    vmaSetAllocationName(allocator, newBuffer.allocation, allocName);
 
     return newBuffer;
 }
@@ -436,24 +446,27 @@ Cel::Renderer::Utils::UploadMesh(std::vector<uint32_t>& indices,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY,
+        "vertex_buffer_alloc",
         allocator);
 
-    VkBufferDeviceAddressInfo deviceAdressInfo{
+    VkBufferDeviceAddressInfo deviceAddressInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
         .buffer = newSurface.vertexBuffer.buffer
     };
     newSurface.vertexBufferAddress =
-        vkGetBufferDeviceAddress(context.device, &deviceAdressInfo);
+        vkGetBufferDeviceAddress(context.device, &deviceAddressInfo);
 
     newSurface.indexBuffer = CreateBuffer(indexBufferSize,
                                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                           VMA_MEMORY_USAGE_GPU_ONLY,
+                                          "index_buffer_alloc",
                                           allocator);
 
     AllocatedBuffer staging = CreateBuffer(vertexBufferSize + indexBufferSize,
                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                            VMA_MEMORY_USAGE_CPU_ONLY,
+                                           "mesh_staging_buffer_alloc",
                                            allocator);
 
     void* data = staging.info.pMappedData;

@@ -23,16 +23,18 @@ struct DrawData
     Resource<DepthImage>& depthImage;
     Resource<MeshPipeline>& pipeline;
     Resource<RenderExtent>& renderExtent;
-    Resource<CurrentFrameData>& currentFrameData;
+    Resource<FrameData>& frameData;
     Resource<AssetServer>& assetServer;
     Resource<GlobalDescriptorData>& globalDescriptors;
     Resource<VmaAllocator>& allocator;
 
     Camera& camera;
-    FrameData frameData;
+    CurrentFrameData* frame;
     VkCommandBuffer cmd;
 
     void Draw();
+
+    void CleanupDraw();
 
     void DrawGeometry();
 
@@ -53,7 +55,7 @@ Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
      Resource<DepthImage>& depthImage,
      Resource<MeshPipeline>& pipeline,
      Resource<RenderExtent>& renderExtent,
-     Resource<CurrentFrameData>& currentFrameData,
+     Resource<FrameData>& frameData,
      Resource<AssetServer>& assetServer,
      Resource<GlobalDescriptorData>& globalDescriptors,
      Resource<VmaAllocator>& allocator);

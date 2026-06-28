@@ -5,9 +5,10 @@
 void
 Cel::CorePlugin::Build(Scheduler scheduler, ResourceManager& resourceManager)
 {
-    scheduler.AddSystem(MainUpdate::Last, HierarchyPropagation);
-    // Ensures the very first frame works correctly (physics runs before
-    // propagation)
+    // Propagate the transform hierarchy after startup as well as in update
+    // To ensure the first frame works correctly
+    scheduler.AddChain(
+        MainUpdate::Last, ComputeRootGlobalTransform, HierarchyPropagation);
     scheduler.AddChain(
         Startup::Last, ComputeRootGlobalTransform, HierarchyPropagation);
 }

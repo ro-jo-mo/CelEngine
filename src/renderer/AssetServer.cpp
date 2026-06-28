@@ -30,15 +30,18 @@ AssetServer::CreateDefaults()
 
     // For now, we'll default to a checkerboard when no texture is assigned
     // However, this is a little silly for normals roughness etc
-    AllocatedImage checkerboard = Utils::CreateImage(pixels.data(),
-                                                     VkExtent3D{ 16, 16, 1 },
-                                                     VK_FORMAT_R8G8B8A8_UNORM,
-                                                     VK_IMAGE_USAGE_SAMPLED_BIT,
-                                                     false,
-                                                     context,
-                                                     allocator,
-                                                     immediate,
-                                                     graphicsQueue);
+    AllocatedImage checkerboard =
+        Utils::CreateImage(pixels.data(),
+                           VkExtent3D{ 16, 16, 1 },
+                           VK_FORMAT_R8G8B8A8_UNORM,
+                           VK_IMAGE_USAGE_SAMPLED_BIT,
+                           false,
+                           "default_checkerboard_alloc",
+                           context,
+                           allocator,
+                           immediate,
+                           graphicsQueue);
+
     images.push_back(checkerboard);
 
     VkSampler defaultSampler;
@@ -156,30 +159,32 @@ AssetServer::LoadImage(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
 
     std::vector<std::byte> imageData;
 
-    std::visit(fastgltf::visitor{
-                   [&](const fastgltf::sources::Array& array) {
-                       imageData.assign(array.bytes.begin(), array.bytes.end());
-                   },
-                   [&](const fastgltf::sources::BufferView& bufferView) {
-                       auto& view =
-                           asset.bufferViews[bufferView.bufferViewIndex];
-                       auto& buffer = asset.buffers[view.bufferIndex];
-                       auto& data =
-                           std::get<fastgltf::sources::Array>(buffer.data);
-                       auto begin = data.bytes.begin() + view.byteOffset;
-                       imageData.assign(begin, begin + view.byteLength);
-                   },
-                   [&](fastgltf::URI&) {
-                       ThrowError("Error loading gltf image. Attempted to use "
-                                  "a URI for some reason?");
-                   },
-                   [&](fastgltf::sources::Vector& vector) {
-                       ThrowError("Error loading gltf image. Attempted to use "
-                                  "a Vector for some reason?");
-                   },
-                   [&](auto&) {},
-               },
-               gltfImage.data);
+    auto ErrorMsg = [&](const char* ext) {
+        (ThrowError("Error loading gltf image. Attempted to use {}",
+                    std::move(ext)));
+    };
+
+    std::visit(
+        fastgltf::visitor{
+            [&](const fastgltf::sources::Array& array) {
+                imageData.assign(array.bytes.begin(), array.bytes.end());
+            },
+            [&](const fastgltf::sources::BufferView& bufferView) {
+                auto& view = asset.bufferViews[bufferView.bufferViewIndex];
+                auto& buffer = asset.buffers[view.bufferIndex];
+                auto& data = std::get<fastgltf::sources::Array>(buffer.data);
+                auto begin = data.bytes.begin() + view.byteOffset;
+                imageData.assign(begin, begin + view.byteLength);
+            },
+            [&](const fastgltf::sources::URI&) { ErrorMsg("URI"); },
+            [&](const fastgltf::sources::Vector&) { ErrorMsg("Vector"); },
+            [&](const std::monostate&) { ErrorMsg("Monostate"); },
+            [&](const fastgltf::sources::CustomBuffer&) {
+                ErrorMsg("CustomBuffer");
+            },
+            [&](const fastgltf::sources::ByteView&) { ErrorMsg("ByteView"); },
+            [&](const fastgltf::sources::Fallback&) { ErrorMsg("Fallback"); } },
+        gltfImage.data);
 
     if (imageData.size() == 0) {
         return {};
@@ -205,6 +210,7 @@ AssetServer::LoadImage(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
                                        VK_FORMAT_R8G8B8A8_UNORM,
                                        VK_IMAGE_USAGE_SAMPLED_BIT,
                                        false,
+                                       "gltf_image_alloc",
                                        context,
                                        allocator,
                                        immediate,
@@ -345,7 +351,11 @@ AssetServer::LoadMaterials(fastgltf::Asset& asset,
         Utils::CreateBuffer(asset.materials.size() * sizeof(MaterialConstants),
                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                            "gltf_material_buffer_alloc",
                             allocator));
+    vmaSetAllocationName(allocator,
+                         materialBuffers[bufferIndex].allocation,
+                         "gltf_material_buffer_alloc");
 
     const auto buffer = static_cast<MaterialConstants*>(
         materialBuffers[bufferIndex].info.pMappedData);
@@ -572,22 +582,11 @@ AssetServer::GetMesh(const Handle<Mesh> mesh) const
 void
 AssetServer::Cleanup()
 {
-    fmt::println("Asset cleanup start");
     vkDeviceWaitIdle(context.device);
     for (auto& sampler : samplers) {
         vkDestroySampler(context.device, sampler, nullptr);
     }
-
-    // For now as a lazy work around, as missing textures use the default
-    // The default texture will occasionally be deleted twice (and crash vma)
-    // Store a set to not do that
-
-    std::unordered_set<VkImage> deleted;
     for (auto& image : images) {
-        if (deleted.contains(image.image)) {
-            continue;
-        }
-        deleted.insert(image.image);
         vmaDestroyImage(allocator, image.image, image.allocation);
         vkDestroyImageView(context.device, image.imageView, nullptr);
     }
@@ -599,9 +598,10 @@ AssetServer::Cleanup()
                          buffer.indexBuffer.buffer,
                          buffer.indexBuffer.allocation);
     }
+    for (auto& buffer : materialBuffers) {
+        vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
+    }
     for (auto& pools : allocators) {
         pools.DestroyPools();
     }
-
-    fmt::println("Asset cleanup end");
 }

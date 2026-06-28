@@ -192,6 +192,8 @@ InitDrawImages(ResourceManager& resourceManager)
                    &drawImage.image,
                    &drawImage.allocation,
                    nullptr);
+    vmaSetAllocationName(*allocator, drawImage.allocation, "draw_image_alloc");
+
     VkImageViewCreateInfo drawViewCreateInfo =
         Initialisers::ImageViewCreateInfo(
             drawImage.imageFormat, drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -217,6 +219,7 @@ InitDrawImages(ResourceManager& resourceManager)
                    &depth.allocation,
                    nullptr);
 
+    vmaSetAllocationName(*allocator, depth.allocation, "depth_image_alloc");
     VkImageViewCreateInfo depthImageViewCreateInfo =
         Initialisers::ImageViewCreateInfo(
             depth.imageFormat, depth.image, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -242,7 +245,7 @@ InitFrameData(ResourceManager& resourceManager)
     auto& context = resourceManager.GetResource<VulkanContext>();
     auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
-    CurrentFrameData currentFrameData{ .totalFrames = FRAME_OVERLAP };
+    FrameData frameData{ .totalFrames = FRAME_OVERLAP };
 
     VkCommandPoolCreateInfo commandPoolCreateInfo =
         Initialisers::CommandPoolCreateInfo(
@@ -255,41 +258,37 @@ InitFrameData(ResourceManager& resourceManager)
 
     // Create per frame resources
     for (int i = 0; i < FRAME_OVERLAP; i++) {
-        FrameData frameData{};
+        CurrentFrameData frame{};
 
         // Firstly create command pool / buffer
         VkCheck(vkCreateCommandPool(context->device,
                                     &commandPoolCreateInfo,
                                     nullptr,
-                                    &frameData.commandPool));
+                                    &frame.commandPool));
 
         VkCommandBufferAllocateInfo commandBufferAllocateInfo =
-            Initialisers::CommandBufferAllocateInfo(frameData.commandPool, 1);
+            Initialisers::CommandBufferAllocateInfo(frame.commandPool, 1);
 
-        VkCheck(vkAllocateCommandBuffers(context->device,
-                                         &commandBufferAllocateInfo,
-                                         &frameData.commandBuffer));
+        VkCheck(vkAllocateCommandBuffers(
+            context->device, &commandBufferAllocateInfo, &frame.commandBuffer));
 
         // Next create synchronisation primitives
-        VkCheck(vkCreateFence(context->device,
-                              &fenceCreateInfo,
-                              nullptr,
-                              &frameData.renderFence));
+        VkCheck(vkCreateFence(
+            context->device, &fenceCreateInfo, nullptr, &frame.renderFence));
 
         VkCheck(vkCreateSemaphore(context->device,
                                   &semaphoreCreateInfo,
                                   nullptr,
-                                  &frameData.acquireSemaphore));
+                                  &frame.acquireSemaphore));
 
-        currentFrameData.frames.push_back(frameData);
+        frameData.frames.push_back(frame);
 
         cleanup->Push([=, &context]() {
-            vkDestroyCommandPool(
-                context->device, frameData.commandPool, nullptr);
-            vkDestroyFence(context->device, frameData.renderFence, nullptr);
+            vkDestroyCommandPool(context->device, frame.commandPool, nullptr);
+            vkDestroyFence(context->device, frame.renderFence, nullptr);
 
             vkDestroySemaphore(
-                context->device, frameData.acquireSemaphore, nullptr);
+                context->device, frame.acquireSemaphore, nullptr);
         });
     }
 
@@ -310,7 +309,7 @@ InitFrameData(ResourceManager& resourceManager)
         context->device, &fenceCreateInfo, nullptr, &immediate.fence));
 
     resourceManager.InsertResource(immediate);
-    resourceManager.InsertResource(currentFrameData);
+    resourceManager.InsertResource(frameData);
 
     cleanup->Push([=, &context]() {
         vkDestroyCommandPool(context->device, immediate.commandPool, nullptr);
@@ -322,7 +321,7 @@ void
 InitDescriptorData(ResourceManager& resourceManager)
 {
     auto& context = resourceManager.GetResource<VulkanContext>();
-    auto& frameData = resourceManager.GetResource<CurrentFrameData>();
+    auto& frameData = resourceManager.GetResource<FrameData>();
 
     GlobalDescriptorData global{};
 

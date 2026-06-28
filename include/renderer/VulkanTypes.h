@@ -42,7 +42,7 @@ struct VulkanContext
     VkSurfaceKHR surface;
 };
 
-struct FrameData
+struct CurrentFrameData
 {
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffer;
@@ -59,13 +59,13 @@ struct ImmediateSubmit
     VkFence fence;
 };
 
-struct CurrentFrameData
+struct FrameData
 {
-    std::vector<FrameData> frames;
+    std::vector<CurrentFrameData> frames;
     size_t currentFrame;
     const size_t totalFrames;
-    [[nodiscard]] FrameData Get() const { return frames[currentFrame]; }
-    void Update() { currentFrame = (currentFrame + 1) % totalFrames; }
+    [[nodiscard]] CurrentFrameData& Get() { return frames[currentFrame]; }
+    void Tick() { currentFrame = (currentFrame + 1) % totalFrames; }
 };
 
 struct RenderExtent

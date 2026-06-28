@@ -18,5 +18,5 @@ Renderer::RenderPlugin::Build(Scheduler scheduler,
     scheduler.AddSystem(Render::Update, WindowSystem);
     scheduler.AddSystem(Render::Update, SetRenderExtent);
 
-    scheduler.AddChain(Render::PostUpdate, Draw, CleanupAfterDraw);
+    scheduler.AddSystem(Render::PostUpdate, Draw);
 }

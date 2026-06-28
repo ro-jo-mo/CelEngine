@@ -31,6 +31,7 @@ CreateImage(const void* data,
             VkFormat format,
             VkImageUsageFlags usage,
             bool mipmapped,
+            const char* allocName,
             VulkanContext& context,
             VmaAllocator& allocator,
             const ImmediateSubmit& immediate,
@@ -41,6 +42,7 @@ CreateImage(VkExtent3D size,
             VkFormat format,
             VkImageUsageFlags usage,
             bool mipmapped,
+            const char* allocName,
             VulkanContext& context,
             VmaAllocator& allocator);
 
@@ -48,6 +50,7 @@ AllocatedBuffer
 CreateBuffer(size_t allocSize,
              VkBufferUsageFlags usage,
              VmaMemoryUsage memoryUsage,
+             const char* allocName,
              const VmaAllocator& allocator);
 
 AllocatedMeshBuffer

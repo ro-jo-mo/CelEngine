@@ -32,7 +32,7 @@ SpawnAsset(Resource<World>& world, Resource<Renderer::AssetServer>& server)
         // astoundingly large horse
         // In order to view it we must bring it to a 100th scale
         auto child =
-            builder.Spawn(Position{ 2, 0, 0 }, Scale{ 0.01 }, MyAsset{});
+            builder.Spawn(Position{ 0, 0, -2 }, Scale{ 0.01 }, MyAsset{});
         server->AddAssetToEntity(child.Get(), handle, world);
     });
 }
@@ -46,14 +46,6 @@ SpinIt(Query<With<RotateMe, Rotation>>& query, Resource<Time>& time)
     }
 }
 
-void
-HelpMe(Query<With<MyAsset, GlobalTransform>>& query)
-{
-    for (auto [_, trans] : query) {
-        fmt::println("horse rot: {}", glm::to_string(trans.GetRotation()));
-    }
-}
-
 class MyPlugin : public Plugin
 {
   public:
@@ -62,7 +54,6 @@ class MyPlugin : public Plugin
         scheduler.AddSystem(Startup::Start, SpawnCamera);
         scheduler.AddSystem(Startup::Start, SpawnAsset);
         scheduler.AddSystem(MainUpdate::Update, SpinIt);
-        scheduler.AddSystem(MainUpdate::Update, HelpMe);
     }
 };
 

@@ -4,24 +4,24 @@
 
 namespace {
 
-TEST(HierarchyPropagationTest, ChildInheritsParentTranslation)
+TEST(HierarchyPropagationTest, ChildInheritsParentTransform)
 {
     App ecs;
     ecs.AddPlugin<CorePlugin>()
         .AddPlugin<SingleSystemPlugin<Startup::Start,
                                       SpawnParentChildForPropagation>>()
         .AddPlugin<SingleSystemPlugin<Cel::TearDown::Middle,
-                                      VerifyChildInheritsParentTranslation>>();
+                                      VerifyChildInheritsParentTransform>>();
     ecs.Start<Startup>().End<Cel::TearDown>();
 }
 
-TEST(HierarchyPropagationTest, GrandchildAccumulatesChain)
+TEST(HierarchyPropagationTest, GrandchildAccumulatesTransform)
 {
     App ecs;
     ecs.AddPlugin<CorePlugin>()
         .AddPlugin<SingleSystemPlugin<Startup::Start, SpawnDeepHierarchy>>()
         .AddPlugin<SingleSystemPlugin<Cel::TearDown::Middle,
-                                      VerifyGrandchildTranslation>>();
+                                      VerifyGrandchildTransform>>();
     ecs.Start<Startup>().End<Cel::TearDown>();
 }
 
