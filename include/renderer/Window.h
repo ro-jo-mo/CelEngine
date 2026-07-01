@@ -16,9 +16,6 @@ struct Window
 };
 
 void
-WindowSystem(Resource<Window>& window, Resource<Running>& isRunning);
-
-void
 SetRenderExtent(Resource<RenderExtent>& renderExtent,
                 Resource<DrawImage>& drawImage,
                 Resource<Swapchain>& swapchain);

@@ -5,6 +5,7 @@
 #include "ecs/Resource.h"
 
 #include <functional>
+#include <ktx.h>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
@@ -15,8 +16,15 @@ LoadShader(const char* path, VkDevice device, VkShaderModule* outShaderModule);
 void
 TransitionImageLayout(VkCommandBuffer cmd,
                       VkImage image,
-                      VkImageLayout current,
-                      VkImageLayout next);
+                      VkImageLayout currentLayout,
+                      VkImageLayout newLayout);
+
+void
+TransitionImageLayout(VkCommandBuffer cmd,
+                      VkImage image,
+                      VkImageLayout currentLayout,
+                      VkImageLayout newLayout,
+                      VkImageSubresourceRange subresourceRange);
 
 void
 CopyImageToImage(VkCommandBuffer cmd,
@@ -31,6 +39,7 @@ CreateImage(const void* data,
             VkFormat format,
             VkImageUsageFlags usage,
             bool mipmapped,
+
             const char* allocName,
             VulkanContext& context,
             VmaAllocator& allocator,
@@ -42,9 +51,28 @@ CreateImage(VkExtent3D size,
             VkFormat format,
             VkImageUsageFlags usage,
             bool mipmapped,
+
             const char* allocName,
             VulkanContext& context,
             VmaAllocator& allocator);
+
+AllocatedImage
+CreateImage(VkImageCreateInfo imageCreateInfo,
+            VkImageViewCreateInfo imageViewCreateInfo,
+
+            const char* allocName,
+            VulkanContext& context,
+            VmaAllocator& allocator);
+
+AllocatedImage
+CreateCubeMap(ktxTexture* texture,
+              VkFormat format,
+
+              const char* allocName,
+              VulkanContext& context,
+              VmaAllocator& allocator,
+              const ImmediateSubmit& immediate,
+              const GraphicsQueue& graphicsQueue);
 
 AllocatedBuffer
 CreateBuffer(size_t allocSize,
@@ -61,11 +89,25 @@ UploadMesh(std::vector<uint32_t>& indices,
            ImmediateSubmit& immediate,
            GraphicsQueue& queue);
 
+AllocatedMeshBuffer
+UploadMesh(std::vector<uint32_t>& indices,
+           std::vector<float>& vertices,
+           VulkanContext& context,
+           VmaAllocator& allocator,
+           ImmediateSubmit& immediate,
+           GraphicsQueue& queue);
+
 void
 SubmitImmediate(std::function<void(VkCommandBuffer cmd)>&& function,
                 const VulkanContext& context,
                 const ImmediateSubmit& immediate,
                 const GraphicsQueue& queue);
+
+uint32_t
+CalculateMipMapLevels(VkExtent3D extent);
+
+uint32_t
+CalculateMipMapLevels(VkExtent2D extent);
 
 void
 GenerateMipMaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize);

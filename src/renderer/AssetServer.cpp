@@ -9,6 +9,7 @@
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
 #include <glm/glm.hpp>
+#include <ktx.h>
 #include <ranges>
 #include <stb_image.h>
 
@@ -24,7 +25,7 @@ AssetServer::CreateDefaults()
     std::array<uint32_t, 16 * 16> pixels; // for 16x16 checkerboard texture
     for (int x = 0; x < 16; x++) {
         for (int y = 0; y < 16; y++) {
-            pixels[y * 16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
+            pixels[y * 16 + x] = (x % 2) ^ (y % 2) ? magenta : black;
         }
     }
 
@@ -48,12 +49,34 @@ AssetServer::CreateDefaults()
     VkSamplerCreateInfo samplerInfo = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO
     };
+
     samplerInfo.magFilter = VK_FILTER_LINEAR;
     samplerInfo.minFilter = VK_FILTER_LINEAR;
 
     vkCreateSampler(context.device, &samplerInfo, nullptr, &defaultSampler);
-
     samplers.push_back(defaultSampler);
+
+    // Skybox
+    std::vector<float> skyboxVertices = { -1.0, 1.0,  -1.0, -1.0, -1.0, -1.0,
+                                          1.0,  -1.0, -1.0, 1.0,  1.0,  -1.0,
+                                          -1.0, -1.0, 1.0,  -1.0, 1.0,  1.0,
+                                          1.0,  -1.0, 1.0,  1.0,  1.0,  1.0 };
+
+    std::vector<uint32_t> skyboxIndices = {
+        0, 1, 2, 2, 3, 0, 4, 1, 0, 0, 5, 4, 2, 6, 7, 7, 3, 2,
+        4, 5, 7, 7, 6, 4, 0, 3, 7, 7, 5, 0, 1, 4, 2, 2, 4, 6
+    };
+
+    skyboxCube = Utils::UploadMesh(skyboxIndices,
+                                   skyboxVertices,
+                                   context,
+                                   allocator,
+                                   immediate,
+                                   graphicsQueue);
+
+    SetSkybox("../../assets/skybox.ktx");
+
+    textureCache.AddTexture(skyboxImage.imageView, samplers[0]);
 }
 
 std::vector<Model>
@@ -472,7 +495,7 @@ AssetServer::LoadNodes(fastgltf::Asset& asset, std::vector<Model>& models)
 }
 
 Handle<AssetNode>
-AssetServer::LoadAsset(const char* filepath)
+AssetServer::LoadGltfAsset(const char* filepath)
 {
     std::filesystem::path path = filepath;
 
@@ -525,6 +548,45 @@ AssetServer::LoadAsset(const char* filepath)
     allocators.push_back(std::move(descriptorAllocator));
 
     return { .index = assets.size() - 1 };
+}
+
+AllocatedImage
+AssetServer::LoadSkyboxImage(const char* filepath)
+{
+    ktxTexture* texture;
+
+    const auto err = ktxTexture_CreateFromNamedFile(
+        filepath, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &texture);
+
+    if (err != KTX_SUCCESS) {
+        auto temp =
+            std::filesystem::absolute(std::filesystem::path(filepath)).string();
+        ThrowError("Failed to load skybox, KTX error: {}\nFilepath {}",
+                   ktxErrorString(err),
+                   std::move(temp));
+    }
+
+    VkExtent3D extent;
+    extent.width = texture->baseWidth;
+    extent.height = texture->baseHeight;
+    extent.depth = 1;
+
+    AllocatedImage skyboxImg = Utils::CreateCubeMap(texture,
+                                                    VK_FORMAT_R8G8B8A8_UNORM,
+                                                    "skybox_cubemap_alloc",
+                                                    context,
+                                                    allocator,
+                                                    immediate,
+                                                    graphicsQueue);
+    ktxTexture_Destroy(texture);
+
+    return skyboxImg;
+}
+
+void
+AssetServer::SetSkybox(const char* filepath)
+{
+    skyboxImage = LoadSkyboxImage(filepath);
 }
 
 void

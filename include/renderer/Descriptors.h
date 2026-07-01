@@ -41,9 +41,16 @@ class DescriptorLayoutBuilder
   public:
     void AddBinding(uint32_t binding, VkDescriptorType type);
     void Clear();
+
     [[nodiscard]] VkDescriptorSetLayout Build(
         VkDevice device,
         VkShaderStageFlags shaderStages,
+        const void* pNext = nullptr,
+        VkDescriptorSetLayoutCreateFlags flags = 0);
+
+    // For a case where shader stages are different and set manually
+    [[nodiscard]] VkDescriptorSetLayout Build(
+        VkDevice device,
         const void* pNext = nullptr,
         VkDescriptorSetLayoutCreateFlags flags = 0);
 
@@ -52,7 +59,7 @@ class DescriptorLayoutBuilder
 
 class DescriptorWriter
 {
-public:
+  public:
     void WriteImage(int binding,
                     VkImageView image,
                     VkSampler sampler,

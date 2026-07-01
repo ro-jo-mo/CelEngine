@@ -44,6 +44,10 @@ class Camera
 
     [[nodiscard]] glm::mat4 GetViewMatrix() const;
 
+    float fov;
+    float farPlane;
+    float nearPlane;
+
   private:
     Camera(const float fov, const float nearPlane, const float farPlane)
         : fov(fov)
@@ -52,10 +56,6 @@ class Camera
         , projection(Projection::Perspective) {};
 
     void UpdateViewMatrix(const glm::mat4& transform);
-
-    float fov;
-    float farPlane;
-    float nearPlane;
 
     glm::mat4 viewMatrix = glm::mat4(1.0f);
 

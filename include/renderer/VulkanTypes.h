@@ -22,12 +22,6 @@ struct Swapchain
     VkExtent2D extent;
 };
 
-struct MeshPipeline
-{
-    VkPipeline pipeline;
-    VkPipelineLayout layout;
-};
-
 struct GraphicsQueue
 {
     VkQueue queue;
@@ -92,8 +86,13 @@ struct SceneData
 struct GlobalDescriptorData
 {
     DescriptorAllocator allocator;
+
+    // Mesh pipeline
     VkDescriptorSetLayout sceneLayout;
     VkDescriptorSetLayout materialLayout;
+
+    // Skybox pipeline
+    VkDescriptorSetLayout skyboxLayout;
 };
 
 struct AllocatedBuffer
@@ -123,14 +122,28 @@ struct AllocatedImage
     VkFormat imageFormat;
 };
 
+template<typename T>
+struct Pipeline
+{
+    VkPipeline pipeline;
+    VkPipelineLayout layout;
+};
+
 struct GenericTag;
 struct DepthTag
 {};
 struct DrawTag
+{};
+struct SkyboxTag
+{};
+struct MeshTag
 {};
 
 }
 using DepthImage = Detail::AllocatedImage<Detail::DepthTag>;
 using DrawImage = Detail::AllocatedImage<Detail::DrawTag>;
 using AllocatedImage = Detail::AllocatedImage<Detail::GenericTag>;
+
+using SkyboxPipeline = Detail::Pipeline<Detail::SkyboxTag>;
+using MeshPipeline = Detail::Pipeline<Detail::MeshTag>;
 }

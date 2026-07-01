@@ -17,28 +17,6 @@ Renderer::Window::Window()
 }
 
 void
-Renderer::WindowSystem(Resource<Window>& window, Resource<Running>& isRunning)
-{
-    SDL_Event event;
-
-    while (SDL_PollEvent(&event)) {
-        switch (event.type) {
-            case SDL_EVENT_QUIT:
-            case SDL_EVENT_KEY_DOWN:
-
-            default:
-                // Unimplemented event
-                break;
-        }
-
-        if (event.type == SDL_EVENT_QUIT) {
-            isRunning->isRunning = false;
-            break;
-        }
-    }
-}
-
-void
 Renderer::SetRenderExtent(Resource<RenderExtent>& renderExtent,
                           Resource<DrawImage>& drawImage,
                           Resource<Swapchain>& swapchain)

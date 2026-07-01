@@ -304,6 +304,7 @@ ImageCreateInfo(VkFormat format,
     info.tiling = VK_IMAGE_TILING_OPTIMAL;
     info.usage = usageFlags;
 
+
     return info;
 }
 

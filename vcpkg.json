@@ -15,6 +15,7 @@
     "vulkan-utility-libraries",
     "fastgltf",
     "stb",
-    "gtest"
+    "gtest",
+    "ktx"
   ]
 }

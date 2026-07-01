@@ -50,6 +50,10 @@ DrawData::Draw()
 
     DrawGeometry();
 
+    DrawSkybox();
+
+    vkCmdEndRendering(cmd);
+
     // DRAWING FINISHED
     Utils::TransitionImageLayout(cmd,
                                  drawImage->image,
@@ -193,20 +197,92 @@ DrawData::DrawGeometry()
         DrawModel(transform, mesh, material);
     }
 
-    vkCmdEndRendering(cmd);
-
     frame->toDelete.Push([=, allocator = *allocator]() {
         vmaDestroyBuffer(allocator, sceneBuffer.buffer, sceneBuffer.allocation);
     });
 }
 
 void
-DrawData::BindSceneData(VkDescriptorSet sceneDescriptor) const
+DrawData::DrawSkybox()
 {
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+    vkCmdBindPipeline(
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline->pipeline);
+
+    auto& cube = assetServer->skyboxCube;
+
+    // Create view buffer for our skybox
+    // Remove the translation from our view transform and combine with
+    // projection
+    auto viewProjBuffer =
+        Utils::CreateBuffer(sizeof(glm::mat4),
+                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                            VMA_MEMORY_USAGE_CPU_TO_GPU,
+                            "skybox_viewproj_buffer_alloc",
+                            *allocator);
+    {
+        auto sceneBufferData =
+            static_cast<glm::mat4*>(viewProjBuffer.info.pMappedData);
+        // Strip out translation by converting to 3x3 and back
+        glm::mat4 viewProj = camera.GetProjectionMatrix(swapchain->extent) *
+                             glm::mat4(glm::mat3(camera.GetViewMatrix()));
+
+        *sceneBufferData = viewProj;
+    }
+
+    // Write descriptors
+    DescriptorWriter writer{};
+
+    // Write view buffer
+    writer.WriteBuffer(0,
+                       viewProjBuffer.buffer,
+                       sizeof(glm::mat4),
+                       0,
+                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+    // Combine texture image sampler
+    auto skyTex = assetServer->textureCache.descriptors[0];
+    writer.WriteImage(1,
+                      skyTex.imageView,
+                      skyTex.sampler,
+                      skyTex.imageLayout,
+                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+    VkDescriptorSet skyboxDescriptor = frame->descriptorAllocator.Allocate(
+        globalDescriptors->skyboxLayout, nullptr);
+
+    writer.UpdateSet(context->device, skyboxDescriptor);
+
     vkCmdBindDescriptorSets(cmd,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline->layout,
+                            skyboxPipeline->layout,
+                            0,
+                            1,
+                            &skyboxDescriptor,
+                            0,
+                            nullptr);
+
+    // Bind cube
+    const VkDeviceSize offsets[1] = { 0 };
+    vkCmdBindIndexBuffer(cmd, cube.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &cube.vertexBuffer.buffer, offsets);
+
+    // Lastly draw the skybox
+    vkCmdDrawIndexed(cmd, cube.indexCount, 1, 0, 0, 0);
+
+    frame->toDelete.Push([=, allocator = *allocator]() {
+        vmaDestroyBuffer(
+            allocator, viewProjBuffer.buffer, viewProjBuffer.allocation);
+    });
+}
+
+void
+DrawData::BindSceneData(VkDescriptorSet sceneDescriptor) const
+{
+    vkCmdBindPipeline(
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline->pipeline);
+    vkCmdBindDescriptorSets(cmd,
+                            VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            meshPipeline->layout,
                             0,
                             1,
                             &sceneDescriptor,
@@ -243,7 +319,7 @@ DrawData::DrawModel(GlobalTransform& transform,
     // Bind current material descriptor
     vkCmdBindDescriptorSets(cmd,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            pipeline->layout,
+                            meshPipeline->layout,
                             1,
                             1,
                             &material.materialSet,
@@ -259,7 +335,7 @@ DrawData::DrawModel(GlobalTransform& transform,
                                            mesh.vertexBufferAddress };
 
     vkCmdPushConstants(cmd,
-                       pipeline->layout,
+                       meshPipeline->layout,
                        VK_SHADER_STAGE_VERTEX_BIT,
                        0,
                        sizeof(EntityPushConstants),
@@ -277,7 +353,8 @@ Renderer::Draw(
     Resource<GraphicsQueue>& graphicsQueue,
     Resource<DrawImage>& drawImage,
     Resource<DepthImage>& depthImage,
-    Resource<MeshPipeline>& pipeline,
+    Resource<MeshPipeline>& meshPipeline,
+    Resource<SkyboxPipeline>& skyboxPipeline,
     Resource<RenderExtent>& renderExtent,
     Resource<FrameData>& frameData,
     Resource<AssetServer>& assetServer,
@@ -290,10 +367,10 @@ Renderer::Draw(
     }
 
     auto [cam] = *cameras.begin();
-    DrawData data = { renderables,   cameras,   context,     swapchain,
-                      graphicsQueue, drawImage, depthImage,  pipeline,
-                      renderExtent,  frameData, assetServer, globalDescriptors,
-                      allocator,     cam };
+    DrawData data = { renderables,       cameras,      context,    swapchain,
+                      graphicsQueue,     drawImage,    depthImage, meshPipeline,
+                      skyboxPipeline,    renderExtent, frameData,  assetServer,
+                      globalDescriptors, allocator,    cam };
 
     data.Draw();
 }

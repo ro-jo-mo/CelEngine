@@ -172,6 +172,27 @@ Cel::Renderer::DescriptorLayoutBuilder::Build(
     return set;
 }
 
+VkDescriptorSetLayout
+Cel::Renderer::DescriptorLayoutBuilder::Build(
+    VkDevice device,
+    const void* pNext,
+    VkDescriptorSetLayoutCreateFlags flags)
+{
+    VkDescriptorSetLayoutCreateInfo info = {
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
+    };
+    info.pNext = pNext;
+
+    info.pBindings = bindings.data();
+    info.bindingCount = static_cast<uint32_t>(bindings.size());
+    info.flags = flags;
+
+    VkDescriptorSetLayout set;
+    VkCheck(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
+
+    return set;
+}
+
 void
 Cel::Renderer::DescriptorWriter::WriteImage(const int binding,
                                             VkImageView image,

@@ -21,7 +21,8 @@ struct DrawData
     Resource<GraphicsQueue>& graphicsQueue;
     Resource<DrawImage>& drawImage;
     Resource<DepthImage>& depthImage;
-    Resource<MeshPipeline>& pipeline;
+    Resource<MeshPipeline>& meshPipeline;
+    Resource<SkyboxPipeline>& skyboxPipeline;
     Resource<RenderExtent>& renderExtent;
     Resource<FrameData>& frameData;
     Resource<AssetServer>& assetServer;
@@ -38,6 +39,8 @@ struct DrawData
 
     void DrawGeometry();
 
+    void DrawSkybox();
+
     void BindSceneData(VkDescriptorSet sceneDescriptor) const;
 
     void DrawModel(GlobalTransform& transform,
@@ -53,7 +56,8 @@ Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
      Resource<GraphicsQueue>& graphicsQueue,
      Resource<DrawImage>& drawImage,
      Resource<DepthImage>& depthImage,
-     Resource<MeshPipeline>& pipeline,
+     Resource<MeshPipeline>& meshPipeline,
+     Resource<SkyboxPipeline>& skyboxPipeline,
      Resource<RenderExtent>& renderExtent,
      Resource<FrameData>& frameData,
      Resource<AssetServer>& assetServer,

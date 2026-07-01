@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Plugin.h"
 
 namespace Cel {

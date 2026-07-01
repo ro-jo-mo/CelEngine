@@ -53,7 +53,7 @@ Cel::Renderer::Camera::GetProjectionMatrix(const VkExtent2D extent) const
 {
     const float aspect =
         static_cast<float>(extent.width) / static_cast<float>(extent.height);
-    return glm::perspective(fov, aspect, nearPlane, farPlane);
+    return glm::perspective(fov, aspect, farPlane, nearPlane);
 }
 
 void

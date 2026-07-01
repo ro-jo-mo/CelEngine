@@ -13,10 +13,9 @@ Renderer::RenderPlugin::Build(Scheduler scheduler,
 {
     VulkanInitialiser::Initialise(resourceManager);
 
-    scheduler.AddChain(TearDown::Middle, CleanupAssetServer, CleanupRenderer);
-
-    scheduler.AddSystem(Render::Update, WindowSystem);
-    scheduler.AddSystem(Render::Update, SetRenderExtent);
+    scheduler.AddGroup(Render::Update, SetRenderExtent, CameraSystem);
 
     scheduler.AddSystem(Render::PostUpdate, Draw);
+
+    scheduler.AddChain(TearDown::Middle, CleanupAssetServer, CleanupRenderer);
 }

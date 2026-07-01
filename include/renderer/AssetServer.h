@@ -51,7 +51,10 @@ class AssetServer
         CreateDefaults();
     }
 
-    Handle<AssetNode> LoadAsset(const char* filepath);
+    Handle<AssetNode> LoadGltfAsset(const char* filepath);
+
+    void SetSkybox(const char* filepath);
+
     void AddAssetToEntity(Entity entity,
                           Handle<AssetNode> assetHandle,
                           Resource<World>& world) const;
@@ -64,6 +67,8 @@ class AssetServer
 
     std::optional<AllocatedImage> LoadImage(fastgltf::Asset& asset,
                                             fastgltf::Image& gltfImage);
+
+    AllocatedImage LoadSkyboxImage(const char* filepath);
 
     void LoadImages(fastgltf::Asset& asset);
     void LoadSamplers(const fastgltf::Asset& asset);
@@ -107,6 +112,9 @@ class AssetServer
 
     std::vector<AllocatedMeshBuffer> meshBuffers;
     std::vector<AllocatedBuffer> materialBuffers;
+
+    AllocatedImage skyboxImage;
+    AllocatedMeshBuffer skyboxCube;
 
     DescriptorWriter descriptorWriter;
     TextureCache textureCache;

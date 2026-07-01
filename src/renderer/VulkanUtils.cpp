@@ -1,4 +1,6 @@
 #include "renderer/VulkanUtils.h"
+
+#include "core/Error.h"
 #include "renderer/VulkanHelpers.h"
 
 #include <fstream>
@@ -95,6 +97,40 @@ Cel::Renderer::Utils::TransitionImageLayout(VkCommandBuffer cmd,
 }
 
 void
+Cel::Renderer::Utils::TransitionImageLayout(
+    VkCommandBuffer cmd,
+    VkImage image,
+    VkImageLayout currentLayout,
+    VkImageLayout newLayout,
+    VkImageSubresourceRange subresourceRange)
+{
+    VkImageMemoryBarrier2 imageBarrier{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2
+    };
+    imageBarrier.pNext = nullptr;
+    imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+    imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    imageBarrier.dstAccessMask =
+        VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+
+    imageBarrier.oldLayout = currentLayout;
+    imageBarrier.newLayout = newLayout;
+
+    imageBarrier.subresourceRange = subresourceRange;
+    imageBarrier.image = image;
+
+    VkDependencyInfo depInfo{};
+    depInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+    depInfo.pNext = nullptr;
+
+    depInfo.imageMemoryBarrierCount = 1;
+    depInfo.pImageMemoryBarriers = &imageBarrier;
+
+    vkCmdPipelineBarrier2(cmd, &depInfo);
+}
+
+void
 Cel::Renderer::Utils::CopyImageToImage(VkCommandBuffer cmd,
                                        VkImage source,
                                        VkImage destination,
@@ -142,6 +178,7 @@ Cel::Renderer::Utils::CreateImage(const void* data,
                                   VkFormat format,
                                   VkImageUsageFlags usage,
                                   bool mipmapped,
+
                                   const char* allocName,
                                   VulkanContext& context,
                                   VmaAllocator& allocator,
@@ -222,6 +259,7 @@ Cel::Renderer::Utils::CreateImage(VkExtent3D size,
                                   VkFormat format,
                                   VkImageUsageFlags usage,
                                   bool mipmapped,
+
                                   const char* allocName,
                                   VulkanContext& context,
                                   VmaAllocator& allocator)
@@ -230,25 +268,22 @@ Cel::Renderer::Utils::CreateImage(VkExtent3D size,
     newImage.imageFormat = format;
     newImage.imageExtent = size;
 
-    VkImageCreateInfo img_info =
+    VkImageCreateInfo imageCreateInfo =
         Initialisers::ImageCreateInfo(format, usage, size);
 
     if (mipmapped) {
-        img_info.mipLevels =
-            static_cast<uint32_t>(
-                std::floor(std::log2(std::max(size.width, size.height)))) +
-            1;
+        imageCreateInfo.mipLevels = CalculateMipMapLevels(size);
     }
 
     // always allocate images on dedicated GPU memory
     VmaAllocationCreateInfo allocInfo = {};
     allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
     allocInfo.requiredFlags =
-        VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        static_cast<VkMemoryPropertyFlags>(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // allocate and create the image
     VkCheck(vmaCreateImage(allocator,
-                           &img_info,
+                           &imageCreateInfo,
                            &allocInfo,
                            &newImage.image,
                            &newImage.allocation,
@@ -264,12 +299,170 @@ Cel::Renderer::Utils::CreateImage(VkExtent3D size,
     // build a image-view for the image
     VkImageViewCreateInfo view_info =
         Initialisers::ImageViewCreateInfo(format, newImage.image, aspectFlag);
-    view_info.subresourceRange.levelCount = img_info.mipLevels;
+    view_info.subresourceRange.levelCount = imageCreateInfo.mipLevels;
 
     VkCheck(vkCreateImageView(
         context.device, &view_info, nullptr, &newImage.imageView));
 
     vmaSetAllocationName(allocator, newImage.allocation, allocName);
+
+    return newImage;
+}
+
+Cel::Renderer::AllocatedImage
+Cel::Renderer::Utils::CreateImage(VkImageCreateInfo imageCreateInfo,
+                                  VkImageViewCreateInfo imageViewCreateInfo,
+
+                                  const char* allocName,
+                                  VulkanContext& context,
+                                  VmaAllocator& allocator)
+{
+    AllocatedImage newImage;
+    newImage.imageFormat = imageCreateInfo.format;
+    newImage.imageExtent = imageCreateInfo.extent;
+
+    // always allocate images on dedicated GPU memory
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags =
+        static_cast<VkMemoryPropertyFlags>(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    // allocate and create the image
+    VkCheck(vmaCreateImage(allocator,
+                           &imageCreateInfo,
+                           &allocInfo,
+                           &newImage.image,
+                           &newImage.allocation,
+                           nullptr));
+
+    // if the format is a depth format, we will need to have it use the correct
+    // aspect flag
+    VkImageAspectFlags aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
+    if (newImage.imageFormat == VK_FORMAT_D32_SFLOAT) {
+        aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+
+    imageViewCreateInfo.image = newImage.image;
+
+    VkCheck(vkCreateImageView(
+        context.device, &imageViewCreateInfo, nullptr, &newImage.imageView));
+
+    vmaSetAllocationName(allocator, newImage.allocation, allocName);
+
+    return newImage;
+}
+
+Cel::Renderer::AllocatedImage
+Cel::Renderer::Utils::CreateCubeMap(ktxTexture* texture,
+                                    VkFormat format,
+
+                                    const char* allocName,
+                                    VulkanContext& context,
+                                    VmaAllocator& allocator,
+                                    const ImmediateSubmit& immediate,
+                                    const GraphicsQueue& graphicsQueue)
+{
+    // Read basic image data from ktx file
+    VkExtent3D extent{ .width = texture->baseWidth,
+                       .height = texture->baseHeight,
+                       .depth = 1 };
+    uint32_t mipLevels = texture->numLevels;
+    ktx_uint8_t* textureData = ktxTexture_GetData(texture);
+    ktx_size_t textureSize = ktxTexture_GetDataSize(texture);
+
+    // Create upload buffer
+    AllocatedBuffer uploadBuffer =
+        CreateBuffer(textureSize,
+                     VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                     VMA_MEMORY_USAGE_CPU_TO_GPU,
+                     "skybox_upload_buffer_alloc",
+                     allocator);
+    // Upload image into buffer
+    memcpy(uploadBuffer.info.pMappedData, textureData, textureSize);
+
+    // Create cubemap image on gpu
+    VkImageCreateInfo imageCreateInfo = Initialisers::ImageCreateInfo(
+        format,
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        extent);
+    imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    imageCreateInfo.arrayLayers = 6;
+    imageCreateInfo.mipLevels = mipLevels;
+    imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkImageViewCreateInfo imageViewCreateInfo =
+        Initialisers::ImageViewCreateInfo(
+            format, VK_NULL_HANDLE, VK_IMAGE_ASPECT_COLOR_BIT);
+    imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+    imageViewCreateInfo.format = format;
+    imageViewCreateInfo.subresourceRange = {
+        VK_IMAGE_ASPECT_COLOR_BIT, 0, mipLevels, 0, 6
+    };
+
+    AllocatedImage newImage = CreateImage(
+        imageCreateInfo, imageViewCreateInfo, allocName, context, allocator);
+
+    // Move image data from buffer to gpu image
+    SubmitImmediate(
+        [&](VkCommandBuffer cmd) {
+            std::vector<VkBufferImageCopy> copyRegions;
+            copyRegions.reserve(6 * mipLevels);
+
+            for (size_t face = 0; face < 6; face++) {
+                for (size_t mip = 0; mip < mipLevels; mip++) {
+                    ktx_size_t offset;
+                    auto err = ktxTexture_GetImageOffset(
+                        texture, mip, 0, face, &offset);
+                    assert(err == KTX_SUCCESS);
+
+                    VkBufferImageCopy copy{};
+                    copy.bufferOffset = offset;
+
+                    copy.imageExtent.width = extent.width >> mip;
+                    copy.imageExtent.height = extent.height >> mip;
+                    copy.imageExtent.depth = 1;
+
+                    copy.imageSubresource.aspectMask =
+                        VK_IMAGE_ASPECT_COLOR_BIT;
+                    copy.imageSubresource.mipLevel = mip;
+                    copy.imageSubresource.baseArrayLayer = face;
+                    copy.imageSubresource.layerCount = 1;
+
+                    copyRegions.push_back(copy);
+                }
+            }
+
+            VkImageSubresourceRange subresourceRange = {};
+            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            subresourceRange.baseMipLevel = 0;
+            subresourceRange.levelCount = mipLevels;
+            subresourceRange.layerCount = 6;
+
+            TransitionImageLayout(cmd,
+                                  newImage.image,
+                                  VK_IMAGE_LAYOUT_UNDEFINED,
+                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+            // copy the buffer into the image
+            vkCmdCopyBufferToImage(cmd,
+                                   uploadBuffer.buffer,
+                                   newImage.image,
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                   copyRegions.size(),
+                                   copyRegions.data());
+
+            TransitionImageLayout(cmd,
+                                  newImage.image,
+                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                  subresourceRange);
+        },
+        context,
+        immediate,
+        graphicsQueue);
+
+    DestroyBuffer(uploadBuffer, allocator);
 
     return newImage;
 }
@@ -332,16 +525,30 @@ Cel::Renderer::Utils::SubmitImmediate(
         context.device, 1, &immediate.fence, VK_TRUE, UINT64_MAX));
 }
 
+uint32_t
+Cel::Renderer::Utils::CalculateMipMapLevels(VkExtent3D extent)
+{
+    return static_cast<uint32_t>(
+               std::floor(std::log2(std::max(extent.width, extent.height)))) +
+           1;
+}
+
+uint32_t
+Cel::Renderer::Utils::CalculateMipMapLevels(VkExtent2D extent)
+{
+    return static_cast<uint32_t>(
+               std::floor(std::log2(std::max(extent.width, extent.height)))) +
+           1;
+}
+
 void
 Cel::Renderer::Utils::GenerateMipMaps(VkCommandBuffer cmd,
                                       VkImage image,
                                       VkExtent2D imageSize)
 {
-    int mipLevels = int(std::floor(std::log2(
-                        std::max(imageSize.width, imageSize.height)))) +
-                    1;
+    auto mipLevels = CalculateMipMapLevels(imageSize);
 
-    for (int mip = 0; mip < mipLevels; mip++) {
+    for (uint32_t mip = 0; mip < mipLevels; mip++) {
 
         VkExtent2D halfSize = imageSize;
         halfSize.width /= 2;
@@ -444,6 +651,90 @@ Cel::Renderer::Utils::UploadMesh(std::vector<uint32_t>& indices,
     newSurface.vertexBuffer = CreateBuffer(
         vertexBufferSize,
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY,
+        "vertex_buffer_alloc",
+        allocator);
+
+    VkBufferDeviceAddressInfo deviceAddressInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = newSurface.vertexBuffer.buffer
+    };
+    newSurface.vertexBufferAddress =
+        vkGetBufferDeviceAddress(context.device, &deviceAddressInfo);
+
+    newSurface.indexBuffer = CreateBuffer(indexBufferSize,
+                                          VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                                              VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                          VMA_MEMORY_USAGE_GPU_ONLY,
+                                          "index_buffer_alloc",
+                                          allocator);
+
+    AllocatedBuffer staging = CreateBuffer(vertexBufferSize + indexBufferSize,
+                                           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                           VMA_MEMORY_USAGE_CPU_ONLY,
+                                           "mesh_staging_buffer_alloc",
+                                           allocator);
+
+    void* data = staging.info.pMappedData;
+
+    // copy vertex buffer
+    memcpy(data, vertices.data(), vertexBufferSize);
+    // copy index buffer
+    memcpy(static_cast<char*>(data) + vertexBufferSize,
+           indices.data(),
+           indexBufferSize);
+
+    SubmitImmediate(
+        [&](VkCommandBuffer cmd) {
+            VkBufferCopy vertexCopy{ 0 };
+            vertexCopy.dstOffset = 0;
+            vertexCopy.srcOffset = 0;
+            vertexCopy.size = vertexBufferSize;
+
+            vkCmdCopyBuffer(cmd,
+                            staging.buffer,
+                            newSurface.vertexBuffer.buffer,
+                            1,
+                            &vertexCopy);
+
+            VkBufferCopy indexCopy{ 0 };
+            indexCopy.dstOffset = 0;
+            indexCopy.srcOffset = vertexBufferSize;
+            indexCopy.size = indexBufferSize;
+
+            vkCmdCopyBuffer(cmd,
+                            staging.buffer,
+                            newSurface.indexBuffer.buffer,
+                            1,
+                            &indexCopy);
+        },
+        context,
+        immediate,
+        queue);
+
+    DestroyBuffer(staging, allocator);
+
+    return newSurface;
+}
+
+Cel::Renderer::AllocatedMeshBuffer
+Cel::Renderer::Utils::UploadMesh(std::vector<uint32_t>& indices,
+                                 std::vector<float>& vertices,
+                                 VulkanContext& context,
+                                 VmaAllocator& allocator,
+                                 ImmediateSubmit& immediate,
+                                 GraphicsQueue& queue)
+{
+    const size_t vertexBufferSize = vertices.size() * sizeof(float);
+    const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
+
+    AllocatedMeshBuffer newSurface;
+    newSurface.indexCount = indices.size();
+
+    newSurface.vertexBuffer = CreateBuffer(
+        vertexBufferSize,
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY,
         "vertex_buffer_alloc",

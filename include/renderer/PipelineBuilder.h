@@ -9,6 +9,10 @@ class PipelineBuilder
   public:
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo;
+    VkVertexInputBindingDescription vertexBindingDescription;
+    VkVertexInputAttributeDescription vertexAttributeDescription;
+
     VkPipelineInputAssemblyStateCreateInfo inputAssembly;
     VkPipelineRasterizationStateCreateInfo rasterizer;
     VkPipelineColorBlendAttachmentState colorBlendAttachment;
@@ -22,6 +26,8 @@ class PipelineBuilder
 
     VkPipeline BuildPipeline(VkDevice device);
 
+    void SetVertexInputNone();
+    void SetVertexInputFloatArray();
     void SetShaders(VkShaderModule vertexShader, VkShaderModule fragmentShader);
     void SetInputTopology(VkPrimitiveTopology topology);
     void SetPolygonMode(VkPolygonMode polygonMode);

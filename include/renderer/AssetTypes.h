@@ -58,6 +58,7 @@ struct AssetNode
     std::optional<Model> model;
 };
 
+
 // Handle<Mesh>, Handle<AssetNode> etc
 template<typename T>
 struct Handle

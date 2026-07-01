@@ -333,7 +333,7 @@ InitDescriptorData(ResourceManager& resourceManager)
 
     global.allocator.Init(context->device, 10, sizes);
 
-    // Set material layout, initially handled by the asset server
+    // Set material layout
     {
         DescriptorLayoutBuilder builder;
         builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -370,6 +370,18 @@ InitDescriptorData(ResourceManager& resourceManager)
                                            &bindFlags);
     }
 
+    // Skybox layout
+    {
+        DescriptorLayoutBuilder builder;
+        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        builder.bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+        builder.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        builder.bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        global.skyboxLayout = builder.Build(context->device);
+    }
+
     auto& frames = frameData->frames;
     auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
@@ -395,6 +407,8 @@ InitDescriptorData(ResourceManager& resourceManager)
             context->device, globalRes->sceneLayout, nullptr);
         vkDestroyDescriptorSetLayout(
             context->device, globalRes->materialLayout, nullptr);
+        vkDestroyDescriptorSetLayout(
+            context->device, globalRes->skyboxLayout, nullptr);
         globalRes->allocator.DestroyPools();
     });
 }
@@ -420,15 +434,15 @@ InitPipeline(ResourceManager& resourceManager)
     auto& depthImage = resourceManager.GetResource<DepthImage>();
     auto& global = resourceManager.GetResource<GlobalDescriptorData>();
 
-    VkShaderModule vertShader;
+    VkShaderModule meshVert;
     if (!Utils::LoadShader(
-            "../../shaders/mesh.vert.spv", context->device, &vertShader)) {
+            "../../shaders/mesh.vert.spv", context->device, &meshVert)) {
         ThrowError("Failed to load vertex shader");
     }
 
-    VkShaderModule fragShader;
+    VkShaderModule meshFrag;
     if (!Utils::LoadShader(
-            "../../shaders/mesh.frag.spv", context->device, &fragShader)) {
+            "../../shaders/mesh.frag.spv", context->device, &meshFrag)) {
         ThrowError("Failed to load vertex shader");
     }
 
@@ -449,18 +463,19 @@ InitPipeline(ResourceManager& resourceManager)
     meshLayoutInfo.pPushConstantRanges = &matrixRange;
     meshLayoutInfo.pushConstantRangeCount = 1;
 
-    VkPipelineLayout pipelineLayout;
+    VkPipelineLayout meshLayout;
     VkCheck(vkCreatePipelineLayout(
-        context->device, &meshLayoutInfo, nullptr, &pipelineLayout));
+        context->device, &meshLayoutInfo, nullptr, &meshLayout));
 
     // #####################
 
     PipelineBuilder pipelineBuilder;
 
     // use the triangle layout we created
-    pipelineBuilder.pipelineLayout = pipelineLayout;
+    pipelineBuilder.pipelineLayout = meshLayout;
+    pipelineBuilder.SetVertexInputNone();
     // connecting the vertex and pixel shaders to the pipeline
-    pipelineBuilder.SetShaders(vertShader, fragShader);
+    pipelineBuilder.SetShaders(meshVert, meshFrag);
     // it will draw triangles
     pipelineBuilder.SetInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     // filled triangles
@@ -479,21 +494,58 @@ InitPipeline(ResourceManager& resourceManager)
     pipelineBuilder.SetDepthAttachment(depthImage->imageFormat);
 
     // finally build the pipeline
-    auto pipeline = pipelineBuilder.BuildPipeline(context->device);
+    auto meshPipeline = pipelineBuilder.BuildPipeline(context->device);
 
-    MeshPipeline meshPipeline{ .pipeline = pipeline, .layout = pipelineLayout };
+    resourceManager.InsertResource<MeshPipeline>(meshPipeline, meshLayout);
 
-    resourceManager.InsertResource(meshPipeline);
+    // Create skybox pipeline
+
+    VkShaderModule skyboxVert;
+    if (!Utils::LoadShader(
+            "../../shaders/skybox.vert.spv", context->device, &skyboxVert)) {
+        ThrowError("Failed to load skybox vert shader");
+    }
+
+    VkShaderModule skyboxFrag;
+    if (!Utils::LoadShader(
+            "../../shaders/skybox.frag.spv", context->device, &skyboxFrag)) {
+        ThrowError("Failed to load skybox frag shader");
+    }
+
+    VkPipelineLayoutCreateInfo skyboxLayoutCreateInfo =
+        Initialisers::PipelineLayoutCreateInfo();
+    skyboxLayoutCreateInfo.setLayoutCount = 1;
+    skyboxLayoutCreateInfo.pSetLayouts = &global->skyboxLayout;
+
+    VkPipelineLayout skyboxLayout;
+
+    vkCreatePipelineLayout(
+        context->device, &skyboxLayoutCreateInfo, nullptr, &skyboxLayout);
+
+    pipelineBuilder.pipelineLayout = skyboxLayout;
+    pipelineBuilder.SetShaders(skyboxVert, skyboxFrag);
+    pipelineBuilder.SetCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.SetVertexInputFloatArray();
+
+    auto skyboxPipeline = pipelineBuilder.BuildPipeline(context->device);
+
+    resourceManager.InsertResource<SkyboxPipeline>(skyboxPipeline,
+                                                   skyboxLayout);
 
     // clean structures
-    vkDestroyShaderModule(context->device, fragShader, nullptr);
-    vkDestroyShaderModule(context->device, vertShader, nullptr);
+    vkDestroyShaderModule(context->device, meshFrag, nullptr);
+    vkDestroyShaderModule(context->device, meshVert, nullptr);
+    vkDestroyShaderModule(context->device, skyboxVert, nullptr);
+    vkDestroyShaderModule(context->device, skyboxFrag, nullptr);
 
     auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
     cleanup->Push([=, &context]() {
-        vkDestroyPipelineLayout(context->device, pipelineLayout, nullptr);
-        vkDestroyPipeline(context->device, pipeline, nullptr);
+        vkDestroyPipelineLayout(context->device, meshLayout, nullptr);
+        vkDestroyPipeline(context->device, meshPipeline, nullptr);
+
+        vkDestroyPipelineLayout(context->device, skyboxLayout, nullptr);
+        vkDestroyPipeline(context->device, skyboxPipeline, nullptr);
     });
 }
 

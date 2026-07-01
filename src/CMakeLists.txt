@@ -8,6 +8,7 @@ find_package(vk-bootstrap CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(VulkanUtilityLibraries REQUIRED)
 find_package(fastgltf CONFIG REQUIRED)
+find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 
 
@@ -27,9 +28,12 @@ target_link_libraries(${PROJECT_NAME}
         vk-bootstrap::vk-bootstrap
         Vulkan::UtilityHeaders
         fastgltf::fastgltf
+        KTX::ktx
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
+
+target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
 
 target_sources(${PROJECT_NAME}
         PRIVATE
@@ -43,6 +47,8 @@ target_sources(${PROJECT_NAME}
         "core/Time.cpp"
         "core/Transform.cpp"
         "core/CorePlugin.cpp"
+
+        "input/Input.cpp"
 
         "renderer/Vma.cpp"
         "renderer/RenderPlugin.cpp"
@@ -95,6 +101,8 @@ set(public_headers
         include/core/Running.h
 
         include/common/SlotMap.h
+
+        include/input/Input.h
 
         include/renderer/AssetServer.h
         include/renderer/DeletionQueue.h

@@ -28,11 +28,6 @@ Cel::Renderer::PipelineBuilder::BuildPipeline(VkDevice device)
     colorBlending.attachmentCount = 1;
     colorBlending.pAttachments = &colorBlendAttachment;
 
-    // completely clear VertexInputStateCreateInfo, as we have no need for it
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
-    };
-
     // build the actual pipeline
     // we now use all of the info structs we have been writing into into this
     // one to create the pipeline
@@ -191,4 +186,33 @@ Cel::Renderer::PipelineBuilder::EnableDepthTest(bool depthWriteEnable,
     depthStencil.back = {};
     depthStencil.minDepthBounds = 0.f;
     depthStencil.maxDepthBounds = 1.f;
+}
+
+void
+Cel::Renderer::PipelineBuilder::SetVertexInputNone()
+{
+    vertexInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
+    };
+}
+
+void
+Cel::Renderer::PipelineBuilder::SetVertexInputFloatArray()
+{
+    vertexBindingDescription = { .binding = 0,
+                                 .stride = sizeof(float) * 3,
+                                 .inputRate = VK_VERTEX_INPUT_RATE_VERTEX };
+
+    vertexAttributeDescription = { .location = 0,
+                                   .binding = 0,
+                                   .format = VK_FORMAT_R32G32B32_SFLOAT,
+                                   .offset = 0 };
+
+    vertexInputInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &vertexBindingDescription,
+        .vertexAttributeDescriptionCount = 1,
+        .pVertexAttributeDescriptions = &vertexAttributeDescription
+    };
 }
