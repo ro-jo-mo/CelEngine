@@ -13,17 +13,23 @@
 
 using namespace Cel;
 
-void
-SpawnCamera(Resource<World>& world)
-{
-    world->Spawn(Renderer::Camera::Camera3d(90, 0.1, 1000));
-}
-
 struct RotateMe
 {};
 
 struct MyAsset
 {};
+
+struct PlayerCamera
+{
+    float totalX = 0;
+    float totalY = 0;
+};
+
+void
+SpawnCamera(Resource<World>& world)
+{
+    world->Spawn(Renderer::Camera::Camera3d(90, 0.1, 1000), PlayerCamera{});
+}
 
 void
 SpawnAsset(Resource<World>& world, Resource<Renderer::AssetServer>& server)
@@ -38,6 +44,8 @@ SpawnAsset(Resource<World>& world, Resource<Renderer::AssetServer>& server)
             Position{ 0, 0, -1 }, Scale{ 0.01 }, MyAsset{}, RotateMe{});
         server->AddAssetToEntity(child.Get(), handle, world);
     });
+    server->AddAssetToEntity(
+        world->Spawn(Position{ 0, 0, 5 }, Scale{ 0.01 }).Get(), handle, world);
 }
 
 void
@@ -50,19 +58,20 @@ SpinIt(Query<With<RotateMe, Rotation>>& query, Resource<Time>& time)
 }
 
 void
-CameraController(Query<With<Renderer::Camera, Rotation, Position>>& query,
-                 Resource<Input::Input>& input,
-                 Resource<Renderer::Window>& window,
-                 Resource<Time>& time)
+CameraController(
+    Query<With<Renderer::Camera, PlayerCamera, Rotation, Position>>& query,
+    Resource<Input::Input>& input,
+    Resource<Renderer::Window>& window,
+    Resource<Time>& time)
 {
-    constexpr float SENSITIVITY = 0.003;
-    constexpr float SPEED = 0.05;
+    constexpr float SENSITIVITY = 0.07;
+    constexpr float SPEED = 3.0;
 
     auto mouse = input->MouseDelta() * SENSITIVITY;
     auto scroll = input->MouseScroll();
 
-    auto rotation = glm::angleAxis(-mouse.x, glm::vec3(0, 1, 0));
-    // rotation *= glm::angleAxis(mouse.y, glm::vec3(1, 0, 0));
+    auto rotation = glm::angleAxis(mouse.x, glm::vec3(0, 1, 0));
+    rotation *= glm::angleAxis(mouse.y, glm::vec3(1, 0, 0));
 
     auto translation = glm::vec3(0.0);
 
@@ -75,18 +84,30 @@ CameraController(Query<With<Renderer::Camera, Rotation, Position>>& query,
     }
 
     if (input->KeyHeld(SDL_SCANCODE_W)) {
-        translation.z -= 1;
-    }
-    if (input->KeyHeld(SDL_SCANCODE_S)) {
         translation.z += 1;
     }
+    if (input->KeyHeld(SDL_SCANCODE_S)) {
+        translation.z -= 1;
+    }
+    if (input->KeyHeld(SDL_SCANCODE_SPACE)) {
+        translation.y += 1;
+    }
+    if (input->KeyHeld(SDL_SCANCODE_LCTRL)) {
+        translation.y -= 1;
+    }
+
     translation *= SPEED;
 
-    for (auto [cam, rot, pos] : query) {
-        rot.rotation *= rotation;
+    for (auto [cam, ms, rot, pos] : query) {
+        ms.totalX += mouse.x * SENSITIVITY;
+        ms.totalY += mouse.y * SENSITIVITY;
+
+        rot.rotation = glm::angleAxis(ms.totalX, glm::vec3(0.0, 1.0, 0)) *
+                       glm::angleAxis(ms.totalY, glm::vec3(1.0, 0, 0));
+
         cam.fov -= scroll.y * 0.1;
 
-        pos.position += rot.rotation * translation;
+        pos.position += rot.rotation * translation * time->DeltaTime();
     }
 
     if (input->MouseButtonDown(SDL_BUTTON_RIGHT)) {

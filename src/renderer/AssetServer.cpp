@@ -74,9 +74,7 @@ AssetServer::CreateDefaults()
                                    immediate,
                                    graphicsQueue);
 
-    SetSkybox("../../assets/skybox.ktx");
-
-    textureCache.AddTexture(skyboxImage.imageView, samplers[0]);
+    SetSkybox("../../assets/skybox.ktx2");
 }
 
 std::vector<Model>
@@ -586,7 +584,10 @@ AssetServer::LoadSkyboxImage(const char* filepath)
 void
 AssetServer::SetSkybox(const char* filepath)
 {
-    skyboxImage = LoadSkyboxImage(filepath);
+
+    images.push_back(LoadSkyboxImage(filepath));
+    textureCache.AddTexture(images[images.size() - 1].imageView, samplers[0]);
+    skyboxTextureIndex = textureCache.descriptors.size() - 1;
 }
 
 void
@@ -653,6 +654,15 @@ AssetServer::Cleanup()
         vkDestroyImageView(context.device, image.imageView, nullptr);
     }
     for (auto& buffer : meshBuffers) {
+        vmaDestroyBuffer(allocator,
+                         buffer.vertexBuffer.buffer,
+                         buffer.vertexBuffer.allocation);
+        vmaDestroyBuffer(allocator,
+                         buffer.indexBuffer.buffer,
+                         buffer.indexBuffer.allocation);
+    }
+    {
+        const auto& buffer = skyboxCube;
         vmaDestroyBuffer(allocator,
                          buffer.vertexBuffer.buffer,
                          buffer.vertexBuffer.allocation);

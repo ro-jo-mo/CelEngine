@@ -240,7 +240,8 @@ DrawData::DrawSkybox()
                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
     // Combine texture image sampler
-    auto skyTex = assetServer->textureCache.descriptors[0];
+    auto skyTex =
+        assetServer->textureCache.descriptors[assetServer->skyboxTextureIndex];
     writer.WriteImage(1,
                       skyTex.imageView,
                       skyTex.sampler,
@@ -291,9 +292,9 @@ DrawData::BindSceneData(VkDescriptorSet sceneDescriptor) const
 
     VkViewport viewport{};
     viewport.x = 0;
-    viewport.y = 0;
+    viewport.y = static_cast<float>(renderExtent->extent.height);
     viewport.width = static_cast<float>(renderExtent->extent.width);
-    viewport.height = static_cast<float>(renderExtent->extent.height);
+    viewport.height = -static_cast<float>(renderExtent->extent.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 

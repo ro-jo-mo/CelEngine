@@ -10,10 +10,12 @@ Cel::CorePlugin::Build(Scheduler scheduler, ResourceManager& resourceManager)
 
     scheduler.AddSystem(MainUpdate::First, Input::ProcessInputEvents);
 
-    // Propagate the transform hierarchy after startup as well as in update
-    // To ensure the first frame works correctly
+    // There are several places we need to propagate the hierarchy
+    // Effectively anyplace where we expect changes to a transform to be finalized
     scheduler.AddChain(
         MainUpdate::Last, ComputeRootGlobalTransform, HierarchyPropagation);
+    scheduler.AddChain(
+        PhysicsUpdate::Last, ComputeRootGlobalTransform, HierarchyPropagation);
     scheduler.AddChain(
         Startup::Last, ComputeRootGlobalTransform, HierarchyPropagation);
 }

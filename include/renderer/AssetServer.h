@@ -113,7 +113,7 @@ class AssetServer
     std::vector<AllocatedMeshBuffer> meshBuffers;
     std::vector<AllocatedBuffer> materialBuffers;
 
-    AllocatedImage skyboxImage;
+    size_t skyboxTextureIndex;
     AllocatedMeshBuffer skyboxCube;
 
     DescriptorWriter descriptorWriter;

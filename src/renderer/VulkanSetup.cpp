@@ -35,6 +35,11 @@ InitVulkan(ResourceManager& resourceManager)
 
     SDL_Vulkan_CreateSurface(window->window, instanceBuild, nullptr, &surface);
 
+    VkPhysicalDeviceVulkan11Features features11{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES
+    };
+    features11.shaderDrawParameters = true;
+
     VkPhysicalDeviceVulkan12Features features12{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES
     };
@@ -53,8 +58,9 @@ InitVulkan(ResourceManager& resourceManager)
     vkb::PhysicalDeviceSelector selector{ instanceBuild };
     vkb::PhysicalDevice physicalDevice =
         selector.set_minimum_version(1, 3)
-            .set_required_features_13(features13)
+            .set_required_features_11(features11)
             .set_required_features_12(features12)
+            .set_required_features_13(features13)
             .set_surface(surface)
             .select()
             .value();
@@ -481,7 +487,7 @@ InitPipeline(ResourceManager& resourceManager)
     // filled triangles
     pipelineBuilder.SetPolygonMode(VK_POLYGON_MODE_FILL);
     // no backface culling
-    pipelineBuilder.SetCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.SetCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE);
     // no multisampling
     pipelineBuilder.SetMutisamplingNone();
     // Enable blending later once I figure it out
