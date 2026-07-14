@@ -20,12 +20,9 @@ struct Vertex
 struct Material
 {
     uint32_t bufferIndex;
-    uint32_t bufferOffset;
-
-    VkDescriptorSet materialSet;
 };
 
-// Uploaded to a uniform buffer
+// Uploaded to gpu buffer, used through buffer reference
 struct MaterialConstants
 {
     glm::vec4 baseColorFactors;
@@ -33,21 +30,19 @@ struct MaterialConstants
     uint32_t colorTextureIndex;
     uint32_t metalRoughnessTextureIndex;
     uint32_t normalTextureIndex;
-    uint32_t pad1;
-    // padding, required to meet the 256 byte alignment requirements
-    glm::vec4 extra[13];
 };
 
 struct Model
 {
-    std::vector<size_t> meshes;
-    std::vector<std::optional<size_t>> materials;
+    std::vector<uint32_t> meshes;
+    std::vector<std::optional<uint32_t>> materials;
 };
 
 struct Mesh
 {
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
+    uint32_t firstIndex;
+    uint32_t indexCount;
+    int32_t vertexOffset;
 };
 
 struct AssetNode
@@ -58,12 +53,11 @@ struct AssetNode
     std::optional<Model> model;
 };
 
-
 // Handle<Mesh>, Handle<AssetNode> etc
 template<typename T>
 struct Handle
 {
-    size_t index;
+    uint32_t index;
 };
 
 }

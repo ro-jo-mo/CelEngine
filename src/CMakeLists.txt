@@ -62,6 +62,7 @@ target_sources(${PROJECT_NAME}
         "renderer/AssetServer.cpp"
         "renderer/Descriptors.cpp"
         "renderer/Camera.cpp"
+        "renderer/MegaBuffer.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -117,6 +118,8 @@ set(public_headers
         include/renderer/AssetTypes.h
         include/renderer/Descriptors.h
         include/renderer/Camera.h
+        include/renderer/MegaBuffer.h
+        include/renderer/render-graph/RenderGraph.
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

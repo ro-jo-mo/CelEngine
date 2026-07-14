@@ -193,13 +193,73 @@ DrawData::DrawGeometry()
     // Bind pipeline, scene descriptor, scissor etc
     BindSceneData(sceneDescriptor);
 
-    for (auto [transform, mesh, material] : renderables) {
-        DrawModel(transform, mesh, material);
-    }
-
     frame->toDelete.Push([=, allocator = *allocator]() {
         vmaDestroyBuffer(allocator, sceneBuffer.buffer, sceneBuffer.allocation);
     });
+}
+
+void
+DrawData::CreateIndirectData()
+{
+    // NOTE: Really these buffers should be built once, and reused each frame
+    // This might present problems with multiple frames in flight
+
+    // Create buffer for PerEntityGpuData
+    auto entityBuffer = Utils::CreateBuffer(
+        sizeof(PerEntityGpuData) * renderables.size(),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        "per_entity_data_buffer_alloc",
+        *allocator);
+
+    auto materialBuffer = Utils::CreateBuffer(
+        sizeof(PerEntityGpuData) * renderables.size(),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VMA_MEMORY_USAGE_AUTO,
+        "material_data_buffer_alloc",
+        *allocator);
+
+    // Accumulate data in lists before loading into buffers
+    std::vector<PerEntityGpuData> entityData;
+    std::vector<VkDrawIndexedIndirectCommand> indirectCalls;
+
+    entityData.reserve(renderables.size());
+    indirectCalls.reserve(renderables.size());
+
+    for (const auto& [transform, meshHandle, matHandle] : renderables) {
+        auto mesh = assetServer->GetMesh(meshHandle);
+        auto mat = assetServer->GetMaterial(matHandle);
+
+        VkDrawIndexedIndirectCommand call{ .indexCount = mesh.indexCount,
+                                           .instanceCount = 1,
+                                           .firstIndex = mesh.firstIndex,
+                                           .vertexOffset = mesh.vertexOffset,
+                                           .firstInstance = 0 };
+
+        indirectCalls.push_back(call);
+
+        PerEntityGpuData data{ .transform = transform.transform,
+                               .normalTransform =
+                                   glm::mat3(transform.transform),
+                               .materialIndex = mat.bufferIndex };
+
+        entityData.push_back(data);
+    }
+
+    // copy into buffer
+    // We want all this data to be gpu local
+    // We could simply create a large staging buffer and reuse it for each
+    // upload, which might perform better
+    // Alternatively an upload queue might be
+    // beneficial as well
+    Utils::UploadToBuffer(entityData.data,
+                          sizeof(PerEntityGpuData) * entityData.size(),
+                          entityBuffer.buffer,
+                          0,
+                          context,
+                          allocator,
+                          immediate,
+                          graphicsQueue->queue);
 }
 
 void
@@ -360,7 +420,8 @@ Renderer::Draw(
     Resource<FrameData>& frameData,
     Resource<AssetServer>& assetServer,
     Resource<GlobalDescriptorData>& globalDescriptors,
-    Resource<VmaAllocator>& allocator)
+    Resource<VmaAllocator>& allocator,
+    Resource<ImmediateSubmit>& immediate)
 {
     if (cameras.begin() == cameras.end()) {
         // No camera, no draw
@@ -371,7 +432,7 @@ Renderer::Draw(
     DrawData data = { renderables,       cameras,      context,    swapchain,
                       graphicsQueue,     drawImage,    depthImage, meshPipeline,
                       skyboxPipeline,    renderExtent, frameData,  assetServer,
-                      globalDescriptors, allocator,    cam };
+                      globalDescriptors, allocator,    immediate,  cam };
 
     data.Draw();
 }

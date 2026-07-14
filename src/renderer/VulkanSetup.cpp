@@ -48,7 +48,7 @@ InitVulkan(ResourceManager& resourceManager)
     features12.descriptorBindingPartiallyBound = true;
     features12.descriptorBindingVariableDescriptorCount = true;
     features12.runtimeDescriptorArray = true;
-
+    features12.drawIndirectCount = true;
     VkPhysicalDeviceVulkan13Features features13{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES
     };

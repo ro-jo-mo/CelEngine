@@ -86,13 +86,16 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
         Model newModel;
 
         for (const auto& gltfPrimitive : gltfMesh.primitives) {
-            Mesh newMesh;
-
+            std::vector<Vertex> vertices;
+            std::vector<uint32_t> indices;
             // Associate the new mesh with a material
-            auto materialIndex = gltfPrimitive.materialIndex;
+            fastgltf::Optional<uint32_t> materialIndex{};
             if (materialIndex.has_value()) {
-                materialIndex = materialIndex.value() + materialOffset;
+                materialIndex =
+                    materialIndex.value() * sizeof(MaterialConstants) +
+                    materialOffset;
             }
+
             newModel.materials.push_back(materialIndex);
 
             // Load indices
@@ -100,11 +103,11 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
                 fastgltf::Accessor& accessor =
                     asset.accessors[gltfPrimitive.indicesAccessor.value()];
 
-                newMesh.indices.reserve(accessor.count);
+                indices.reserve(accessor.count);
 
                 fastgltf::iterateAccessor<uint32_t>(
                     asset, accessor, [&](const uint32_t idx) {
-                        newMesh.indices.push_back(idx);
+                        indices.push_back(idx);
                     });
             }
 
@@ -114,7 +117,7 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
                     asset.accessors[gltfPrimitive.findAttribute("POSITION")
                                         ->accessorIndex];
 
-                newMesh.vertices.reserve(accessor.count);
+                vertices.reserve(accessor.count);
 
                 fastgltf::iterateAccessor<fastgltf::math::fvec3>(
                     asset, accessor, [&](fastgltf::math::fvec3 vert) {
@@ -123,7 +126,7 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
                         newVertex.normal = { 1, 0, 0 };
                         newVertex.uv_x = 0;
                         newVertex.uv_y = 0;
-                        newMesh.vertices.push_back(newVertex);
+                        vertices.push_back(newVertex);
                     });
             }
 
@@ -136,9 +139,9 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
                         asset,
                         asset.accessors[normals->accessorIndex],
                         [&](fastgltf::math::fvec3 normal, const size_t index) {
-                            newMesh.vertices[index].normal = { normal.x(),
-                                                               normal.y(),
-                                                               normal.z() };
+                            vertices[index].normal = { normal.x(),
+                                                       normal.y(),
+                                                       normal.z() };
                         });
                 }
             }
@@ -152,20 +155,31 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
                         asset,
                         asset.accessors[uv->accessorIndex],
                         [&](fastgltf::math::fvec2 vert, const size_t index) {
-                            newMesh.vertices[index].uv_x = vert.x();
-                            newMesh.vertices[index].uv_y = vert.y();
+                            vertices[index].uv_x = vert.x();
+                            vertices[index].uv_y = vert.y();
                         });
                 }
 
                 newModel.meshes.push_back(meshes.size());
-                // For now store both cpu & gpu
+
+                Mesh newMesh{};
+                newMesh.firstIndex = indiceBuffer.UploadData(indices.data(),
+                                                             indices.size(),
+                                                             1,
+                                                             context,
+                                                             allocator,
+                                                             immediate,
+                                                             graphicsQueue);
+                newMesh.indexCount = indices.size();
+                newMesh.vertexOffset = verticeBuffer.UploadData(vertices.data(),
+                                                                vertices.size(),
+                                                                1,
+                                                                context,
+                                                                allocator,
+                                                                immediate,
+                                                                graphicsQueue);
+
                 meshes.push_back(newMesh);
-                meshBuffers.push_back(Utils::UploadMesh(newMesh.indices,
-                                                        newMesh.vertices,
-                                                        context,
-                                                        allocator,
-                                                        immediate,
-                                                        graphicsQueue));
             }
         }
         models.push_back(newModel);
@@ -207,7 +221,7 @@ AssetServer::LoadImage(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
             [&](const fastgltf::sources::Fallback&) { ErrorMsg("Fallback"); } },
         gltfImage.data);
 
-    if (imageData.size() == 0) {
+    if (imageData.empty()) {
         return {};
     }
 
@@ -317,24 +331,6 @@ AssetServer::LoadSamplers(const fastgltf::Asset& asset)
     }
 }
 
-void
-AssetServer::WriteMaterialDescriptors(Material& material,
-                                      DescriptorAllocator& descriptorAllocator)
-{
-    material.materialSet =
-        descriptorAllocator.Allocate(globalDescriptorData.materialLayout);
-
-    descriptorWriter.Clear();
-
-    descriptorWriter.WriteBuffer(0,
-                                 materialBuffers[material.bufferIndex].buffer,
-                                 sizeof(MaterialConstants),
-                                 material.bufferOffset,
-                                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-
-    descriptorWriter.UpdateSet(context.device, material.materialSet);
-}
-
 uint32_t
 AssetServer::ResolveTextureSampler(
     fastgltf::Asset& asset,
@@ -362,43 +358,35 @@ AssetServer::ResolveTextureSampler(
 
 void
 AssetServer::LoadMaterials(fastgltf::Asset& asset,
-                           DescriptorAllocator& descriptorAllocator,
                            const size_t imageOffset,
                            const size_t samplerOffset)
 {
-    const uint32_t bufferIndex = materials.size();
-    uint32_t bufferOffset = 0;
-    materialBuffers.push_back(
-        Utils::CreateBuffer(asset.materials.size() * sizeof(MaterialConstants),
-                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                            VMA_MEMORY_USAGE_CPU_TO_GPU,
-                            "gltf_material_buffer_alloc",
-                            allocator));
-    vmaSetAllocationName(allocator,
-                         materialBuffers[bufferIndex].allocation,
-                         "gltf_material_buffer_alloc");
+    std::vector<MaterialConstants> materialList;
 
-    const auto buffer = static_cast<MaterialConstants*>(
-        materialBuffers[bufferIndex].info.pMappedData);
     for (auto& gltfMaterial : asset.materials) {
         // Material constants will be stored in a buffer on the gpu
         // The material will then contain the buffer index and offset for these
         // constants
         MaterialConstants constants{};
 
-        const auto& pbr = gltfMaterial.pbrData;
-        auto& colour = pbr.baseColorFactor;
+        const auto& [baseColorFactor,
+                     metallicFactor,
+                     roughnessFactor,
+                     baseColorTexture,
+                     metallicRoughnessTexture] = gltfMaterial.pbrData;
+
+        auto& colour = baseColorFactor;
         constants.baseColorFactors = {
             colour.x(), colour.y(), colour.z(), colour.w()
         };
         constants.metalRoughnessFactors = {
-            pbr.metallicFactor, pbr.roughnessFactor, 0, 0
+            metallicFactor, roughnessFactor, 0, 0
         };
 
         constants.colorTextureIndex = ResolveTextureSampler(
-            asset, pbr.baseColorTexture, imageOffset, samplerOffset);
+            asset, baseColorTexture, imageOffset, samplerOffset);
         constants.metalRoughnessTextureIndex = ResolveTextureSampler(
-            asset, pbr.metallicRoughnessTexture, imageOffset, samplerOffset);
+            asset, metallicRoughnessTexture, imageOffset, samplerOffset);
         constants.normalTextureIndex = ResolveTextureSampler(
             asset,
             gltfMaterial.normalTexture.transform([](const auto& info) {
@@ -409,19 +397,28 @@ AssetServer::LoadMaterials(fastgltf::Asset& asset,
             imageOffset,
             samplerOffset);
 
-        // Upload constants to buffer
-        buffer[bufferOffset] = constants;
-
-        Material newMaterial{
-            .bufferIndex = bufferIndex,
-            .bufferOffset = bufferOffset,
-        };
+        // REWRITE:
+        // A single mega buffer
+        // Has handy function to upload data
+        // likely best to store as an array and upload whole thing at once?
+        // Padding / alignment is important
 
         // Lastly create a descriptor for this material
-        WriteMaterialDescriptors(newMaterial, descriptorAllocator);
 
-        materials.push_back(newMaterial);
-        ++bufferOffset;
+        materialList.push_back(constants);
+    }
+
+    const auto bufferOffset = materialBuffer.UploadData(
+        materialList.data(),
+        sizeof(MaterialConstants) * materialList.size(),
+        1,
+        context,
+        allocator,
+        immediate,
+        graphicsQueue);
+
+    for (uint32_t i = 0; i < materialList.size(); i++) {
+        materials.push_back(Material{ .bufferIndex = bufferOffset + i });
     }
 }
 
@@ -523,7 +520,7 @@ AssetServer::LoadGltfAsset(const char* filepath)
     // Offsets for the newly loaded meshes / materials loaded into the asset
     // server
 
-    size_t materialOffset = materials.size();
+    size_t materialOffset = materials.size() * sizeof(MaterialConstants);
     size_t imageOffset = images.size();
     size_t samplerOffset = samplers.size();
 
@@ -537,7 +534,7 @@ AssetServer::LoadGltfAsset(const char* filepath)
 
     LoadImages(asset);
     LoadSamplers(asset);
-    LoadMaterials(asset, descriptorAllocator, imageOffset, samplerOffset);
+    LoadMaterials(asset, imageOffset, samplerOffset);
 
     auto models = LoadModels(asset, materialOffset);
     AssetNode newAsset = LoadNodes(asset, models);
@@ -545,7 +542,7 @@ AssetServer::LoadGltfAsset(const char* filepath)
     assets.push_back(std::move(newAsset));
     allocators.push_back(std::move(descriptorAllocator));
 
-    return { .index = assets.size() - 1 };
+    return { .index = static_cast<uint32_t>(assets.size()) - 1 };
 }
 
 AllocatedImage
@@ -636,10 +633,10 @@ AssetServer::GetMaterial(const Handle<Material> material) const
     return materials[material.index];
 }
 
-const AllocatedMeshBuffer&
+Mesh
 AssetServer::GetMesh(const Handle<Mesh> mesh) const
 {
-    return meshBuffers[mesh.index];
+    return meshes[mesh.index];
 }
 
 void
@@ -653,14 +650,6 @@ AssetServer::Cleanup()
         vmaDestroyImage(allocator, image.image, image.allocation);
         vkDestroyImageView(context.device, image.imageView, nullptr);
     }
-    for (auto& buffer : meshBuffers) {
-        vmaDestroyBuffer(allocator,
-                         buffer.vertexBuffer.buffer,
-                         buffer.vertexBuffer.allocation);
-        vmaDestroyBuffer(allocator,
-                         buffer.indexBuffer.buffer,
-                         buffer.indexBuffer.allocation);
-    }
     {
         const auto& buffer = skyboxCube;
         vmaDestroyBuffer(allocator,
@@ -670,10 +659,12 @@ AssetServer::Cleanup()
                          buffer.indexBuffer.buffer,
                          buffer.indexBuffer.allocation);
     }
-    for (auto& buffer : materialBuffers) {
-        vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
-    }
+
     for (auto& pools : allocators) {
         pools.DestroyPools();
     }
+
+    indiceBuffer.Cleanup(allocator);
+    verticeBuffer.Cleanup(allocator);
+    materialBuffer.Cleanup(allocator);
 }

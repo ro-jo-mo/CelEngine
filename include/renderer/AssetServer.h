@@ -2,6 +2,7 @@
 
 #include "../core/World.h"
 #include "Descriptors.h"
+#include "MegaBuffer.h"
 #include "VulkanTypes.h"
 #include "ecs/Types.h"
 #include "renderer/AssetTypes.h"
@@ -42,7 +43,30 @@ class AssetServer
                 Resource<ImmediateSubmit>& immediate,
                 Resource<GraphicsQueue>& graphicsQueue,
                 Resource<GlobalDescriptorData>& globalDescriptorData)
-        : context(*context)
+        : verticeBuffer(2 << 16,
+                        VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                        VMA_MEMORY_USAGE_GPU_ONLY,
+                        "vertice_mega_buffer_alloc",
+                        *allocator)
+        , indiceBuffer(2 << 16,
+                       VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                       VMA_MEMORY_USAGE_GPU_ONLY,
+                       "indice_mega_buffer_alloc",
+                       *allocator)
+        , materialBuffer(2 << 16,
+                         VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                         VMA_MEMORY_USAGE_GPU_ONLY,
+                         "material_mega_buffer_alloc",
+                         *allocator)
+        , context(*context)
         , allocator(*allocator)
         , immediate(*immediate)
         , graphicsQueue(*graphicsQueue)
@@ -60,8 +84,8 @@ class AssetServer
                           Resource<World>& world) const;
 
   private:
-    Material GetMaterial(Handle<Material> material) const;
-    const AllocatedMeshBuffer& GetMesh(Handle<Mesh> mesh) const;
+    [[nodiscard]] Material GetMaterial(Handle<Material> material) const;
+    [[nodiscard]] Mesh GetMesh(Handle<Mesh> mesh) const;
 
     void CreateDefaults();
 
@@ -81,7 +105,6 @@ class AssetServer
         size_t samplerOffset);
 
     void LoadMaterials(fastgltf::Asset& asset,
-                       DescriptorAllocator& descriptorAllocator,
                        size_t imageOffset,
                        size_t samplerOffset);
     AssetNode LoadNodes(fastgltf::Asset& asset, std::vector<Model>& models);
@@ -97,21 +120,18 @@ class AssetServer
     std::vector<AssetNode> assets;
     std::vector<DescriptorAllocator> allocators;
 
-    // The values that make up a material
-    // Materials simply store a reference to the material gpu buffer + offset in
-    // buffer
-    std::vector<Material> materials;
     // Colour, RoughnessMetallic, Normal textures
     std::vector<AllocatedImage> images;
     // Image samplers
     std::vector<VkSampler> samplers;
 
-    // For now I am storing meshes, but a cpu side representation should not be
-    // necessary (i.e. I can remove meshes and just keep meshBuffers)
+    // The CPU side data is purely for indexing into the mega buffers
     std::vector<Mesh> meshes;
+    std::vector<Material> materials;
 
-    std::vector<AllocatedMeshBuffer> meshBuffers;
-    std::vector<AllocatedBuffer> materialBuffers;
+    MegaBuffer verticeBuffer;
+    MegaBuffer indiceBuffer;
+    MegaBuffer materialBuffer;
 
     size_t skyboxTextureIndex;
     AllocatedMeshBuffer skyboxCube;

@@ -771,7 +771,7 @@ Cel::Renderer::Utils::UploadMesh(std::vector<uint32_t>& indices,
 
     SubmitImmediate(
         [&](VkCommandBuffer cmd) {
-            VkBufferCopy vertexCopy{ 0 };
+            VkBufferCopy vertexCopy{};
             vertexCopy.dstOffset = 0;
             vertexCopy.srcOffset = 0;
             vertexCopy.size = vertexBufferSize;
@@ -800,4 +800,37 @@ Cel::Renderer::Utils::UploadMesh(std::vector<uint32_t>& indices,
     DestroyBuffer(staging, allocator);
 
     return newSurface;
+}
+void
+Cel::Renderer::Utils::UploadToBuffer(const void* data,
+                                     const uint32_t size,
+                                     VkBuffer destination,
+                                     const uint32_t destinationOffset,
+                                     VulkanContext& context,
+                                     VmaAllocator& allocator,
+                                     ImmediateSubmit& immediate,
+                                     GraphicsQueue& queue)
+{
+    AllocatedBuffer staging = CreateBuffer(size,
+                                           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                           VMA_MEMORY_USAGE_CPU_ONLY,
+                                           "upload_to_XX_staging_buffer_alloc",
+                                           allocator);
+
+    memcpy(staging.info.pMappedData, data, size);
+
+    SubmitImmediate(
+        [=](VkCommandBuffer cmd) {
+            VkBufferCopy copy{};
+            copy.dstOffset = destinationOffset;
+            copy.srcOffset = 0;
+            copy.size = size;
+
+            vkCmdCopyBuffer(cmd, staging.buffer, destination, 1, &copy);
+        },
+        context,
+        immediate,
+        queue);
+
+    DestroyBuffer(staging, allocator);
 }

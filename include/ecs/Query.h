@@ -102,6 +102,12 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
     bool Has(Entity entity) const;
 
     /**
+     * @brief Size of this query
+     * @return Number of entities in this query
+     */
+    size_t size() const;
+
+    /**
      * Iterator used for query iteration
      */
     class Iterator;
@@ -205,6 +211,12 @@ bool
 Query<With<Include...>, Without<Exclude...>>::Has(const Entity entity) const
 {
     return included.contains(entity);
+}
+template<typename... Include, typename... Exclude>
+size_t
+Query<With<Include...>, Without<Exclude...>>::size() const
+{
+    return included.size();
 }
 
 template<typename... Include, typename... Exclude>

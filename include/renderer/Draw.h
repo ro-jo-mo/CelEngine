@@ -28,6 +28,7 @@ struct DrawData
     Resource<AssetServer>& assetServer;
     Resource<GlobalDescriptorData>& globalDescriptors;
     Resource<VmaAllocator>& allocator;
+    Resource<ImmediateSubmit>& immediate;
 
     Camera& camera;
     CurrentFrameData* frame;
@@ -38,6 +39,8 @@ struct DrawData
     void CleanupDraw();
 
     void DrawGeometry();
+
+    void CreateIndirectData();
 
     void DrawSkybox();
 
@@ -62,6 +65,7 @@ Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
      Resource<FrameData>& frameData,
      Resource<AssetServer>& assetServer,
      Resource<GlobalDescriptorData>& globalDescriptors,
-     Resource<VmaAllocator>& allocator);
+     Resource<VmaAllocator>& allocator,
+     Resource<ImmediateSubmit>& immediate);
 
 }

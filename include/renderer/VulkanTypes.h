@@ -69,11 +69,11 @@ struct RenderExtent
 };
 
 // Constants unique to each entity
-struct EntityPushConstants
+struct PerEntityGpuData
 {
     glm::mat4 transform;
-    // glm::mat4 normalTransform;
-    VkDeviceAddress vertexBuffer;
+    glm::mat4 normalTransform;
+    uint32_t materialIndex;
 };
 
 struct SceneData
