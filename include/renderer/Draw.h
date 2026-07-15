@@ -34,6 +34,9 @@ struct DrawData
     CurrentFrameData* frame;
     VkCommandBuffer cmd;
 
+    AllocatedBuffer indirectBuffer;
+    AllocatedBuffer entityBuffer;
+
     void Draw();
 
     void CleanupDraw();

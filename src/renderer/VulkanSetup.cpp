@@ -452,13 +452,6 @@ InitPipeline(ResourceManager& resourceManager)
         ThrowError("Failed to load vertex shader");
     }
 
-    // Push constants include the entities global transform, as well as a 3x3
-    // normal transform matrix (stored as mat4 for alignment)
-    VkPushConstantRange matrixRange = {};
-    matrixRange.offset = 0;
-    matrixRange.size = sizeof(EntityPushConstants);
-    matrixRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
     VkDescriptorSetLayout layouts[] = { global->sceneLayout,
                                         global->materialLayout };
 
@@ -466,8 +459,7 @@ InitPipeline(ResourceManager& resourceManager)
         Initialisers::PipelineLayoutCreateInfo();
     meshLayoutInfo.setLayoutCount = 2;
     meshLayoutInfo.pSetLayouts = layouts;
-    meshLayoutInfo.pPushConstantRanges = &matrixRange;
-    meshLayoutInfo.pushConstantRangeCount = 1;
+    meshLayoutInfo.pushConstantRangeCount = 0;
 
     VkPipelineLayout meshLayout;
     VkCheck(vkCreatePipelineLayout(

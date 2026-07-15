@@ -47,6 +47,7 @@ DrawData::Draw()
                                  VK_IMAGE_LAYOUT_UNDEFINED,
                                  VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
     // DRAW GEOMETRY HERE
+    CreateIndirectData();
 
     DrawGeometry();
 
@@ -146,12 +147,35 @@ DrawData::DrawGeometry()
                                            "scene_buffer_alloc",
                                            *allocator);
     {
-        auto sceneBufferData =
+        VkBufferDeviceAddressInfo vertInfo{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .buffer = assetServer->verticeBuffer.buffer.buffer
+        };
+        VkBufferDeviceAddressInfo indiceInfo{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .buffer = assetServer->indiceBuffer.buffer.buffer
+        };
+        VkBufferDeviceAddressInfo matInfo{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .buffer = assetServer->materialBuffer.buffer.buffer
+        };
+
+        // TODO: add per entity data buffer address
+ auto sceneBufferData =
             static_cast<SceneData*>(sceneBuffer.info.pMappedData);
-        SceneData data{ .viewMatrix = camera.GetViewMatrix(),
-                        .projectionMatrix =
-                            camera.GetProjectionMatrix(swapchain->extent) };
+        SceneData data{
+            .verticesBufferAddress =
+                vkGetBufferDeviceAddress(context->device, &vertInfo),
+            .indicesBufferAddress =
+                vkGetBufferDeviceAddress(context->device, &indiceInfo),
+            .materialBufferAddress =
+                vkGetBufferDeviceAddress(context->device, &matInfo),
+            .viewMatrix = camera.GetViewMatrix(),
+            .projectionMatrix = camera.GetProjectionMatrix(swapchain->extent)
+        };
+
         data.viewProjMatrix = data.projectionMatrix * data.viewMatrix;
+
         *sceneBufferData = data;
     }
 
@@ -193,9 +217,23 @@ DrawData::DrawGeometry()
     // Bind pipeline, scene descriptor, scissor etc
     BindSceneData(sceneDescriptor);
 
-    frame->toDelete.Push([=, allocator = *allocator]() {
-        vmaDestroyBuffer(allocator, sceneBuffer.buffer, sceneBuffer.allocation);
-    });
+    // Bind indices
+    vkCmdBindIndexBuffer(
+        cmd, assetServer->indiceBuffer.buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+    // Lastly execute indirect draw
+    vkCmdDrawIndexedIndirect(cmd,
+                             indirectBuffer.buffer,
+                             0,
+                             renderables.size(),
+                             sizeof(VkDrawIndexedIndirectCommand));
+
+    frame->toDelete.Push(
+        [=, a = *allocator, eb = entityBuffer, id = indirectBuffer]() {
+            Utils::DestroyBuffer(sceneBuffer, a);
+            Utils::DestroyBuffer(eb, a);
+            Utils::DestroyBuffer(id, a);
+        });
 }
 
 void
@@ -204,19 +242,18 @@ DrawData::CreateIndirectData()
     // NOTE: Really these buffers should be built once, and reused each frame
     // This might present problems with multiple frames in flight
 
-    // Create buffer for PerEntityGpuData
-    auto entityBuffer = Utils::CreateBuffer(
+    // Create buffer for PerEntityGpuData and indirect calls
+    entityBuffer = Utils::CreateBuffer(
         sizeof(PerEntityGpuData) * renderables.size(),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_AUTO,
         "per_entity_data_buffer_alloc",
         *allocator);
-
-    auto materialBuffer = Utils::CreateBuffer(
-        sizeof(PerEntityGpuData) * renderables.size(),
+    indirectBuffer = Utils::CreateBuffer(
+        sizeof(VkDrawIndexedIndirectCommand) * renderables.size(),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VMA_MEMORY_USAGE_AUTO,
-        "material_data_buffer_alloc",
+        "indirect_calls_buffer_alloc",
         *allocator);
 
     // Accumulate data in lists before loading into buffers
@@ -252,14 +289,24 @@ DrawData::CreateIndirectData()
     // upload, which might perform better
     // Alternatively an upload queue might be
     // beneficial as well
-    Utils::UploadToBuffer(entityData.data,
+    Utils::UploadToBuffer(entityData.data(),
                           sizeof(PerEntityGpuData) * entityData.size(),
                           entityBuffer.buffer,
                           0,
-                          context,
-                          allocator,
-                          immediate,
-                          graphicsQueue->queue);
+                          *context,
+                          *allocator,
+                          *immediate,
+                          *graphicsQueue);
+
+    Utils::UploadToBuffer(indirectCalls.data(),
+                          sizeof(VkDrawIndexedIndirectCommand) *
+                              indirectCalls.size(),
+                          indirectBuffer.buffer,
+                          0,
+                          *context,
+                          *allocator,
+                          *immediate,
+                          *graphicsQueue);
 }
 
 void
@@ -366,43 +413,6 @@ DrawData::BindSceneData(VkDescriptorSet sceneDescriptor) const
     scissor.extent = renderExtent->extent;
 
     vkCmdSetScissor(cmd, 0, 1, &scissor);
-}
-
-void
-DrawData::DrawModel(GlobalTransform& transform,
-                    Handle<Mesh> meshHandle,
-                    Handle<Material> matHandle) const
-{
-    // Get stuff from asset server
-    Material material = assetServer->GetMaterial(matHandle);
-    AllocatedMeshBuffer mesh = assetServer->GetMesh(meshHandle);
-
-    // Bind current material descriptor
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            meshPipeline->layout,
-                            1,
-                            1,
-                            &material.materialSet,
-                            0,
-                            nullptr);
-
-    // Bind current index buffer
-    vkCmdBindIndexBuffer(cmd, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-    // Upload push constants
-    EntityPushConstants pushConstants{ .transform = transform.transform,
-                                       .vertexBuffer =
-                                           mesh.vertexBufferAddress };
-
-    vkCmdPushConstants(cmd,
-                       meshPipeline->layout,
-                       VK_SHADER_STAGE_VERTEX_BIT,
-                       0,
-                       sizeof(EntityPushConstants),
-                       &pushConstants);
-
-    vkCmdDrawIndexed(cmd, mesh.indexCount, 1, 0, 0, 0);
 }
 
 void

@@ -38,8 +38,9 @@ class MegaBuffer
                         GraphicsQueue& queue);
     void Cleanup(const VmaAllocator& allocator);
 
-  private:
     AllocatedBuffer buffer;
+
+  private:
     uint32_t currentUsage = 0;
     uint32_t maxUsage;
 };
