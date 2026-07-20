@@ -163,21 +163,23 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
                 newModel.meshes.push_back(meshes.size());
 
                 Mesh newMesh{};
-                newMesh.firstIndex = indiceBuffer.UploadData(indices.data(),
-                                                             indices.size(),
-                                                             1,
-                                                             context,
-                                                             allocator,
-                                                             immediate,
-                                                             graphicsQueue);
+                newMesh.firstIndex =
+                    indiceBuffer.UploadData(indices.data(),
+                                            indices.size() * sizeof(uint32_t),
+                                            1,
+                                            context,
+                                            allocator,
+                                            immediate,
+                                            graphicsQueue);
                 newMesh.indexCount = indices.size();
-                newMesh.vertexOffset = verticeBuffer.UploadData(vertices.data(),
-                                                                vertices.size(),
-                                                                1,
-                                                                context,
-                                                                allocator,
-                                                                immediate,
-                                                                graphicsQueue);
+                newMesh.vertexOffset =
+                    verticeBuffer.UploadData(vertices.data(),
+                                             vertices.size() * sizeof(Vertex),
+                                             1,
+                                             context,
+                                             allocator,
+                                             immediate,
+                                             graphicsQueue);
 
                 meshes.push_back(newMesh);
             }

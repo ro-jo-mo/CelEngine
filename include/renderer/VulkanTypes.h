@@ -79,7 +79,6 @@ struct PerEntityGpuData
 struct SceneData
 {
     VkDeviceAddress verticesBufferAddress;
-    VkDeviceAddress indicesBufferAddress;
     VkDeviceAddress materialBufferAddress;
     VkDeviceAddress perEntityBufferAddress;
     glm::mat4 viewMatrix;
@@ -93,7 +92,6 @@ struct GlobalDescriptorData
 
     // Mesh pipeline
     VkDescriptorSetLayout sceneLayout;
-    VkDescriptorSetLayout materialLayout;
 
     // Skybox pipeline
     VkDescriptorSetLayout skyboxLayout;

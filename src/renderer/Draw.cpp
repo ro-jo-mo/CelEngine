@@ -151,25 +151,25 @@ DrawData::DrawGeometry()
             .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
             .buffer = assetServer->verticeBuffer.buffer.buffer
         };
-        VkBufferDeviceAddressInfo indiceInfo{
-            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-            .buffer = assetServer->indiceBuffer.buffer.buffer
-        };
         VkBufferDeviceAddressInfo matInfo{
             .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
             .buffer = assetServer->materialBuffer.buffer.buffer
         };
+        VkBufferDeviceAddressInfo entityInfo{
+            .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+            .buffer = entityBuffer.buffer
+        };
 
         // TODO: add per entity data buffer address
- auto sceneBufferData =
+        auto sceneBufferData =
             static_cast<SceneData*>(sceneBuffer.info.pMappedData);
         SceneData data{
             .verticesBufferAddress =
                 vkGetBufferDeviceAddress(context->device, &vertInfo),
-            .indicesBufferAddress =
-                vkGetBufferDeviceAddress(context->device, &indiceInfo),
             .materialBufferAddress =
                 vkGetBufferDeviceAddress(context->device, &matInfo),
+            .perEntityBufferAddress =
+                vkGetBufferDeviceAddress(context->device, &entityInfo),
             .viewMatrix = camera.GetViewMatrix(),
             .projectionMatrix = camera.GetProjectionMatrix(swapchain->extent)
         };
@@ -243,16 +243,17 @@ DrawData::CreateIndirectData()
     // This might present problems with multiple frames in flight
 
     // Create buffer for PerEntityGpuData and indirect calls
-    entityBuffer = Utils::CreateBuffer(
-        sizeof(PerEntityGpuData) * renderables.size(),
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_AUTO,
-        "per_entity_data_buffer_alloc",
-        *allocator);
+    entityBuffer =
+        Utils::CreateBuffer(sizeof(PerEntityGpuData) * renderables.size(),
+                            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                            VMA_MEMORY_USAGE_GPU_ONLY,
+                            "per_entity_data_buffer_alloc",
+                            *allocator);
     indirectBuffer = Utils::CreateBuffer(
         sizeof(VkDrawIndexedIndirectCommand) * renderables.size(),
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        VMA_MEMORY_USAGE_AUTO,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY,
         "indirect_calls_buffer_alloc",
         *allocator);
 

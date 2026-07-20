@@ -35,6 +35,9 @@ InitVulkan(ResourceManager& resourceManager)
 
     SDL_Vulkan_CreateSurface(window->window, instanceBuild, nullptr, &surface);
 
+    VkPhysicalDeviceFeatures features10{};
+    features10.multiDrawIndirect = true;
+
     VkPhysicalDeviceVulkan11Features features11{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES
     };
@@ -49,6 +52,8 @@ InitVulkan(ResourceManager& resourceManager)
     features12.descriptorBindingVariableDescriptorCount = true;
     features12.runtimeDescriptorArray = true;
     features12.drawIndirectCount = true;
+    features12.scalarBlockLayout = true;
+
     VkPhysicalDeviceVulkan13Features features13{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES
     };
@@ -58,6 +63,7 @@ InitVulkan(ResourceManager& resourceManager)
     vkb::PhysicalDeviceSelector selector{ instanceBuild };
     vkb::PhysicalDevice physicalDevice =
         selector.set_minimum_version(1, 3)
+            .set_required_features(features10)
             .set_required_features_11(features11)
             .set_required_features_12(features12)
             .set_required_features_13(features13)
@@ -339,15 +345,6 @@ InitDescriptorData(ResourceManager& resourceManager)
 
     global.allocator.Init(context->device, 10, sizes);
 
-    // Set material layout
-    {
-        DescriptorLayoutBuilder builder;
-        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        global.materialLayout = builder.Build(context->device,
-                                              VK_SHADER_STAGE_VERTEX_BIT |
-                                                  VK_SHADER_STAGE_FRAGMENT_BIT);
-    }
-
     // Set scene layout
     {
         DescriptorLayoutBuilder builder;
@@ -412,8 +409,6 @@ InitDescriptorData(ResourceManager& resourceManager)
         vkDestroyDescriptorSetLayout(
             context->device, globalRes->sceneLayout, nullptr);
         vkDestroyDescriptorSetLayout(
-            context->device, globalRes->materialLayout, nullptr);
-        vkDestroyDescriptorSetLayout(
             context->device, globalRes->skyboxLayout, nullptr);
         globalRes->allocator.DestroyPools();
     });
@@ -452,13 +447,10 @@ InitPipeline(ResourceManager& resourceManager)
         ThrowError("Failed to load vertex shader");
     }
 
-    VkDescriptorSetLayout layouts[] = { global->sceneLayout,
-                                        global->materialLayout };
-
     VkPipelineLayoutCreateInfo meshLayoutInfo =
         Initialisers::PipelineLayoutCreateInfo();
-    meshLayoutInfo.setLayoutCount = 2;
-    meshLayoutInfo.pSetLayouts = layouts;
+    meshLayoutInfo.setLayoutCount = 1;
+    meshLayoutInfo.pSetLayouts = &global->sceneLayout;
     meshLayoutInfo.pushConstantRangeCount = 0;
 
     VkPipelineLayout meshLayout;
@@ -550,7 +542,7 @@ InitPipeline(ResourceManager& resourceManager)
 void
 VulkanInitialiser::Initialise(ResourceManager& resourceManager)
 {
-    auto& c = resourceManager.InsertResource<FinalCleanup>();
+    resourceManager.InsertResource<FinalCleanup>();
     resourceManager.InsertResource<RenderExtent>();
 
     InitVulkan(resourceManager);

@@ -4,17 +4,21 @@
 
 namespace Cel::Renderer {
 
-// What information does a renderpass need?
+// RenderGraph
+// A DAG of render passes
+// Handles the insertion of barriers and transitions between passes
 
-// Global vertex buffer, viewproj  matrix, material buffers
+// RenderPass
+// An individual pass in the render pipeline
+// As a baseline, each pass
 
-struct RenderPass
+struct PassBuilder
 {};
 
 class RenderGraph
 {
   public:
-    RenderPass& AddPass();
+    RenderGraph& AddPass();
 
   private:
     std::unordered_map<std::string, uint32_t> nameToIndex;
