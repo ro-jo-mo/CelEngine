@@ -8,13 +8,13 @@ using namespace Cel;
 using namespace Cel::Renderer;
 
 void
-DrawData::Draw()
+DrawData::draw()
 {
     frame = &frameData->Get();
-    VkCheck(vkWaitForFences(
+    vk_check(vkWaitForFences(
         context->device, 1, &frame->renderFence, VK_TRUE, UINT64_MAX));
 
-    CleanupDraw();
+    cleanup_draw();
 
     uint32_t swapchainIndex;
     VkResult result = vkAcquireNextImageKHR(context->device,
@@ -29,76 +29,76 @@ DrawData::Draw()
         return;
     }
 
-    VkCheck(vkResetFences(context->device, 1, &frame->renderFence));
-    VkCheck(vkResetCommandBuffer(frame->commandBuffer, 0));
+    vk_check(vkResetFences(context->device, 1, &frame->renderFence));
+    vk_check(vkResetCommandBuffer(frame->commandBuffer, 0));
 
     cmd = frame->commandBuffer;
-    VkCommandBufferBeginInfo beginInfo = Initialisers::CommandBufferBeginInfo(
+    VkCommandBufferBeginInfo beginInfo = Initialisers::command_buffer_begin_info(
         VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     vkBeginCommandBuffer(cmd, &beginInfo);
 
-    Utils::TransitionImageLayout(cmd,
+    Utils::transition_image_layout(cmd,
                                  drawImage->image,
                                  VK_IMAGE_LAYOUT_UNDEFINED,
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    Utils::TransitionImageLayout(cmd,
+    Utils::transition_image_layout(cmd,
                                  depthImage->image,
                                  VK_IMAGE_LAYOUT_UNDEFINED,
                                  VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
     // DRAW GEOMETRY HERE
-    CreateIndirectData();
+    create_indirect_data();
 
-    DrawGeometry();
+    draw_geometry();
 
-    DrawSkybox();
+    draw_skybox();
 
     vkCmdEndRendering(cmd);
 
     // DRAWING FINISHED
-    Utils::TransitionImageLayout(cmd,
+    Utils::transition_image_layout(cmd,
                                  drawImage->image,
                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                  VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    Utils::TransitionImageLayout(cmd,
+    Utils::transition_image_layout(cmd,
                                  swapchain->images[swapchainIndex],
                                  VK_IMAGE_LAYOUT_UNDEFINED,
                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    Utils::CopyImageToImage(cmd,
+    Utils::copy_image_to_image(cmd,
                             drawImage->image,
                             swapchain->images[swapchainIndex],
                             renderExtent->extent,
                             swapchain->extent);
 
-    Utils::TransitionImageLayout(cmd,
+    Utils::transition_image_layout(cmd,
                                  swapchain->images[swapchainIndex],
                                  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                                  VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
-    VkCheck(vkEndCommandBuffer(cmd));
+    vk_check(vkEndCommandBuffer(cmd));
 
     // RENDERING FINISHED
 
     // Finally submit the command buffer for execution
     VkCommandBufferSubmitInfo bufferSubmitInfo =
-        Initialisers::CommandBufferSubmitInfo(cmd);
+        Initialisers::command_buffer_submit_info(cmd);
 
-    VkSemaphoreSubmitInfo waitInfo = Initialisers::SemaphoreSubmitInfo(
+    VkSemaphoreSubmitInfo waitInfo = Initialisers::semaphore_submit_info(
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
         frame->acquireSemaphore);
 
-    VkSemaphoreSubmitInfo signalInfo = Initialisers::SemaphoreSubmitInfo(
+    VkSemaphoreSubmitInfo signalInfo = Initialisers::semaphore_submit_info(
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT_KHR,
         swapchain->submitSemaphores[swapchainIndex]);
 
     VkSubmitInfo2 submitInfo =
-        Initialisers::SubmitInfo(&bufferSubmitInfo, &signalInfo, &waitInfo);
+        Initialisers::submit_info(&bufferSubmitInfo, &signalInfo, &waitInfo);
 
-    VkCheck(vkQueueSubmit2(
+    vk_check(vkQueueSubmit2(
         graphicsQueue->queue, 1, &submitInfo, frame->renderFence));
 
-    VkPresentInfoKHR presentInfo = Initialisers::PresentInfo();
+    VkPresentInfoKHR presentInfo = Initialisers::present_info();
     presentInfo.pSwapchains = &swapchain->swapchain;
     presentInfo.swapchainCount = 1;
     presentInfo.waitSemaphoreCount = 1;
@@ -116,32 +116,32 @@ DrawData::Draw()
 }
 
 void
-DrawData::CleanupDraw()
+DrawData::cleanup_draw()
 {
-    frameData->Get().toDelete.Flush();
-    frameData->Get().descriptorAllocator.ClearPools();
+    frameData->Get().toDelete.flush();
+    frameData->Get().descriptorAllocator.clear_pools();
 }
 
 void
-DrawData::DrawGeometry()
+DrawData::draw_geometry()
 {
     // Rendering info setup
     VkRenderingAttachmentInfo colourAttachment =
-        Initialisers::AttachmentInfo(drawImage->imageView,
+        Initialisers::attachment_info(drawImage->imageView,
                                      nullptr,
                                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     VkRenderingAttachmentInfo depthAttachment =
-        Initialisers::DepthAttachmentInfo(
+        Initialisers::depth_attachment_info(
             depthImage->imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-    VkRenderingInfo renderInfo = Initialisers::RenderingInfo(
+    VkRenderingInfo renderInfo = Initialisers::rendering_info(
         renderExtent->extent, &colourAttachment, &depthAttachment);
 
     vkCmdBeginRendering(cmd, &renderInfo);
 
     // Scene setup
-    auto sceneBuffer = Utils::CreateBuffer(sizeof(SceneData),
+    auto sceneBuffer = Utils::create_buffer(sizeof(SceneData),
                                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                            VMA_MEMORY_USAGE_CPU_TO_GPU,
                                            "scene_buffer_alloc",
@@ -170,8 +170,8 @@ DrawData::DrawGeometry()
                 vkGetBufferDeviceAddress(context->device, &matInfo),
             .perEntityBufferAddress =
                 vkGetBufferDeviceAddress(context->device, &entityInfo),
-            .viewMatrix = camera.GetViewMatrix(),
-            .projectionMatrix = camera.GetProjectionMatrix(swapchain->extent)
+            .viewMatrix = camera.get_view_matrix(),
+            .projectionMatrix = camera.get_projection_matrix(swapchain->extent)
         };
 
         data.viewProjMatrix = data.projectionMatrix * data.viewMatrix;
@@ -189,11 +189,11 @@ DrawData::DrawGeometry()
     allocArrayInfo.descriptorSetCount = 1;
     allocArrayInfo.pDescriptorCounts = &textureDescriptorCount;
 
-    VkDescriptorSet sceneDescriptor = frame->descriptorAllocator.Allocate(
+    VkDescriptorSet sceneDescriptor = frame->descriptorAllocator.allocate(
         globalDescriptors->sceneLayout, &allocArrayInfo);
 
     DescriptorWriter writer;
-    writer.WriteBuffer(0,
+    writer.write_buffer(0,
                        sceneBuffer.buffer,
                        sizeof(SceneData),
                        0,
@@ -209,13 +209,13 @@ DrawData::DrawGeometry()
         arraySet.pImageInfo = assetServer->textureCache.descriptors.data();
         arraySet.pNext = nullptr;
 
-        writer.Write(arraySet);
+        writer.write(arraySet);
     }
 
-    writer.UpdateSet(context->device, sceneDescriptor);
+    writer.update_set(context->device, sceneDescriptor);
 
     // Bind pipeline, scene descriptor, scissor etc
-    BindSceneData(sceneDescriptor);
+    bind_scene_data(sceneDescriptor);
 
     // Bind indices
     vkCmdBindIndexBuffer(
@@ -228,29 +228,29 @@ DrawData::DrawGeometry()
                              renderables.size(),
                              sizeof(VkDrawIndexedIndirectCommand));
 
-    frame->toDelete.Push(
+    frame->toDelete.push(
         [=, a = *allocator, eb = entityBuffer, id = indirectBuffer]() {
-            Utils::DestroyBuffer(sceneBuffer, a);
-            Utils::DestroyBuffer(eb, a);
-            Utils::DestroyBuffer(id, a);
+            Utils::destroy_buffer(sceneBuffer, a);
+            Utils::destroy_buffer(eb, a);
+            Utils::destroy_buffer(id, a);
         });
 }
 
 void
-DrawData::CreateIndirectData()
+DrawData::create_indirect_data()
 {
     // NOTE: Really these buffers should be built once, and reused each frame
     // This might present problems with multiple frames in flight
 
     // Create buffer for PerEntityGpuData and indirect calls
     entityBuffer =
-        Utils::CreateBuffer(sizeof(PerEntityGpuData) * renderables.size(),
+        Utils::create_buffer(sizeof(PerEntityGpuData) * renderables.size(),
                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                                 VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                             VMA_MEMORY_USAGE_GPU_ONLY,
                             "per_entity_data_buffer_alloc",
                             *allocator);
-    indirectBuffer = Utils::CreateBuffer(
+    indirectBuffer = Utils::create_buffer(
         sizeof(VkDrawIndexedIndirectCommand) * renderables.size(),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
         VMA_MEMORY_USAGE_GPU_ONLY,
@@ -265,8 +265,8 @@ DrawData::CreateIndirectData()
     indirectCalls.reserve(renderables.size());
 
     for (const auto& [transform, meshHandle, matHandle] : renderables) {
-        auto mesh = assetServer->GetMesh(meshHandle);
-        auto mat = assetServer->GetMaterial(matHandle);
+        auto mesh = assetServer->get_mesh(meshHandle);
+        auto mat = assetServer->get_material(matHandle);
 
         VkDrawIndexedIndirectCommand call{ .indexCount = mesh.indexCount,
                                            .instanceCount = 1,
@@ -290,7 +290,7 @@ DrawData::CreateIndirectData()
     // upload, which might perform better
     // Alternatively an upload queue might be
     // beneficial as well
-    Utils::UploadToBuffer(entityData.data(),
+    Utils::upload_to_buffer(entityData.data(),
                           sizeof(PerEntityGpuData) * entityData.size(),
                           entityBuffer.buffer,
                           0,
@@ -299,7 +299,7 @@ DrawData::CreateIndirectData()
                           *immediate,
                           *graphicsQueue);
 
-    Utils::UploadToBuffer(indirectCalls.data(),
+    Utils::upload_to_buffer(indirectCalls.data(),
                           sizeof(VkDrawIndexedIndirectCommand) *
                               indirectCalls.size(),
                           indirectBuffer.buffer,
@@ -311,7 +311,7 @@ DrawData::CreateIndirectData()
 }
 
 void
-DrawData::DrawSkybox()
+DrawData::draw_skybox()
 {
     vkCmdBindPipeline(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxPipeline->pipeline);
@@ -322,7 +322,7 @@ DrawData::DrawSkybox()
     // Remove the translation from our view transform and combine with
     // projection
     auto viewProjBuffer =
-        Utils::CreateBuffer(sizeof(glm::mat4),
+        Utils::create_buffer(sizeof(glm::mat4),
                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                             VMA_MEMORY_USAGE_CPU_TO_GPU,
                             "skybox_viewproj_buffer_alloc",
@@ -331,8 +331,8 @@ DrawData::DrawSkybox()
         auto sceneBufferData =
             static_cast<glm::mat4*>(viewProjBuffer.info.pMappedData);
         // Strip out translation by converting to 3x3 and back
-        glm::mat4 viewProj = camera.GetProjectionMatrix(swapchain->extent) *
-                             glm::mat4(glm::mat3(camera.GetViewMatrix()));
+        glm::mat4 viewProj = camera.get_projection_matrix(swapchain->extent) *
+                             glm::mat4(glm::mat3(camera.get_view_matrix()));
 
         *sceneBufferData = viewProj;
     }
@@ -341,7 +341,7 @@ DrawData::DrawSkybox()
     DescriptorWriter writer{};
 
     // Write view buffer
-    writer.WriteBuffer(0,
+    writer.write_buffer(0,
                        viewProjBuffer.buffer,
                        sizeof(glm::mat4),
                        0,
@@ -350,16 +350,16 @@ DrawData::DrawSkybox()
     // Combine texture image sampler
     auto skyTex =
         assetServer->textureCache.descriptors[assetServer->skyboxTextureIndex];
-    writer.WriteImage(1,
+    writer.write_image(1,
                       skyTex.imageView,
                       skyTex.sampler,
                       skyTex.imageLayout,
                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
-    VkDescriptorSet skyboxDescriptor = frame->descriptorAllocator.Allocate(
+    VkDescriptorSet skyboxDescriptor = frame->descriptorAllocator.allocate(
         globalDescriptors->skyboxLayout, nullptr);
 
-    writer.UpdateSet(context->device, skyboxDescriptor);
+    writer.update_set(context->device, skyboxDescriptor);
 
     vkCmdBindDescriptorSets(cmd,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -378,14 +378,14 @@ DrawData::DrawSkybox()
     // Lastly draw the skybox
     vkCmdDrawIndexed(cmd, cube.indexCount, 1, 0, 0, 0);
 
-    frame->toDelete.Push([=, allocator = *allocator]() {
+    frame->toDelete.push([=, allocator = *allocator]() {
         vmaDestroyBuffer(
             allocator, viewProjBuffer.buffer, viewProjBuffer.allocation);
     });
 }
 
 void
-DrawData::BindSceneData(VkDescriptorSet sceneDescriptor) const
+DrawData::bind_scene_data(VkDescriptorSet sceneDescriptor) const
 {
     vkCmdBindPipeline(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, meshPipeline->pipeline);
@@ -417,7 +417,7 @@ DrawData::BindSceneData(VkDescriptorSet sceneDescriptor) const
 }
 
 void
-Renderer::Draw(
+Renderer::draw(
     Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
     Query<With<Camera>>& cameras,
     Resource<VulkanContext>& context,
@@ -445,5 +445,5 @@ Renderer::Draw(
                       skyboxPipeline,    renderExtent, frameData,  assetServer,
                       globalDescriptors, allocator,    immediate,  cam };
 
-    data.Draw();
+    data.draw();
 }

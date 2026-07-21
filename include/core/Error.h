@@ -11,7 +11,7 @@ namespace Cel {
 // runtime_error As such I also print to stderr
 template<typename... T>
 inline void
-ThrowError(fmt::format_string<T...> fmt, const T&&... args)
+throw_error(fmt::format_string<T...> fmt, const T&&... args)
 {
     auto message = fmt::vformat(fmt.str, fmt::vargs<T...>{ { args... } });
 
@@ -19,7 +19,7 @@ ThrowError(fmt::format_string<T...> fmt, const T&&... args)
     throw std::runtime_error(message);
 }
 
-void inline SleepPrint(const char* string)
+void inline sleep_print(const char* string)
 {
     fmt::println("{}", string);
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));

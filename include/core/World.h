@@ -29,13 +29,13 @@ class World
      * @return New entity id
      */
     template<typename... Components>
-    EntityBuilder Spawn(Components... components);
+    EntityBuilder spawn(Components... components);
 
     /**
      * @brief Destroy this entity
      * @param entity Entity to destroy
      */
-    void Destroy(Entity entity);
+    void destroy(Entity entity);
 
     /**
      * @brief Add a new component to this entity
@@ -44,7 +44,7 @@ class World
      * @param component Component to add
      */
     template<typename Component>
-    void AddComponent(Entity entity, Component component);
+    void add_component(Entity entity, Component component);
 
     /**
      * Remove a component of this type from entity
@@ -52,7 +52,7 @@ class World
      * @param entity Entity id
      */
     template<typename Component>
-    void RemoveComponent(Entity entity);
+    void remove_component(Entity entity);
 
     /**
      * @brief Add "parent" as a parent entity to "child", and "child" as a child
@@ -60,7 +60,7 @@ class World
      * @param parent parent entity id
      * @param child child entity id
      */
-    void AddChild(Entity parent, Entity child);
+    void add_child(Entity parent, Entity child);
 
     /**
      * @brief Remove child's parent component, and remove child from parent's
@@ -68,13 +68,13 @@ class World
      * @param parent parent entity id
      * @param child child entity id
      */
-    void RemoveChild(Entity parent, Entity child);
+    void remove_child(Entity parent, Entity child);
 
     /**
      * @brief Flush changes to the world state
      * @return A checking whether any changes were made by the last system
      */
-    bool Flush();
+    bool flush();
 
   private:
     class Command
@@ -82,7 +82,7 @@ class World
       public:
         virtual ~Command() = default;
 
-        virtual void Execute() = 0;
+        virtual void execute() = 0;
     };
 
     template<typename T>
@@ -98,7 +98,7 @@ class World
             : parent(parent)
             , child(child)
             , world(world) {};
-        void Execute() const;
+        void execute() const;
 
       private:
         Entity parent;
@@ -116,7 +116,7 @@ class World
             , child(child)
             , world(world) {};
 
-        void Execute() const;
+        void execute() const;
 
       private:
         Entity parent;
@@ -124,7 +124,7 @@ class World
         std::reference_wrapper<World> world;
     };
 
-    void ExecuteDestroy(Entity entity) const;
+    void execute_destroy(Entity entity) const;
 
     ComponentsManager& componentsManager;
     EntityManager& entityManager;
@@ -144,8 +144,8 @@ class EntityBuilder
     {
     }
 
-    [[nodiscard]] Entity Get() const;
-    EntityBuilder WithChildren(auto func);
+    [[nodiscard]] Entity get() const;
+    EntityBuilder with_children(auto func);
 
   private:
     Entity entity;
@@ -161,10 +161,10 @@ class ChildBuilder
     {
     }
 
-    [[nodiscard]] Entity Get() const;
+    [[nodiscard]] Entity get() const;
 
     template<typename... Components>
-    EntityBuilder Spawn(Components... components);
+    EntityBuilder spawn(Components... components);
 
   private:
     Entity parent;
@@ -180,7 +180,7 @@ class World::AddCommand final : public Command
         , component(comp)
         , world(wld) {};
 
-    void Execute() override;
+    void execute() override;
 
   private:
     Entity entity;
@@ -196,7 +196,7 @@ class World::RemoveCommand final : public Command
         : entity(ent)
         , world(wld) {};
 
-    void Execute() override;
+    void execute() override;
 
   private:
     Entity entity;
@@ -205,29 +205,29 @@ class World::RemoveCommand final : public Command
 
 template<typename... Components>
 inline EntityBuilder
-World::Spawn(Components... components)
+World::spawn(Components... components)
 {
-    auto entity = entityManager.AllocateEntity();
-    ((void)AddComponent(entity, std::forward<Components>(components)), ...);
+    auto entity = entityManager.allocate_entity();
+    ((void)add_component(entity, std::forward<Components>(components)), ...);
 
     // lastly check for core components, add if not already there
-    constexpr bool hasPosition = HasTypeT<Position, Components...>();
-    constexpr bool hasRotation = HasTypeT<Rotation, Components...>();
-    constexpr bool hasScale = HasTypeT<Scale, Components...>();
+    constexpr bool hasPosition = has_type_t<Position, Components...>();
+    constexpr bool hasRotation = has_type_t<Rotation, Components...>();
+    constexpr bool hasScale = has_type_t<Scale, Components...>();
     constexpr bool hasGlobalTransform =
-        HasTypeT<GlobalTransform, Components...>();
+        has_type_t<GlobalTransform, Components...>();
 
     if (!hasPosition) {
-        AddComponent(entity, Position{});
+        add_component(entity, Position{});
     }
     if (!hasRotation) {
-        AddComponent(entity, Rotation{});
+        add_component(entity, Rotation{});
     }
     if (!hasScale) {
-        AddComponent(entity, Scale{});
+        add_component(entity, Scale{});
     }
     if (!hasGlobalTransform) {
-        AddComponent(entity, GlobalTransform{});
+        add_component(entity, GlobalTransform{});
     }
 
     return { entity, *this };
@@ -235,7 +235,7 @@ World::Spawn(Components... components)
 
 template<typename Component>
 inline void
-World::AddComponent(Entity entity, Component component)
+World::add_component(Entity entity, Component component)
 {
     toAdd.push_back(std::make_unique<AddCommand<Component>>(
         entity, std::forward<Component>(component), *this));
@@ -243,7 +243,7 @@ World::AddComponent(Entity entity, Component component)
 
 template<typename Component>
 inline void
-World::RemoveComponent(Entity entity)
+World::remove_component(Entity entity)
 {
     toRemove.push_back(
         std::make_unique<RemoveCommand<Component>>(entity, *this));
@@ -251,20 +251,20 @@ World::RemoveComponent(Entity entity)
 
 template<typename T>
 inline void
-World::AddCommand<T>::Execute()
+World::AddCommand<T>::execute()
 {
-    world.componentsManager.AddComponent(entity, component);
+    world.componentsManager.add_component(entity, component);
 }
 
 template<typename T>
 inline void
-World::RemoveCommand<T>::Execute()
+World::RemoveCommand<T>::execute()
 {
-    world.componentsManager.RemoveComponent<T>(entity);
+    world.componentsManager.remove_component<T>(entity);
 }
 
 EntityBuilder
-EntityBuilder::WithChildren(auto func)
+EntityBuilder::with_children(auto func)
 {
     func(ChildBuilder(entity, world));
 
@@ -273,10 +273,10 @@ EntityBuilder::WithChildren(auto func)
 
 template<typename... Components>
 EntityBuilder
-ChildBuilder::Spawn(Components... components)
+ChildBuilder::spawn(Components... components)
 {
-    auto child = world.Spawn(components...).Get();
-    world.AddChild(parent, child);
+    auto child = world.spawn(components...).get();
+    world.add_child(parent, child);
 
     return EntityBuilder(child, world);
 }

@@ -17,7 +17,7 @@ class IComponentArray
      * Hence why it is located in the interface
      * @param entity Entity to destroy
      */
-    virtual void DestroyEntity(Entity entity) = 0;
+    virtual void destroy_entity(Entity entity) = 0;
 };
 
 /**
@@ -29,10 +29,10 @@ template<typename T>
 class ComponentArray : public IComponentArray
 {
   public:
-    void DestroyEntity(const Entity entity) override
+    void destroy_entity(const Entity entity) override
     {
         if (entityToComponent.contains(entity)) {
-            RemoveComponent(entity);
+            remove_component(entity);
         }
     }
 
@@ -41,35 +41,35 @@ class ComponentArray : public IComponentArray
      * @param entity The entity owning this component
      * @param component The component data
      */
-    void AddComponent(Entity entity, T component);
+    void add_component(Entity entity, T component);
 
-    bool HasComponent(Entity entity) const;
+    bool has_component(Entity entity) const;
 
     /**
      * @brief Remove a component from this entity
      * @param entity The entity that owns the component.
      */
-    void RemoveComponent(Entity entity);
+    void remove_component(Entity entity);
 
     /**
      * @brief Return the component of type T owned by this entity
      * @param entity The entity owning this component
      * @return The owned component
      */
-    T& GetComponent(Entity entity);
+    T& get_component(Entity entity);
 
-    const std::unordered_map<Entity, size_t>& GetEntityList();
+    const std::unordered_map<Entity, size_t>& get_entity_list();
 
   private:
     std::array<T, MAX_ENTITIES> components;
     std::unordered_map<Entity, size_t> entityToComponent;
     std::unordered_map<size_t, Entity> componentToEntity;
-    size_t totalComponents;
+    size_t totalComponents = 0;
 };
 
 template<typename T>
 void
-ComponentArray<T>::AddComponent(const Entity entity, T component)
+ComponentArray<T>::add_component(const Entity entity, T component)
 {
     // Attempt to keep
     components[totalComponents] = component;
@@ -80,14 +80,14 @@ ComponentArray<T>::AddComponent(const Entity entity, T component)
 
 template<typename T>
 bool
-ComponentArray<T>::HasComponent(const Entity entity) const
+ComponentArray<T>::has_component(const Entity entity) const
 {
     return entityToComponent.contains(entity);
 }
 
 template<typename T>
 void
-ComponentArray<T>::RemoveComponent(const Entity entity)
+ComponentArray<T>::remove_component(const Entity entity)
 {
     auto index = entityToComponent[entity];
     // Swap the last element of the array to the deleted components place
@@ -101,7 +101,7 @@ ComponentArray<T>::RemoveComponent(const Entity entity)
 
 template<typename T>
 T&
-ComponentArray<T>::GetComponent(const Entity entity)
+ComponentArray<T>::get_component(const Entity entity)
 {
     auto index = entityToComponent[entity];
     return components[index];
@@ -109,7 +109,7 @@ ComponentArray<T>::GetComponent(const Entity entity)
 
 template<typename T>
 const std::unordered_map<Entity, size_t>&
-ComponentArray<T>::GetEntityList()
+ComponentArray<T>::get_entity_list()
 {
     return entityToComponent;
 }

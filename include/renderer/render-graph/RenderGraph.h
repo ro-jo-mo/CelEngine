@@ -1,4 +1,5 @@
 #pragma once
+
 #include <string>
 #include <unordered_map>
 
@@ -12,15 +13,19 @@ namespace Cel::Renderer {
 // An individual pass in the render pipeline
 // As a baseline, each pass
 
-struct PassBuilder
-{};
+// Ideally the render graph will handle allocations of per frame resources
+// i.e. buffers for indirect draws
+
+// For now other buffers can be handled by the
 
 class RenderGraph
 {
   public:
-    RenderGraph& AddPass();
+    RenderGraph& add_pass();
 
   private:
     std::unordered_map<std::string, uint32_t> nameToIndex;
+
+    friend class PassBuilder;
 };
 }

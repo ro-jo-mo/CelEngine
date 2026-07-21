@@ -28,39 +28,39 @@ class Time
      * on the current schedule running
      * @return
      */
-    [[nodiscard]] float DeltaTime() const;
+    [[nodiscard]] float delta_time() const;
 
   private:
     template<typename Schedule>
-    void RegisterSchedule();
+    void register_schedule();
     /**
      * @brief Switch to fixed timestep
      */
     template<ScheduleEnum Enum>
-    void SwitchToFixed();
+    void switch_to_fixed();
 
     /**
      * @brief Switch to dynamic timestep
      */
-    void SwitchToDynamic();
+    void switch_to_dynamic();
 
     /**
      * Check if a fixed update cycle is required
      * @return True if we need to run fixed update
      */
     template<ScheduleEnum Enum>
-    bool FixedUpdateRequired();
+    bool is_fixed_update_required();
 
     /**
      * Tick the dynamic clock
      */
-    void Tick();
+    void tick();
 
     /**
      * Tick the fixed update clock
      */
     template<ScheduleEnum Enum>
-    void FixedTick();
+    void fixed_tick();
 
     // Delta time used for dynamic updates
     float dynamicDeltaTime;
@@ -85,7 +85,7 @@ class Time
 
 template<typename Schedule>
 void
-Time::RegisterSchedule()
+Time::register_schedule()
 {
     if constexpr (Schedule::IsFixed) {
         fixedDeltas[typeid(typename Schedule::ScheduleEnum)] = Schedule::Tick;
@@ -96,14 +96,14 @@ Time::RegisterSchedule()
 
 template<ScheduleEnum Enum>
 void
-Time::SwitchToFixed()
+Time::switch_to_fixed()
 {
     currentDelta = fixedDeltas.at(typeid(Enum));
 }
 
 template<ScheduleEnum Enum>
 bool
-Time::FixedUpdateRequired()
+Time::is_fixed_update_required()
 {
     using namespace std::chrono;
 
@@ -116,7 +116,7 @@ Time::FixedUpdateRequired()
 
 template<ScheduleEnum Enum>
 void
-Time::FixedTick()
+Time::fixed_tick()
 {
     using namespace std::chrono;
 

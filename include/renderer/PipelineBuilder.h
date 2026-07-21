@@ -24,20 +24,20 @@ class PipelineBuilder
 
     PipelineBuilder() { Clear(); }
 
-    VkPipeline BuildPipeline(VkDevice device);
+    VkPipeline build_pipeline(VkDevice device);
 
-    void SetVertexInputNone();
-    void SetVertexInputFloatArray();
-    void SetShaders(VkShaderModule vertexShader, VkShaderModule fragmentShader);
-    void SetInputTopology(VkPrimitiveTopology topology);
-    void SetPolygonMode(VkPolygonMode polygonMode);
-    void SetCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace);
-    void SetMutisamplingNone();
-    void DisableBlending();
-    void SetColourAttachment(VkFormat format);
-    void SetDepthAttachment(VkFormat format);
-    void DisableDepthTest();
-    void EnableDepthTest(bool depthWriteEnable, VkCompareOp op);
+    void set_vertex_input_none();
+    void set_vertex_input_float_array();
+    void set_shaders(VkShaderModule vertexShader, VkShaderModule fragmentShader);
+    void set_input_topology(VkPrimitiveTopology topology);
+    void set_polygon_mode(VkPolygonMode polygonMode);
+    void set_cull_mode(VkCullModeFlags cullMode, VkFrontFace frontFace);
+    void set_mutisampling_none();
+    void disable_blending();
+    void set_colour_attachment(VkFormat format);
+    void set_depth_attachment(VkFormat format);
+    void disable_depth_test();
+    void enable_depth_test(bool depthWriteEnable, VkCompareOp op);
 
     void Clear();
 };

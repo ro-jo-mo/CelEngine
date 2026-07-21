@@ -3,7 +3,7 @@
 using namespace Cel;
 
 Entity
-EntityManager::AllocateEntity()
+EntityManager::allocate_entity()
 {
     if (toReuse.empty()) {
         return entityCounter++;
@@ -15,7 +15,7 @@ EntityManager::AllocateEntity()
 }
 
 void
-EntityManager::DestroyEntity(const Entity entity)
+EntityManager::destroy_entity(const Entity entity)
 {
     //   toReuse.push(entity);
 }

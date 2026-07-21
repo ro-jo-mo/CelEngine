@@ -61,10 +61,10 @@ template<auto Schedule, auto funcPtr>
 class SingleSystemPlugin : public Cel::Plugin
 {
   public:
-    void Build(Cel::Scheduler scheduler,
+    void build(Cel::Scheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
-        scheduler.AddSystem(Schedule, funcPtr);
+        scheduler.add_system(Schedule, funcPtr);
     }
 };
 
@@ -78,9 +78,9 @@ template<auto Schedule>
 class StopAfterOneFramePlugin : public Cel::Plugin
 {
   public:
-    void Build(Cel::Scheduler scheduler, Cel::ResourceManager&) override
+    void build(Cel::Scheduler scheduler, Cel::ResourceManager&) override
     {
-        scheduler.AddSystem(Schedule, StopRunning);
+        scheduler.add_system(Schedule, StopRunning);
     }
 };
 
@@ -88,10 +88,10 @@ template<auto Schedule, auto... Systems>
 class ChainPlugin : public Cel::Plugin
 {
   public:
-    void Build(Cel::Scheduler scheduler,
+    void build(Cel::Scheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
-        scheduler.AddChain(Schedule, Systems...);
+        scheduler.add_chain(Schedule, Systems...);
     }
 };
 
@@ -99,10 +99,10 @@ template<auto Schedule, auto... Systems>
 class GroupPlugin : public Cel::Plugin
 {
   public:
-    void Build(Cel::Scheduler scheduler,
+    void build(Cel::Scheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
-        scheduler.AddGroup(Schedule, Systems...);
+        scheduler.add_group(Schedule, Systems...);
     }
 };
 
@@ -110,10 +110,10 @@ template<auto Schedule, auto First, auto Second>
 class BeforePlugin : public Cel::Plugin
 {
   public:
-    void Build(Cel::Scheduler scheduler,
+    void build(Cel::Scheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
-        scheduler.AddSystem(Schedule, First).Before(Second);
+        scheduler.add_system(Schedule, First).before(Second);
     }
 };
 
@@ -121,10 +121,10 @@ template<auto Schedule, auto First, auto Second>
 class AfterPlugin : public Cel::Plugin
 {
   public:
-    void Build(Cel::Scheduler scheduler,
+    void build(Cel::Scheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
-        scheduler.AddSystem(Schedule, Second).After(First);
+        scheduler.add_system(Schedule, Second).after(First);
     }
 };
 
@@ -132,9 +132,9 @@ template<typename ResType, auto... Args>
 class ResourcePlugin : public Cel::Plugin
 {
   public:
-    void Build(Cel::Scheduler scheduler,
+    void build(Cel::Scheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
-        resourceManager.InsertResource(ResType{ Args... });
+        resourceManager.insert_resource(ResType{ Args... });
     }
 };

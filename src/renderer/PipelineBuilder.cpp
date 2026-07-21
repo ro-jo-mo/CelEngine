@@ -5,7 +5,7 @@
 #include <fmt/printf.h>
 
 VkPipeline
-Cel::Renderer::PipelineBuilder::BuildPipeline(VkDevice device)
+Cel::Renderer::PipelineBuilder::build_pipeline(VkDevice device)
 {
     // make viewport state from our stored viewport and scissor.
     // at the moment we wont support multiple viewports or scissors
@@ -93,19 +93,19 @@ Cel::Renderer::PipelineBuilder::Clear()
     shaderStages.clear();
 }
 void
-Cel::Renderer::PipelineBuilder::SetShaders(VkShaderModule vertexShader,
+Cel::Renderer::PipelineBuilder::set_shaders(VkShaderModule vertexShader,
                                            VkShaderModule fragmentShader)
 {
     shaderStages.clear();
 
-    shaderStages.push_back(Initialisers::PipelineShaderStageCreateInfo(
+    shaderStages.push_back(Initialisers::pipeline_shader_stage_create_info(
         VK_SHADER_STAGE_VERTEX_BIT, vertexShader));
 
-    shaderStages.push_back(Initialisers::PipelineShaderStageCreateInfo(
+    shaderStages.push_back(Initialisers::pipeline_shader_stage_create_info(
         VK_SHADER_STAGE_FRAGMENT_BIT, fragmentShader));
 }
 void
-Cel::Renderer::PipelineBuilder::SetInputTopology(VkPrimitiveTopology topology)
+Cel::Renderer::PipelineBuilder::set_input_topology(VkPrimitiveTopology topology)
 {
     inputAssembly.topology = topology;
     // we are not going to use primitive restart on the entire tutorial so leave
@@ -113,20 +113,20 @@ Cel::Renderer::PipelineBuilder::SetInputTopology(VkPrimitiveTopology topology)
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 }
 void
-Cel::Renderer::PipelineBuilder::SetPolygonMode(VkPolygonMode polygonMode)
+Cel::Renderer::PipelineBuilder::set_polygon_mode(VkPolygonMode polygonMode)
 {
     rasterizer.polygonMode = polygonMode;
     rasterizer.lineWidth = 1.f;
 }
 void
-Cel::Renderer::PipelineBuilder::SetCullMode(VkCullModeFlags cullMode,
+Cel::Renderer::PipelineBuilder::set_cull_mode(VkCullModeFlags cullMode,
                                             VkFrontFace frontFace)
 {
     rasterizer.cullMode = cullMode;
     rasterizer.frontFace = frontFace;
 }
 void
-Cel::Renderer::PipelineBuilder::SetMutisamplingNone()
+Cel::Renderer::PipelineBuilder::set_mutisampling_none()
 {
     multisampling.sampleShadingEnable = VK_FALSE;
     // multisampling defaulted to no multisampling (1 sample per pixel)
@@ -138,7 +138,7 @@ Cel::Renderer::PipelineBuilder::SetMutisamplingNone()
     multisampling.alphaToOneEnable = VK_FALSE;
 }
 void
-Cel::Renderer::PipelineBuilder::DisableBlending()
+Cel::Renderer::PipelineBuilder::disable_blending()
 {
     colorBlendAttachment.colorWriteMask =
         VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
@@ -147,7 +147,7 @@ Cel::Renderer::PipelineBuilder::DisableBlending()
     colorBlendAttachment.blendEnable = VK_FALSE;
 }
 void
-Cel::Renderer::PipelineBuilder::SetColourAttachment(VkFormat format)
+Cel::Renderer::PipelineBuilder::set_colour_attachment(VkFormat format)
 {
     colorAttachmentformat = format;
     // connect the format to the renderInfo  structure
@@ -155,12 +155,12 @@ Cel::Renderer::PipelineBuilder::SetColourAttachment(VkFormat format)
     renderInfo.pColorAttachmentFormats = &colorAttachmentformat;
 }
 void
-Cel::Renderer::PipelineBuilder::SetDepthAttachment(VkFormat format)
+Cel::Renderer::PipelineBuilder::set_depth_attachment(VkFormat format)
 {
     renderInfo.depthAttachmentFormat = format;
 }
 void
-Cel::Renderer::PipelineBuilder::DisableDepthTest()
+Cel::Renderer::PipelineBuilder::disable_depth_test()
 {
     depthStencil.depthTestEnable = VK_FALSE;
     depthStencil.depthWriteEnable = VK_FALSE;
@@ -174,7 +174,7 @@ Cel::Renderer::PipelineBuilder::DisableDepthTest()
 }
 
 void
-Cel::Renderer::PipelineBuilder::EnableDepthTest(bool depthWriteEnable,
+Cel::Renderer::PipelineBuilder::enable_depth_test(bool depthWriteEnable,
                                                 VkCompareOp op)
 {
     depthStencil.depthTestEnable = VK_TRUE;
@@ -189,7 +189,7 @@ Cel::Renderer::PipelineBuilder::EnableDepthTest(bool depthWriteEnable,
 }
 
 void
-Cel::Renderer::PipelineBuilder::SetVertexInputNone()
+Cel::Renderer::PipelineBuilder::set_vertex_input_none()
 {
     vertexInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
@@ -197,7 +197,7 @@ Cel::Renderer::PipelineBuilder::SetVertexInputNone()
 }
 
 void
-Cel::Renderer::PipelineBuilder::SetVertexInputFloatArray()
+Cel::Renderer::PipelineBuilder::set_vertex_input_float_array()
 {
     vertexBindingDescription = { .binding = 0,
                                  .stride = sizeof(float) * 3,

@@ -7,11 +7,11 @@
 namespace Cel::Renderer {
 
 void
-CleanupRenderer(Resource<FinalCleanup>& cleanup,
+cleanup_renderer(Resource<FinalCleanup>& cleanup,
                 Resource<FrameData>& frameData,
                 Resource<VulkanContext>& context);
 
 void
-CleanupAssetServer(Resource<AssetServer>& assetServer);
+cleanup_asset_server(Resource<AssetServer>& assetServer);
 
 }

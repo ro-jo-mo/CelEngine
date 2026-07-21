@@ -21,19 +21,19 @@ class ScheduleGraph
      * @tparam System System type
      */
     template<typename System>
-    void AddNode(System system);
+    void add_node(System system);
 
     /**
      * @brief  Add an edge marking "from" as a dependency for "to"
      * @param from Function pointer
      * @param to Function pointer
      */
-    void AddEdge(void* from, void* to);
+    void add_edge(void* from, void* to);
 
     /**
      * @brief Serial execution of this DAG
      */
-    void Execute();
+    void execute();
 
   private:
     /**
@@ -41,7 +41,7 @@ class ScheduleGraph
      * @param id System id to run
      * @param executed A set of already executed systems
      */
-    void ExecuteSystem(void* id, std::unordered_set<void*>& executed);
+    void execute_system(void* id, std::unordered_set<void*>& executed);
 
     /**
      * @brief Returns true if all the dependencies of this system have been run
@@ -49,14 +49,14 @@ class ScheduleGraph
      * @param executed A set of already executed systems
      * @return True if system is ready to run, false otherwise
      */
-    bool CheckRequirements(void* id, std::unordered_set<void*>& executed);
+    bool check_requirements(void* id, std::unordered_set<void*>& executed);
 
     /**
      * @brief Execute all child systems ready to go
      * @param id Parent system
      * @param executed A set of already executed systems
      */
-    void RecursivelyExecute(void* id, std::unordered_set<void*>& executed);
+    void recursively_execute(void* id, std::unordered_set<void*>& executed);
 
     std::unordered_map<void*, std::unordered_set<void*>> adjacencyList{};
     std::unordered_map<void*, std::unordered_set<void*>> requirements{};
@@ -67,7 +67,7 @@ class ScheduleGraph
 
 template<typename System>
 void
-ScheduleGraph::AddNode(System system)
+ScheduleGraph::add_node(System system)
 {
     // Firstly check if system already exists
     if (idToSystem.contains(reinterpret_cast<void*>(system))) {
@@ -75,7 +75,7 @@ ScheduleGraph::AddNode(System system)
     }
 
     idToSystem[reinterpret_cast<void*>(system)] =
-        systemAllocator.AllocateSystem(system);
+        systemAllocator.allocate_system(system);
     requirements[reinterpret_cast<void*>(system)];
     adjacencyList[reinterpret_cast<void*>(system)];
 }

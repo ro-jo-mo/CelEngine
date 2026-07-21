@@ -2,49 +2,49 @@
 
 #include <SDL3/SDL_events.h>
 bool
-Cel::Input::Input::KeyUp(SDL_Scancode key) const
+Cel::Input::Input::key_up(SDL_Scancode key) const
 {
     return !currentKeyState[key] && previousKeyState[key];
 }
 
 bool
-Cel::Input::Input::KeyDown(SDL_Scancode key) const
+Cel::Input::Input::key_down(SDL_Scancode key) const
 {
     return currentKeyState[key] && !previousKeyState[key];
 }
 
 bool
-Cel::Input::Input::KeyHeld(SDL_Scancode key) const
+Cel::Input::Input::key_held(SDL_Scancode key) const
 {
     return currentKeyState[key] && previousKeyState[key];
 }
 
 glm::vec2
-Cel::Input::Input::MouseScroll() const
+Cel::Input::Input::mouse_scroll() const
 {
     return mouseScroll;
 }
 
 glm::vec2
-Cel::Input::Input::MouseDelta() const
+Cel::Input::Input::mouse_delta() const
 {
     return mouseDelta;
 }
 
 bool
-Cel::Input::Input::MouseButtonUp(uint32_t button) const
+Cel::Input::Input::mouse_button_up(uint32_t button) const
 {
     return !currentMouseButtonState[button] && previousMouseButtonState[button];
 }
 
 bool
-Cel::Input::Input::MouseButtonDown(uint32_t button) const
+Cel::Input::Input::mouse_button_down(uint32_t button) const
 {
     return currentMouseButtonState[button] && !previousMouseButtonState[button];
 }
 
 bool
-Cel::Input::Input::MouseButtonHeld(uint32_t button) const
+Cel::Input::Input::mouse_button_held(uint32_t button) const
 {
     return currentMouseButtonState[button] && previousMouseButtonState[button];
 }
@@ -61,7 +61,7 @@ Cel::Input::Input::TickInput()
 }
 
 void
-Cel::Input::ProcessInputEvents(Resource<Input>& input,
+Cel::Input::process_input_events(Resource<Input>& input,
                                Resource<Running>& isRunning)
 {
 

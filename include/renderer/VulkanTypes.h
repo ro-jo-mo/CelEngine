@@ -112,6 +112,12 @@ struct AllocatedMeshBuffer
     uint32_t indexCount;
 };
 
+template<typename T>
+struct Handle
+{
+    uint32_t index;
+};
+
 namespace Detail {
 
 template<typename T>

@@ -3,13 +3,13 @@
 using namespace Cel;
 
 glm::vec3
-GlobalTransform::GetTranslation()
+GlobalTransform::get_translation()
 {
     return { transform[3] };
 }
 
 glm::quat
-GlobalTransform::GetRotation()
+GlobalTransform::get_rotation()
 {
     const glm::vec3 scale(glm::length(glm::vec3(transform[0])),
                           glm::length(glm::vec3(transform[1])),
@@ -27,7 +27,7 @@ GlobalTransform::GetRotation()
 }
 
 glm::vec3
-GlobalTransform::GetScale()
+GlobalTransform::get_scale()
 {
 
     glm::vec3 scale(glm::length(glm::vec3(transform[0])),
@@ -46,20 +46,20 @@ GlobalTransform::GetScale()
 }
 
 void
-GlobalTransform::TransformPropagation(const GlobalTransform& parent,
+GlobalTransform::transform_propagation(const GlobalTransform& parent,
                                       const Position& localPosition,
                                       const Rotation& localRotation,
                                       const Scale& localScale)
 {
     // firstly construct a transform matrix from the local values
     const auto local =
-        TransformFromLocal(localPosition, localRotation, localScale);
+        transform_from_local(localPosition, localRotation, localScale);
     // Global transform is equal to ParentGlobalTransform * LocalTransform
     transform = parent.transform * local;
 }
 
 glm::mat4
-GlobalTransform::TransformFromLocal(const Position& localPosition,
+GlobalTransform::transform_from_local(const Position& localPosition,
                                     const Rotation& localRotation,
                                     const Scale& localScale)
 {
@@ -86,22 +86,22 @@ PropagateThroughChildren(
     // Naturally we first check if the node even has kids
     // i.e. is this node a parent?
 
-    if (!parentQuery.Has(parent)) {
+    if (!parentQuery.has(parent)) {
         return;
     }
 
-    const auto parentTransform = std::get<0>(childQuery.Get(parent));
+    const auto parentTransform = std::get<0>(childQuery.get(parent));
 
-    for (auto childId : std::get<0>(parentQuery.Get(parent)).children) {
-        auto [transform, pos, rot, scale] = childQuery.Get(childId);
-        transform.TransformPropagation(parentTransform, pos, rot, scale);
+    for (auto childId : std::get<0>(parentQuery.get(parent)).children) {
+        auto [transform, pos, rot, scale] = childQuery.get(childId);
+        transform.transform_propagation(parentTransform, pos, rot, scale);
 
         PropagateThroughChildren(childId, parentQuery, childQuery);
     }
 }
 
 void
-Cel::HierarchyPropagation(
+Cel::hierarchy_propagation(
     Query<With<const GlobalTransform, const Children>, Without<Parent>>&
         rootQuery,
     Query<With<const Children>>& parentQuery,
@@ -119,8 +119,8 @@ Cel::HierarchyPropagation(
 
     for (const auto& [parentTransform, parentsChildren] : rootQuery) {
         for (auto childId : parentsChildren.children) {
-            auto [transform, pos, rot, scale] = childQuery.Get(childId);
-            transform.TransformPropagation(parentTransform, pos, rot, scale);
+            auto [transform, pos, rot, scale] = childQuery.get(childId);
+            transform.transform_propagation(parentTransform, pos, rot, scale);
 
             PropagateThroughChildren(childId, parentQuery, childQuery);
         }
@@ -128,11 +128,11 @@ Cel::HierarchyPropagation(
 }
 
 void
-Cel::ComputeRootGlobalTransform(
+Cel::compute_root_global_transform(
     Query<With<GlobalTransform, Position, Rotation, Scale>, Without<Parent>>&
         rootQuery)
 {
     for (auto [global, pos, rot, scale] : rootQuery) {
-        global.transform = GlobalTransform::TransformFromLocal(pos, rot, scale);
+        global.transform = GlobalTransform::transform_from_local(pos, rot, scale);
     }
 }

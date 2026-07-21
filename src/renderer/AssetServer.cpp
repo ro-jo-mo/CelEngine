@@ -17,7 +17,7 @@ using namespace Cel::Renderer;
 using namespace Cel;
 
 void
-AssetServer::CreateDefaults()
+AssetServer::create_defaults()
 {
     // checkerboard image
     int32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
@@ -32,7 +32,7 @@ AssetServer::CreateDefaults()
     // For now, we'll default to a checkerboard when no texture is assigned
     // However, this is a little silly for normals roughness etc
     AllocatedImage checkerboard =
-        Utils::CreateImage(pixels.data(),
+        Utils::create_image(pixels.data(),
                            VkExtent3D{ 16, 16, 1 },
                            VK_FORMAT_R8G8B8A8_UNORM,
                            VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -67,18 +67,18 @@ AssetServer::CreateDefaults()
         4, 5, 7, 7, 6, 4, 0, 3, 7, 7, 5, 0, 1, 4, 2, 2, 4, 6
     };
 
-    skyboxCube = Utils::UploadMesh(skyboxIndices,
+    skyboxCube = Utils::upload_mesh(skyboxIndices,
                                    skyboxVertices,
                                    context,
                                    allocator,
                                    immediate,
                                    graphicsQueue);
 
-    SetSkybox("../../assets/skybox.ktx2");
+    set_skybox("../../assets/skybox.ktx2");
 }
 
 std::vector<Model>
-AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
+AssetServer::load_models(fastgltf::Asset& asset, size_t materialOffset)
 {
     std::vector<Model> models;
 
@@ -164,7 +164,7 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
 
                 Mesh newMesh{};
                 newMesh.firstIndex =
-                    indiceBuffer.UploadData(indices.data(),
+                    indiceBuffer.upload_data(indices.data(),
                                             indices.size() * sizeof(uint32_t),
                                             1,
                                             context,
@@ -173,7 +173,7 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
                                             graphicsQueue);
                 newMesh.indexCount = indices.size();
                 newMesh.vertexOffset =
-                    verticeBuffer.UploadData(vertices.data(),
+                    verticeBuffer.upload_data(vertices.data(),
                                              vertices.size() * sizeof(Vertex),
                                              1,
                                              context,
@@ -191,13 +191,13 @@ AssetServer::LoadModels(fastgltf::Asset& asset, size_t materialOffset)
 }
 
 std::optional<AllocatedImage>
-AssetServer::LoadImage(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
+AssetServer::load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
 {
 
     std::vector<std::byte> imageData;
 
     auto ErrorMsg = [&](const char* ext) {
-        (ThrowError("Error loading gltf image. Attempted to use {}",
+        (throw_error("Error loading gltf image. Attempted to use {}",
                     std::move(ext)));
     };
 
@@ -242,7 +242,7 @@ AssetServer::LoadImage(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
     size.height = height;
     size.depth = 1;
 
-    auto newImage = Utils::CreateImage(img,
+    auto newImage = Utils::create_image(img,
                                        size,
                                        VK_FORMAT_R8G8B8A8_UNORM,
                                        VK_IMAGE_USAGE_SAMPLED_BIT,
@@ -259,10 +259,10 @@ AssetServer::LoadImage(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
 }
 
 void
-AssetServer::LoadImages(fastgltf::Asset& asset)
+AssetServer::load_images(fastgltf::Asset& asset)
 {
     for (auto& image : asset.images) {
-        auto img = LoadImage(asset, image);
+        auto img = load_image(asset, image);
         if (img.has_value()) {
             images.push_back(img.value());
         } else {
@@ -309,7 +309,7 @@ ExtractMipMap(const fastgltf::Filter filter)
 }
 
 void
-AssetServer::LoadSamplers(const fastgltf::Asset& asset)
+AssetServer::load_samplers(const fastgltf::Asset& asset)
 {
     for (auto& gltfSampler : asset.samplers) {
         VkSamplerCreateInfo sampler = {
@@ -334,7 +334,7 @@ AssetServer::LoadSamplers(const fastgltf::Asset& asset)
 }
 
 uint32_t
-AssetServer::ResolveTextureSampler(
+AssetServer::resolve_texture_sampler(
     fastgltf::Asset& asset,
     const std::optional<fastgltf::TextureInfo>& textureInfo,
     const size_t imageOffset,
@@ -353,13 +353,13 @@ AssetServer::ResolveTextureSampler(
             sampler = samplers[0];
         }
 
-        return textureCache.AddTexture(view, sampler);
+        return textureCache.add_texture(view, sampler);
     }
-    return textureCache.AddTexture(images[0].imageView, samplers[0]);
+    return textureCache.add_texture(images[0].imageView, samplers[0]);
 }
 
 void
-AssetServer::LoadMaterials(fastgltf::Asset& asset,
+AssetServer::load_materials(fastgltf::Asset& asset,
                            const size_t imageOffset,
                            const size_t samplerOffset)
 {
@@ -385,11 +385,11 @@ AssetServer::LoadMaterials(fastgltf::Asset& asset,
             metallicFactor, roughnessFactor, 0, 0
         };
 
-        constants.colorTextureIndex = ResolveTextureSampler(
+        constants.colorTextureIndex = resolve_texture_sampler(
             asset, baseColorTexture, imageOffset, samplerOffset);
-        constants.metalRoughnessTextureIndex = ResolveTextureSampler(
+        constants.metalRoughnessTextureIndex = resolve_texture_sampler(
             asset, metallicRoughnessTexture, imageOffset, samplerOffset);
-        constants.normalTextureIndex = ResolveTextureSampler(
+        constants.normalTextureIndex = resolve_texture_sampler(
             asset,
             gltfMaterial.normalTexture.transform([](const auto& info) {
                 return fastgltf::TextureInfo{ .textureIndex = info.textureIndex,
@@ -410,7 +410,7 @@ AssetServer::LoadMaterials(fastgltf::Asset& asset,
         materialList.push_back(constants);
     }
 
-    const auto bufferOffset = materialBuffer.UploadData(
+    const auto bufferOffset = materialBuffer.upload_data(
         materialList.data(),
         sizeof(MaterialConstants) * materialList.size(),
         1,
@@ -469,7 +469,7 @@ CreateNodeTree(const size_t nodeIndex,
 }
 
 AssetNode
-AssetServer::LoadNodes(fastgltf::Asset& asset, std::vector<Model>& models)
+AssetServer::load_nodes(fastgltf::Asset& asset, std::vector<Model>& models)
 {
     // A scene may have several root nodes
     // Return a list of root nodes? The roots contain their children
@@ -492,7 +492,7 @@ AssetServer::LoadNodes(fastgltf::Asset& asset, std::vector<Model>& models)
 }
 
 Handle<AssetNode>
-AssetServer::LoadGltfAsset(const char* filepath)
+AssetServer::load_gltf_asset(const char* filepath)
 {
     std::filesystem::path path = filepath;
 
@@ -500,7 +500,7 @@ AssetServer::LoadGltfAsset(const char* filepath)
     auto data = fastgltf::GltfDataBuffer::FromPath(path);
 
     if (data.error() != fastgltf::Error::None) {
-        ThrowError("Failed to load asset {}\nError: {}",
+        throw_error("Failed to load asset {}\nError: {}",
                    absolute(path).string(),
                    getErrorMessage(data.error()));
     }
@@ -532,14 +532,14 @@ AssetServer::LoadGltfAsset(const char* filepath)
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1 }
     };
-    descriptorAllocator.Init(context.device, 1024, sizes);
+    descriptorAllocator.init(context.device, 1024, sizes);
 
-    LoadImages(asset);
-    LoadSamplers(asset);
-    LoadMaterials(asset, imageOffset, samplerOffset);
+    load_images(asset);
+    load_samplers(asset);
+    load_materials(asset, imageOffset, samplerOffset);
 
-    auto models = LoadModels(asset, materialOffset);
-    AssetNode newAsset = LoadNodes(asset, models);
+    auto models = load_models(asset, materialOffset);
+    AssetNode newAsset = load_nodes(asset, models);
 
     assets.push_back(std::move(newAsset));
     allocators.push_back(std::move(descriptorAllocator));
@@ -548,7 +548,7 @@ AssetServer::LoadGltfAsset(const char* filepath)
 }
 
 AllocatedImage
-AssetServer::LoadSkyboxImage(const char* filepath)
+AssetServer::load_skybox_image(const char* filepath)
 {
     ktxTexture* texture;
 
@@ -558,7 +558,7 @@ AssetServer::LoadSkyboxImage(const char* filepath)
     if (err != KTX_SUCCESS) {
         auto temp =
             std::filesystem::absolute(std::filesystem::path(filepath)).string();
-        ThrowError("Failed to load skybox, KTX error: {}\nFilepath {}",
+        throw_error("Failed to load skybox, KTX error: {}\nFilepath {}",
                    ktxErrorString(err),
                    std::move(temp));
     }
@@ -568,7 +568,7 @@ AssetServer::LoadSkyboxImage(const char* filepath)
     extent.height = texture->baseHeight;
     extent.depth = 1;
 
-    AllocatedImage skyboxImg = Utils::CreateCubeMap(texture,
+    AllocatedImage skyboxImg = Utils::create_cube_map(texture,
                                                     VK_FORMAT_R8G8B8A8_UNORM,
                                                     "skybox_cubemap_alloc",
                                                     context,
@@ -581,11 +581,11 @@ AssetServer::LoadSkyboxImage(const char* filepath)
 }
 
 void
-AssetServer::SetSkybox(const char* filepath)
+AssetServer::set_skybox(const char* filepath)
 {
 
-    images.push_back(LoadSkyboxImage(filepath));
-    textureCache.AddTexture(images[images.size() - 1].imageView, samplers[0]);
+    images.push_back(load_skybox_image(filepath));
+    textureCache.add_texture(images[images.size() - 1].imageView, samplers[0]);
     skyboxTextureIndex = textureCache.descriptors.size() - 1;
 }
 
@@ -597,31 +597,31 @@ AddNodeHierarchyToEntity(const Entity entity,
     // reuse global transform functions for decomposition
     auto transform = GlobalTransform{ node.localTransform };
 
-    auto child = world->Spawn(Position{ transform.GetTranslation() },
-                              Rotation{ transform.GetRotation() },
-                              Scale{ transform.GetScale() });
+    auto child = world->spawn(Position{ transform.get_translation() },
+                              Rotation{ transform.get_rotation() },
+                              Scale{ transform.get_scale() });
 
-    world->AddChild(entity, child.Get());
+    world->add_child(entity, child.get());
 
     if (node.model.has_value()) {
-        child.WithChildren([&](ChildBuilder parent) {
+        child.with_children([&](ChildBuilder parent) {
             auto& [meshes, materials] = node.model.value();
             // Add all meshes as child entities
             for (const auto& [mesh, material] :
                  std::ranges::views::zip(meshes, materials)) {
-                parent.Spawn(Handle<Mesh>{ .index = mesh },
+                parent.spawn(Handle<Mesh>{ .index = mesh },
                              Handle<Material>{ .index = material.value_or(0) });
             }
         });
     }
 
     for (auto& childNode : node.children) {
-        AddNodeHierarchyToEntity(child.Get(), childNode, world);
+        AddNodeHierarchyToEntity(child.get(), childNode, world);
     };
 }
 
 void
-AssetServer::AddAssetToEntity(const Entity entity,
+AssetServer::add_asset_to_entity(const Entity entity,
                               const Handle<AssetNode> assetHandle,
                               Resource<World>& world) const
 {
@@ -630,19 +630,19 @@ AssetServer::AddAssetToEntity(const Entity entity,
     AddNodeHierarchyToEntity(entity, node, world);
 }
 Material
-AssetServer::GetMaterial(const Handle<Material> material) const
+AssetServer::get_material(const Handle<Material> material) const
 {
     return materials[material.index];
 }
 
 Mesh
-AssetServer::GetMesh(const Handle<Mesh> mesh) const
+AssetServer::get_mesh(const Handle<Mesh> mesh) const
 {
     return meshes[mesh.index];
 }
 
 void
-AssetServer::Cleanup()
+AssetServer::cleanup()
 {
     vkDeviceWaitIdle(context.device);
     for (auto& sampler : samplers) {
@@ -663,10 +663,10 @@ AssetServer::Cleanup()
     }
 
     for (auto& pools : allocators) {
-        pools.DestroyPools();
+        pools.destroy_pools();
     }
 
-    indiceBuffer.Cleanup(allocator);
-    verticeBuffer.Cleanup(allocator);
-    materialBuffer.Cleanup(allocator);
+    indiceBuffer.cleanup(allocator);
+    verticeBuffer.cleanup(allocator);
+    materialBuffer.cleanup(allocator);
 }

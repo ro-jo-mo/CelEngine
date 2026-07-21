@@ -37,25 +37,25 @@ struct DrawData
     AllocatedBuffer indirectBuffer;
     AllocatedBuffer entityBuffer;
 
-    void Draw();
+    void draw();
 
-    void CleanupDraw();
+    void cleanup_draw();
 
-    void DrawGeometry();
+    void draw_geometry();
 
-    void CreateIndirectData();
+    void create_indirect_data();
 
-    void DrawSkybox();
+    void draw_skybox();
 
-    void BindSceneData(VkDescriptorSet sceneDescriptor) const;
+    void bind_scene_data(VkDescriptorSet sceneDescriptor) const;
 
-    void DrawModel(GlobalTransform& transform,
+    void draw_model(GlobalTransform& transform,
                    Handle<Mesh> meshHandle,
                    Handle<Material> matHandle) const;
 };
 
 void
-Draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
+draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
      Query<With<Camera>>& cameras,
      Resource<VulkanContext>& context,
      Resource<Swapchain>& swapchain,

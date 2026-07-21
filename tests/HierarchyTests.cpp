@@ -7,42 +7,42 @@ namespace {
 TEST(HierarchyPropagationTest, ChildInheritsParentTransform)
 {
     App ecs;
-    ecs.AddPlugin<CorePlugin>()
-        .AddPlugin<SingleSystemPlugin<Startup::Start,
+    ecs.add_plugin<CorePlugin>()
+        .add_plugin<SingleSystemPlugin<Startup::Start,
                                       SpawnParentChildForPropagation>>()
-        .AddPlugin<SingleSystemPlugin<Cel::TearDown::Middle,
+        .add_plugin<SingleSystemPlugin<Cel::TearDown::Middle,
                                       VerifyChildInheritsParentTransform>>();
-    ecs.Start<Startup>().End<Cel::TearDown>();
+    ecs.start<Startup>().end<Cel::TearDown>();
 }
 
 TEST(HierarchyPropagationTest, GrandchildAccumulatesTransform)
 {
     App ecs;
-    ecs.AddPlugin<CorePlugin>()
-        .AddPlugin<SingleSystemPlugin<Startup::Start, SpawnDeepHierarchy>>()
-        .AddPlugin<SingleSystemPlugin<Cel::TearDown::Middle,
+    ecs.add_plugin<CorePlugin>()
+        .add_plugin<SingleSystemPlugin<Startup::Start, SpawnDeepHierarchy>>()
+        .add_plugin<SingleSystemPlugin<Cel::TearDown::Middle,
                                       VerifyGrandchildTransform>>();
-    ecs.Start<Startup>().End<Cel::TearDown>();
+    ecs.start<Startup>().end<Cel::TearDown>();
 }
 
 TEST(HierarchyPropagationTest, ScalePropagatesDownHierarchy)
 {
     App ecs;
-    ecs.AddPlugin<CorePlugin>()
-        .AddPlugin<SingleSystemPlugin<Startup::Start, SpawnScaledHierarchy>>()
-        .AddPlugin<
+    ecs.add_plugin<CorePlugin>()
+        .add_plugin<SingleSystemPlugin<Startup::Start, SpawnScaledHierarchy>>()
+        .add_plugin<
             SingleSystemPlugin<Cel::TearDown::Middle, VerifyChildWorldScale>>();
-    ecs.Start<Startup>().End<Cel::TearDown>();
+    ecs.start<Startup>().end<Cel::TearDown>();
 }
 
 TEST(HierarchyPropagationTest, StandaloneEntityGlobalTransformMatchesLocal)
 {
     App ecs;
-    ecs.AddPlugin<CorePlugin>()
-        .AddPlugin<SingleSystemPlugin<Startup::Start, SpawnStandaloneEntity>>()
-        .AddPlugin<SingleSystemPlugin<Cel::TearDown::Middle,
+    ecs.add_plugin<CorePlugin>()
+        .add_plugin<SingleSystemPlugin<Startup::Start, SpawnStandaloneEntity>>()
+        .add_plugin<SingleSystemPlugin<Cel::TearDown::Middle,
                                       VerifyStandaloneGlobalTransform>>();
-    ecs.Start<Startup>().End<Cel::TearDown>();
+    ecs.start<Startup>().end<Cel::TearDown>();
 }
 
 }

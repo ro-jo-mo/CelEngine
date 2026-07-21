@@ -27,18 +27,18 @@ class App
         , queryManager(componentsManager)
         , systemAllocator(resourceManager, queryManager)
     {
-        resourceManager.InsertResource<Time>();
-        resourceManager.InsertResource<World>(componentsManager, entityManager);
-        resourceManager.InsertResource<Running>();
+        resourceManager.insert_resource<Time>();
+        resourceManager.insert_resource<World>(componentsManager, entityManager);
+        resourceManager.insert_resource<Running>();
     }
 
     template<ScheduleEnum... ScheduleEnums>
-    App& Start(bool multithread = false);
+    App& start(bool multithread = false);
     template<typename... Schedules>
         requires(IsSchedule<Schedules>::value && ...)
-    App& Loop();
+    App& loop();
     template<ScheduleEnum... ScheduleEnums>
-    App& End(bool multithread = false);
+    App& end(bool multithread = false);
 
     /**
      * @brief Add a plugin to the game.
@@ -47,17 +47,17 @@ class App
      */
     template<typename T>
         requires std::derived_from<T, Plugin>
-    App& AddPlugin();
+    App& add_plugin();
 
   private:
     template<ScheduleEnum Enum>
-    void ExecuteSchedule();
+    void execute_schedule();
 
     template<typename Schedule>
         requires(IsSchedule<Schedule>::value)
-    void ExecuteLoopedSchedule(Resource<Time>& time);
+    void execute_looped_schedule(Resource<Time>& time);
 
-    void Flush();
+    void flush();
 
     ComponentsManager componentsManager;
     EntityManager entityManager;
@@ -71,17 +71,17 @@ class App
 
 template<ScheduleEnum Enum>
 void
-App::ExecuteSchedule()
+App::execute_schedule()
 {
     bool found = false;
     const std::type_index id = typeid(Enum);
 
     for (auto& [key, executionGraph] : schedules) {
         if (key.schedule == id) {
-            executionGraph.Execute();
+            executionGraph.execute();
             found = true;
 
-            Flush();
+            flush();
             continue;
         }
         if (found == true) {
@@ -93,33 +93,33 @@ App::ExecuteSchedule()
 template<typename Schedule>
     requires(IsSchedule<Schedule>::value)
 void
-App::ExecuteLoopedSchedule(Resource<Time>& time)
+App::execute_looped_schedule(Resource<Time>& time)
 {
     using Enum = Schedule::ScheduleEnum;
 
     if constexpr (Schedule::IsFixed) {
-        time->SwitchToFixed<Enum>();
+        time->switch_to_fixed<Enum>();
 
-        while (time->FixedUpdateRequired<Enum>()) {
-            ExecuteSchedule<Enum>();
+        while (time->is_fixed_update_required<Enum>()) {
+            execute_schedule<Enum>();
 
-            time->FixedTick<Enum>();
+            time->fixed_tick<Enum>();
         }
     } else {
-        time->SwitchToDynamic();
+        time->switch_to_dynamic();
 
-        ExecuteSchedule<Enum>();
+        execute_schedule<Enum>();
     }
 }
 
 template<ScheduleEnum... ScheduleEnums>
 App&
-App::Start(bool multithread)
+App::start(bool multithread)
 {
-    (void(ExecuteSchedule<ScheduleEnums>()), ...);
+    (void(execute_schedule<ScheduleEnums>()), ...);
 
-    resourceManager.GetResource<World>()->Flush();
-    queryManager.UpdateQueries();
+    resourceManager.GetResource<World>()->flush();
+    queryManager.update_queries();
 
     return *this;
 }
@@ -127,21 +127,21 @@ App::Start(bool multithread)
 template<typename... Schedules>
     requires(IsSchedule<Schedules>::value && ...)
 App&
-App::Loop()
+App::loop()
 {
     auto& time = resourceManager.GetResource<Time>();
     auto& running = resourceManager.GetResource<Running>();
 
-    (void(time->RegisterSchedule<Schedules>()), ...);
+    (void(time->register_schedule<Schedules>()), ...);
 
     running->isRunning = true;
 
     while (running->isRunning) {
 
-        (void(ExecuteLoopedSchedule<Schedules>(time)), ...);
+        (void(execute_looped_schedule<Schedules>(time)), ...);
 
-        Flush();
-        time->Tick();
+        flush();
+        time->tick();
     }
 
     return *this;
@@ -149,12 +149,12 @@ App::Loop()
 
 template<ScheduleEnum... ScheduleEnums>
 App&
-App::End(bool multithread)
+App::end(bool multithread)
 {
-    (void(ExecuteSchedule<ScheduleEnums>()), ...);
+    (void(execute_schedule<ScheduleEnums>()), ...);
 
-    resourceManager.GetResource<World>()->Flush();
-    queryManager.UpdateQueries();
+    resourceManager.GetResource<World>()->flush();
+    queryManager.update_queries();
 
     return *this;
 }
@@ -162,17 +162,17 @@ App::End(bool multithread)
 template<typename T>
     requires std::derived_from<T, Plugin>
 App&
-App::AddPlugin()
+App::add_plugin()
 {
-    T().Build(Scheduler(schedules, systemAllocator), resourceManager);
+    T().build(Scheduler(schedules, systemAllocator), resourceManager);
     return *this;
 }
 
 inline void
-App::Flush()
+App::flush()
 {
-    resourceManager.GetResource<World>()->Flush();
-    queryManager.UpdateQueries();
+    resourceManager.GetResource<World>()->flush();
+    queryManager.update_queries();
 }
 
 }

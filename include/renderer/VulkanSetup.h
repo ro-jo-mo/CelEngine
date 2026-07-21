@@ -4,5 +4,5 @@
 
 namespace Cel::Renderer::VulkanInitialiser {
 void
-Initialise(ResourceManager& resourceManager);
+initialise(ResourceManager& resourceManager);
 }

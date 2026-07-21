@@ -48,13 +48,13 @@ struct Without : TypeList<T...>
  */
 template<typename Component, typename... Components>
 consteval size_t
-GetIndexOfEntityType(const size_t index)
+get_index_of_entity_type(const size_t index)
 {
     if constexpr (std::is_same_v<Component, Entity>) {
         return index;
     }
     if constexpr (sizeof...(Components) > 0) {
-        return GetIndexOfEntityType<Components...>(index + 1);
+        return get_index_of_entity_type<Components...>(index + 1);
     }
     return -1;
 }
@@ -80,18 +80,18 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
         : manager(components_manager)
     {
         includedComponentArrays = std::make_tuple(
-            manager.GetComponentArray<std::remove_const_t<Include>>()...);
-        Query::UpdateQuery();
+            manager.get_component_array<std::remove_const_t<Include>>()...);
+        Query::update_query();
     }
 
-    void UpdateQuery() override;
+    void update_query() override;
 
     /**
      * @brief Retrieve the components of this entity
      * @param entity Entity to retrieve
      * @return Retrieved entity components
      */
-    std::tuple<Include&...> Get(Entity entity);
+    std::tuple<Include&...> get(Entity entity);
 
     /**
      * @brief Checks whether this query contains the entity i.e. can
@@ -99,7 +99,7 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
      * @param entity Entity to check
      * @return True if this query contains "entity"
      */
-    bool Has(Entity entity) const;
+    bool has(Entity entity) const;
 
     /**
      * @brief Size of this query
@@ -126,22 +126,22 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
      * @return Retrieved component
      */
     template<typename Component>
-    Component& GetComponentOrEntity(Entity& entity);
+    Component& get_component_or_entity(Entity& entity);
 
     std::tuple<std::shared_ptr<ComponentArray<std::remove_const_t<Include>>>...>
         includedComponentArrays;
     ComponentsManager& manager;
     std::unordered_set<Entity> included;
-    size_t entityTypeIndex = GetIndexOfEntityType<Include...>(0);
+    size_t entityTypeIndex = get_index_of_entity_type<Include...>(0);
 };
 
 template<typename... Include, typename... Exclude>
 inline void
-Query<With<Include...>, Without<Exclude...>>::UpdateQuery()
+Query<With<Include...>, Without<Exclude...>>::update_query()
 {
     auto getEntityLists = [](auto&... componentArrays) {
         return std::vector<std::unordered_map<Entity, size_t>>{
-            componentArrays->GetEntityList()...
+            componentArrays->get_entity_list()...
         };
     };
 
@@ -180,7 +180,7 @@ Query<With<Include...>, Without<Exclude...>>::UpdateQuery()
     // for each excluded list, does entity exist inside
     // if so, remove
     auto excludedComponentArrays =
-        std::make_tuple(manager.GetComponentArray<Exclude>()...);
+        std::make_tuple(manager.get_component_array<Exclude>()...);
     auto excludedEntityArrays =
         std::apply(getEntityLists, excludedComponentArrays);
 
@@ -201,14 +201,14 @@ Query<With<Include...>, Without<Exclude...>>::UpdateQuery()
 
 template<typename... Include, typename... Exclude>
 std::tuple<Include&...>
-Query<With<Include...>, Without<Exclude...>>::Get(Entity entity)
+Query<With<Include...>, Without<Exclude...>>::get(Entity entity)
 {
-    return std::tuple<Include&...>(GetComponentOrEntity<Include>(entity)...);
+    return std::tuple<Include&...>(get_component_or_entity<Include>(entity)...);
 }
 
 template<typename... Include, typename... Exclude>
 bool
-Query<With<Include...>, Without<Exclude...>>::Has(const Entity entity) const
+Query<With<Include...>, Without<Exclude...>>::has(const Entity entity) const
 {
     return included.contains(entity);
 }
@@ -222,7 +222,7 @@ Query<With<Include...>, Without<Exclude...>>::size() const
 template<typename... Include, typename... Exclude>
 template<typename Component>
 Component&
-Query<With<Include...>, Without<Exclude...>>::GetComponentOrEntity(
+Query<With<Include...>, Without<Exclude...>>::get_component_or_entity(
     Entity& entity)
 {
     if constexpr (std::is_same_v<Component, Entity>) {
@@ -231,7 +231,7 @@ Query<With<Include...>, Without<Exclude...>>::GetComponentOrEntity(
     return std::get<
                std::shared_ptr<ComponentArray<std::remove_const_t<Component>>>>(
                includedComponentArrays)
-        ->GetComponent(entity);
+        ->get_component(entity);
 }
 
 template<typename... Include, typename... Exclude>
@@ -268,7 +268,7 @@ class Query<With<Include...>, Without<Exclude...>>::Iterator
     std::tuple<Include&...> operator*()
     {
         ref = *current;
-        return view.Get(ref);
+        return view.get(ref);
     }
 
   private:

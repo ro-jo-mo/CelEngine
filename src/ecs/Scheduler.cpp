@@ -1,7 +1,7 @@
 #include "ecs/Scheduler.h"
 
 Cel::RelativeScheduler&
-Cel::RelativeScheduler::After(const RelativeScheduler& runsBefore)
+Cel::RelativeScheduler::after(const RelativeScheduler& runsBefore)
 {
     // The simplest way of reasoning about this is to think of a chain
     // Our set:
@@ -11,7 +11,7 @@ Cel::RelativeScheduler::After(const RelativeScheduler& runsBefore)
 
     for (const auto& entry : this->entrance) {
         for (const auto& exits : runsBefore.exit) {
-            graph.AddEdge(exits, entry);
+            graph.add_edge(exits, entry);
         }
     }
 
@@ -19,7 +19,7 @@ Cel::RelativeScheduler::After(const RelativeScheduler& runsBefore)
 }
 
 Cel::RelativeScheduler&
-Cel::RelativeScheduler::Before(const RelativeScheduler& runsAfter)
+Cel::RelativeScheduler::before(const RelativeScheduler& runsAfter)
 {
     // The simplest way of reasoning about this is to think of a chain
     // Our set:
@@ -29,7 +29,7 @@ Cel::RelativeScheduler::Before(const RelativeScheduler& runsAfter)
 
     for (const auto& exits : this->exit) {
         for (const auto& entry : runsAfter.entrance) {
-            graph.AddEdge(exits, entry);
+            graph.add_edge(exits, entry);
         }
     }
 

@@ -27,7 +27,7 @@ struct FunctionType
 // Removing variable name "pointer" results in type: int (*)(float,int,...);
 template<typename ReturnT, typename... ParameterTs>
 FunctionType<ReturnT, ParameterTs...>
-GetFunctionType(ReturnT (*)(ParameterTs...))
+get_function_type(ReturnT (*)(ParameterTs...))
 {
     return FunctionType<ReturnT, ParameterTs...>{};
 }
@@ -65,7 +65,7 @@ class SystemAllocator
     }
 
     template<typename System>
-    std::function<void()> AllocateSystem(System system);
+    std::function<void()> allocate_system(System system);
 
   private:
     /**
@@ -75,7 +75,7 @@ class SystemAllocator
      * @return The actual Resource / query
      */
     template<typename T>
-    T Register();
+    T register_t();
 
     template<typename T>
     struct RegisterAll;
@@ -90,38 +90,38 @@ class SystemAllocator
 template<typename... Parameters>
 struct SystemAllocator::RegisterAll<ParameterList<Parameters...>>
 {
-    static std::tuple<Parameters&...> Execute(SystemAllocator& allocator);
+    static std::tuple<Parameters&...> execute(SystemAllocator& allocator);
 };
 
 template<typename... Parameters>
 std::tuple<Parameters&...>
-SystemAllocator::RegisterAll<ParameterList<Parameters...>>::Execute(
+SystemAllocator::RegisterAll<ParameterList<Parameters...>>::execute(
     SystemAllocator& allocator)
 {
-    return std::tie(allocator.Register<Parameters>()...);
+    return std::tie(allocator.register_t<Parameters>()...);
 }
 
 template<typename System>
 std::function<void()>
-SystemAllocator::AllocateSystem(System system)
+SystemAllocator::allocate_system(System system)
 {
     // ParameterList<Params...>
-    using Parameters = decltype(GetFunctionType(system))::Parameters;
+    using Parameters = decltype(get_function_type(system))::Parameters;
 
-    auto args = RegisterAll<Parameters>::Execute(*this);
+    auto args = RegisterAll<Parameters>::execute(*this);
 
     return [=, args = std::move(args)]() { std::apply(system, args); };
 }
 
 template<typename _T>
 _T
-SystemAllocator::Register()
+SystemAllocator::register_t()
 {
     using T = std::remove_reference_t<_T>;
 
     if constexpr (IsQuery<T>::value) {
         registeredQueries.push_back(std::type_index(typeid(T)));
-        return queryManager.GetQuery<T>();
+        return queryManager.get_query<T>();
     } else if constexpr (IsResource<T>::value) {
         registeredResources.push_back(std::type_index(typeid(T)));
         return resourceManager.GetResource<typename T::inner>();

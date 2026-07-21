@@ -10,8 +10,8 @@ class DeletionQueue
 {
   public:
     int name = 0;
-    void Push(std::function<void()>&& func);
-    void Flush();
+    void push(std::function<void()>&& func);
+    void flush();
 
   private:
     std::vector<std::function<void()>> queue;
@@ -19,14 +19,14 @@ class DeletionQueue
 
 template<typename Tag>
 void
-DeletionQueue<Tag>::Push(std::function<void()>&& func)
+DeletionQueue<Tag>::push(std::function<void()>&& func)
 {
     queue.push_back(std::move(func));
 }
 
 template<typename Tag>
 void
-DeletionQueue<Tag>::Flush()
+DeletionQueue<Tag>::flush()
 {
     // Deletion done in reverse order, i.e. newest items deleted first
     for (auto func = queue.rbegin(); func != queue.rend(); ++func) {

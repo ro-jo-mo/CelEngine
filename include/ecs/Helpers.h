@@ -26,7 +26,7 @@ struct IsResource<Resource<T>> : std::true_type
 
 template<typename T, typename... Ts>
 constexpr bool
-HasTypeT()
+has_type_t()
 {
     return (std::is_same_v<T, Ts> || ...);
 }

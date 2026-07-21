@@ -1,7 +1,7 @@
 #include "renderer/MegaBuffer.h"
 
 uint32_t
-Cel::Renderer::MegaBuffer::UploadData(const void* data,
+Cel::Renderer::MegaBuffer::upload_data(const void* data,
                                       const uint32_t size,
                                       const uint32_t alignment,
                                       VulkanContext& context,
@@ -13,7 +13,7 @@ Cel::Renderer::MegaBuffer::UploadData(const void* data,
         currentUsage += alignment - (currentUsage % alignment);
     }
 
-    Utils::UploadToBuffer(data,
+    Utils::upload_to_buffer(data,
                           size,
                           buffer.buffer,
                           currentUsage,
@@ -30,7 +30,7 @@ Cel::Renderer::MegaBuffer::UploadData(const void* data,
 }
 
 void
-Cel::Renderer::MegaBuffer::Cleanup(const VmaAllocator& allocator)
+Cel::Renderer::MegaBuffer::cleanup(const VmaAllocator& allocator)
 {
-    Utils::DestroyBuffer(buffer, allocator);
+    Utils::destroy_buffer(buffer, allocator);
 }

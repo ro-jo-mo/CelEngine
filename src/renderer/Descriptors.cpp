@@ -6,7 +6,7 @@
 #include <vulkan/vulkan_core.h>
 
 void
-Cel::Renderer::DescriptorAllocator::Init(
+Cel::Renderer::DescriptorAllocator::init(
     VkDevice vkdevice,
 
     const uint32_t initialSets,
@@ -19,7 +19,7 @@ Cel::Renderer::DescriptorAllocator::Init(
         ratios.push_back(r);
     }
 
-    VkDescriptorPool newPool = CreatePool(initialSets, poolRatios);
+    VkDescriptorPool newPool = create_pool(initialSets, poolRatios);
 
     setsPerPool = initialSets * 1.5;
 
@@ -27,7 +27,7 @@ Cel::Renderer::DescriptorAllocator::Init(
 }
 
 void
-Cel::Renderer::DescriptorAllocator::ClearPools()
+Cel::Renderer::DescriptorAllocator::clear_pools()
 {
     for (auto p : readyPools) {
         vkResetDescriptorPool(device, p, 0);
@@ -40,7 +40,7 @@ Cel::Renderer::DescriptorAllocator::ClearPools()
 }
 
 void
-Cel::Renderer::DescriptorAllocator::DestroyPools()
+Cel::Renderer::DescriptorAllocator::destroy_pools()
 {
     for (auto p : readyPools) {
         vkDestroyDescriptorPool(device, p, nullptr);
@@ -53,11 +53,11 @@ Cel::Renderer::DescriptorAllocator::DestroyPools()
 }
 
 VkDescriptorSet
-Cel::Renderer::DescriptorAllocator::Allocate(VkDescriptorSetLayout layout,
+Cel::Renderer::DescriptorAllocator::allocate(VkDescriptorSetLayout layout,
                                              const void* pNext)
 {
     // get or create a pool to allocate from
-    VkDescriptorPool poolToUse = GetPool();
+    VkDescriptorPool poolToUse = get_pool();
 
     VkDescriptorSetAllocateInfo allocInfo = {};
     allocInfo.pNext = pNext;
@@ -74,10 +74,10 @@ Cel::Renderer::DescriptorAllocator::Allocate(VkDescriptorSetLayout layout,
         result == VK_ERROR_FRAGMENTED_POOL) {
 
         fullPools.push_back(poolToUse);
-        poolToUse = GetPool();
+        poolToUse = get_pool();
         allocInfo.descriptorPool = poolToUse;
 
-        VkCheck(vkAllocateDescriptorSets(device, &allocInfo, &ds));
+        vk_check(vkAllocateDescriptorSets(device, &allocInfo, &ds));
     }
 
     readyPools.push_back(poolToUse);
@@ -85,7 +85,7 @@ Cel::Renderer::DescriptorAllocator::Allocate(VkDescriptorSetLayout layout,
 }
 
 VkDescriptorPool
-Cel::Renderer::DescriptorAllocator::GetPool()
+Cel::Renderer::DescriptorAllocator::get_pool()
 {
     VkDescriptorPool newPool;
     if (readyPools.size() != 0) {
@@ -93,7 +93,7 @@ Cel::Renderer::DescriptorAllocator::GetPool()
         readyPools.pop_back();
     } else {
         // need to create a new pool
-        newPool = CreatePool(setsPerPool, ratios);
+        newPool = create_pool(setsPerPool, ratios);
 
         setsPerPool = setsPerPool * 1.5;
         if (setsPerPool > 4092) {
@@ -105,7 +105,7 @@ Cel::Renderer::DescriptorAllocator::GetPool()
 }
 
 VkDescriptorPool
-Cel::Renderer::DescriptorAllocator::CreatePool(
+Cel::Renderer::DescriptorAllocator::create_pool(
     const uint32_t setCount,
     const std::span<PoolSizeRatio> poolRatios)
 {
@@ -129,7 +129,7 @@ Cel::Renderer::DescriptorAllocator::CreatePool(
 }
 
 void
-Cel::Renderer::DescriptorLayoutBuilder::AddBinding(const uint32_t binding,
+Cel::Renderer::DescriptorLayoutBuilder::add_binding(const uint32_t binding,
                                                    VkDescriptorType type)
 {
     VkDescriptorSetLayoutBinding newBind{};
@@ -141,13 +141,13 @@ Cel::Renderer::DescriptorLayoutBuilder::AddBinding(const uint32_t binding,
 }
 
 void
-Cel::Renderer::DescriptorLayoutBuilder::Clear()
+Cel::Renderer::DescriptorLayoutBuilder::clear()
 {
     bindings.clear();
 }
 
 VkDescriptorSetLayout
-Cel::Renderer::DescriptorLayoutBuilder::Build(
+Cel::Renderer::DescriptorLayoutBuilder::build(
     VkDevice device,
     VkShaderStageFlags shaderStages,
     const void* pNext,
@@ -167,13 +167,13 @@ Cel::Renderer::DescriptorLayoutBuilder::Build(
     info.flags = flags;
 
     VkDescriptorSetLayout set;
-    VkCheck(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
+    vk_check(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
 
     return set;
 }
 
 VkDescriptorSetLayout
-Cel::Renderer::DescriptorLayoutBuilder::Build(
+Cel::Renderer::DescriptorLayoutBuilder::build(
     VkDevice device,
     const void* pNext,
     VkDescriptorSetLayoutCreateFlags flags)
@@ -188,13 +188,13 @@ Cel::Renderer::DescriptorLayoutBuilder::Build(
     info.flags = flags;
 
     VkDescriptorSetLayout set;
-    VkCheck(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
+    vk_check(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
 
     return set;
 }
 
 void
-Cel::Renderer::DescriptorWriter::WriteImage(const int binding,
+Cel::Renderer::DescriptorWriter::write_image(const int binding,
                                             VkImageView image,
                                             VkSampler sampler,
                                             VkImageLayout layout,
@@ -218,7 +218,7 @@ Cel::Renderer::DescriptorWriter::WriteImage(const int binding,
 }
 
 void
-Cel::Renderer::DescriptorWriter::WriteBuffer(const int binding,
+Cel::Renderer::DescriptorWriter::write_buffer(const int binding,
                                              VkBuffer buffer,
                                              const size_t size,
                                              const size_t offset,
@@ -242,13 +242,13 @@ Cel::Renderer::DescriptorWriter::WriteBuffer(const int binding,
 }
 
 void
-Cel::Renderer::DescriptorWriter::Write(VkWriteDescriptorSet set)
+Cel::Renderer::DescriptorWriter::write(VkWriteDescriptorSet set)
 {
     writes.push_back(set);
 }
 
 void
-Cel::Renderer::DescriptorWriter::Clear()
+Cel::Renderer::DescriptorWriter::clear()
 {
     imageInfos.clear();
     writes.clear();
@@ -256,7 +256,7 @@ Cel::Renderer::DescriptorWriter::Clear()
 }
 
 void
-Cel::Renderer::DescriptorWriter::UpdateSet(VkDevice device, VkDescriptorSet set)
+Cel::Renderer::DescriptorWriter::update_set(VkDevice device, VkDescriptorSet set)
 {
     for (VkWriteDescriptorSet& write : writes) {
         write.dstSet = set;
@@ -283,7 +283,7 @@ Cel::Renderer::DescriptorWriter::UpdateSet(VkDevice device, VkDescriptorSet set)
 }
 
 uint32_t
-Cel::Renderer::TextureCache::AddTexture(VkImageView imageView,
+Cel::Renderer::TextureCache::add_texture(VkImageView imageView,
                                         VkSampler sampler)
 {
     for (const auto& [i, descriptor] :

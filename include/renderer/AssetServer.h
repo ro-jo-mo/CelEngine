@@ -72,46 +72,45 @@ class AssetServer
         , graphicsQueue(*graphicsQueue)
         , globalDescriptorData(*globalDescriptorData)
     {
-        CreateDefaults();
+        create_defaults();
     }
 
-    Handle<AssetNode> LoadGltfAsset(const char* filepath);
+    Handle<AssetNode> load_gltf_asset(const char* filepath);
 
-    void SetSkybox(const char* filepath);
+    void set_skybox(const char* filepath);
 
-    void AddAssetToEntity(Entity entity,
+    void add_asset_to_entity(Entity entity,
                           Handle<AssetNode> assetHandle,
                           Resource<World>& world) const;
 
   private:
-    [[nodiscard]] Material GetMaterial(Handle<Material> material) const;
-    [[nodiscard]] Mesh GetMesh(Handle<Mesh> mesh) const;
+    [[nodiscard]] Material get_material(Handle<Material> material) const;
+    [[nodiscard]] Mesh get_mesh(Handle<Mesh> mesh) const;
 
-    void CreateDefaults();
+    void create_defaults();
 
-    std::optional<AllocatedImage> LoadImage(fastgltf::Asset& asset,
+    std::optional<AllocatedImage> load_image(fastgltf::Asset& asset,
                                             fastgltf::Image& gltfImage);
 
-    AllocatedImage LoadSkyboxImage(const char* filepath);
+    AllocatedImage load_skybox_image(const char* filepath);
 
-    void LoadImages(fastgltf::Asset& asset);
-    void LoadSamplers(const fastgltf::Asset& asset);
-    void WriteMaterialDescriptors(Material& material,
-                                  DescriptorAllocator& descriptorAllocator);
-    uint32_t ResolveTextureSampler(
+    void load_images(fastgltf::Asset& asset);
+    void load_samplers(const fastgltf::Asset& asset);
+
+    uint32_t resolve_texture_sampler(
         fastgltf::Asset& asset,
         const std::optional<fastgltf::TextureInfo>& textureInfo,
         size_t imageOffset,
         size_t samplerOffset);
 
-    void LoadMaterials(fastgltf::Asset& asset,
+    void load_materials(fastgltf::Asset& asset,
                        size_t imageOffset,
                        size_t samplerOffset);
-    AssetNode LoadNodes(fastgltf::Asset& asset, std::vector<Model>& models);
-    std::vector<Model> LoadModels(fastgltf::Asset& asset,
+    AssetNode load_nodes(fastgltf::Asset& asset, std::vector<Model>& models);
+    std::vector<Model> load_models(fastgltf::Asset& asset,
                                   size_t materialOffset);
 
-    void Cleanup();
+    void cleanup();
 
     std::unordered_map<const char*, Handle<AssetNode>> pathToAssetMap;
 
@@ -146,6 +145,6 @@ class AssetServer
     GlobalDescriptorData& globalDescriptorData;
 
     friend class DrawData;
-    friend void CleanupAssetServer(Resource<AssetServer>& assetServer);
+    friend void cleanup_asset_server(Resource<AssetServer>& assetServer);
 };
 }

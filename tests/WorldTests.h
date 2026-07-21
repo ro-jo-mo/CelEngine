@@ -11,13 +11,13 @@ using namespace Cel;
 inline void
 SpawnEntitiesWithoutDefaults(Resource<World>& world)
 {
-    world->Spawn(GlobalTransform{ glm::mat4(1.0) });
+    world->spawn(GlobalTransform{ glm::mat4(1.0) });
 
-    world->Spawn(Position{ glm::mat4(1.0) });
+    world->spawn(Position{ glm::mat4(1.0) });
 
-    world->Spawn(Rotation{ glm::mat4(1.0) });
+    world->spawn(Rotation{ glm::mat4(1.0) });
 
-    world->Spawn(Scale{ glm::mat4(1.0) });
+    world->spawn(Scale{ glm::mat4(1.0) });
 }
 
 inline void
@@ -36,7 +36,7 @@ EnsureEntitiesHaveDefaults(
 inline void
 SpawnEntitiesWithKnownValues(Resource<World>& world)
 {
-    world->Spawn(KnownValues::rotation, KnownValues::testStruct);
+    world->spawn(KnownValues::rotation, KnownValues::testStruct);
 }
 
 inline void
@@ -61,21 +61,21 @@ inline Entity gAddRemoveEntity = 0;
 inline void
 SpawnEntityForAddRemove(Resource<World>& world)
 {
-    gAddRemoveEntity = world->Spawn().Get();
+    gAddRemoveEntity = world->spawn().get();
 }
 
 inline void
 AddHealthComponent(Resource<World>& world)
 {
-    world->AddComponent(gAddRemoveEntity, Health{ 42 });
+    world->add_component(gAddRemoveEntity, Health{ 42 });
 }
 
 inline void
 VerifyHealthAdded(Query<With<Health>>& query)
 {
-    ASSERT_TRUE(query.Has(gAddRemoveEntity))
+    ASSERT_TRUE(query.has(gAddRemoveEntity))
         << "Health component should be present after AddComponent";
-    auto [h] = query.Get(gAddRemoveEntity);
+    auto [h] = query.get(gAddRemoveEntity);
     ASSERT_EQ(h.value, 42);
 }
 
@@ -83,13 +83,13 @@ VerifyHealthAdded(Query<With<Health>>& query)
 inline void
 RemoveHealthComponent(Resource<World>& world)
 {
-    world->RemoveComponent<Health>(gAddRemoveEntity);
+    world->remove_component<Health>(gAddRemoveEntity);
 }
 
 inline void
 VerifyHealthRemoved(Query<With<Health>>& query)
 {
-    ASSERT_FALSE(query.Has(gAddRemoveEntity))
+    ASSERT_FALSE(query.has(gAddRemoveEntity))
         << "Health component should be absent after RemoveComponent";
 }
 
@@ -98,14 +98,14 @@ inline Entity gDestroyedEntity = 0;
 inline void
 SpawnAndDestroyEntity(Resource<World>& world)
 {
-    gDestroyedEntity = world->Spawn(Health{ 42 }).Get();
-    world->Destroy(gDestroyedEntity);
+    gDestroyedEntity = world->spawn(Health{ 42 }).get();
+    world->destroy(gDestroyedEntity);
 }
 
 inline void
 VerifyEntityDestroyed(Query<With<Health>>& query)
 {
-    ASSERT_FALSE(query.Has(gDestroyedEntity))
+    ASSERT_FALSE(query.has(gDestroyedEntity))
         << "Destroyed entity should not appear in query";
 }
 
@@ -116,25 +116,25 @@ inline Entity gChildEntity = 0;
 inline void
 SpawnParentAndChild(Resource<World>& world)
 {
-    gParentEntity = world->Spawn().Get();
-    gChildEntity = world->Spawn().Get();
-    world->AddChild(gParentEntity, gChildEntity);
+    gParentEntity = world->spawn().get();
+    gChildEntity = world->spawn().get();
+    world->add_child(gParentEntity, gChildEntity);
 }
 
 inline void
 VerifyChildAdded(Query<With<Children>>& parentQuery,
                  Query<With<Parent>>& childQuery)
 {
-    ASSERT_TRUE(parentQuery.Has(gParentEntity))
+    ASSERT_TRUE(parentQuery.has(gParentEntity))
         << "Parent should have Children component";
-    ASSERT_TRUE(childQuery.Has(gChildEntity))
+    ASSERT_TRUE(childQuery.has(gChildEntity))
         << "Child should have Parent component";
 
-    auto [children] = parentQuery.Get(gParentEntity);
+    auto [children] = parentQuery.get(gParentEntity);
     ASSERT_TRUE(children.children.contains(gChildEntity))
         << "Parent's Children should contain child entity";
 
-    auto [parent] = childQuery.Get(gChildEntity);
+    auto [parent] = childQuery.get(gChildEntity);
     ASSERT_EQ(parent.parent, gParentEntity);
 }
 
@@ -142,16 +142,16 @@ VerifyChildAdded(Query<With<Children>>& parentQuery,
 inline void
 RemoveChildFromParent(Resource<World>& world)
 {
-    world->RemoveChild(gParentEntity, gChildEntity);
+    world->remove_child(gParentEntity, gChildEntity);
 }
 
 inline void
 VerifyChildRemoved(Query<With<Children>>& parentQuery,
                    Query<With<Parent>>& childQuery)
 {
-    ASSERT_FALSE(parentQuery.Has(gParentEntity));
+    ASSERT_FALSE(parentQuery.has(gParentEntity));
 
-    ASSERT_FALSE(childQuery.Has(gChildEntity))
+    ASSERT_FALSE(childQuery.has(gChildEntity))
         << "Child should no longer have a Parent component";
 }
 
@@ -162,11 +162,11 @@ inline Entity gBuilderChild = 0;
 inline void
 SpawnWithChildrenBuilder(Resource<World>& world)
 {
-    gBuilderParent = world->Spawn()
-                         .WithChildren([&](ChildBuilder builder) {
-                             gBuilderChild = builder.Spawn(Health{ 42 }).Get();
+    gBuilderParent = world->spawn()
+                         .with_children([&](ChildBuilder builder) {
+                             gBuilderChild = builder.spawn(Health{ 42 }).get();
                          })
-                         .Get();
+                         .get();
 }
 
 inline void
@@ -174,16 +174,16 @@ VerifyBuilderHierarchy(Query<With<Children>>& parentQuery,
                        Query<With<Parent>>& childQuery,
                        Query<With<Health>>& healthQuery)
 {
-    ASSERT_TRUE(parentQuery.Has(gBuilderParent))
+    ASSERT_TRUE(parentQuery.has(gBuilderParent))
         << "Builder parent should have Children component";
-    auto [children] = parentQuery.Get(gBuilderParent);
+    auto [children] = parentQuery.get(gBuilderParent);
     ASSERT_TRUE(children.children.contains(gBuilderChild));
 
-    ASSERT_TRUE(childQuery.Has(gBuilderChild));
-    auto [parent] = childQuery.Get(gBuilderChild);
+    ASSERT_TRUE(childQuery.has(gBuilderChild));
+    auto [parent] = childQuery.get(gBuilderChild);
     ASSERT_EQ(parent.parent, gBuilderParent);
 
-    ASSERT_TRUE(healthQuery.Has(gBuilderChild));
-    auto [h] = healthQuery.Get(gBuilderChild);
+    ASSERT_TRUE(healthQuery.has(gBuilderChild));
+    auto [h] = healthQuery.get(gBuilderChild);
     ASSERT_EQ(h.value, 42);
 }

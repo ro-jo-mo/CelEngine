@@ -9,7 +9,7 @@
 Cel::Renderer::Camera
 Cel::Renderer::Camera::Camera2d()
 {
-    ThrowError(("Unimplemented!"));
+    throw_error(("Unimplemented!"));
     return Camera3d(0, 0, 0);
 }
 
@@ -22,13 +22,13 @@ Cel::Renderer::Camera::Camera3d(const float fov,
 }
 
 glm::mat4
-Cel::Renderer::Camera::GetViewMatrix() const
+Cel::Renderer::Camera::get_view_matrix() const
 {
     return viewMatrix;
 }
 
 void
-Cel::Renderer::Camera::UpdateViewMatrix(const glm::mat4& transform)
+Cel::Renderer::Camera::update_view_matrix(const glm::mat4& transform)
 {
     // Extract translation
     const auto position = glm::vec3(transform[3]);
@@ -49,7 +49,7 @@ Cel::Renderer::Camera::UpdateViewMatrix(const glm::mat4& transform)
 }
 
 glm::mat4
-Cel::Renderer::Camera::GetProjectionMatrix(const VkExtent2D extent) const
+Cel::Renderer::Camera::get_projection_matrix(const VkExtent2D extent) const
 {
     const float aspect =
         static_cast<float>(extent.width) / static_cast<float>(extent.height);
@@ -57,9 +57,9 @@ Cel::Renderer::Camera::GetProjectionMatrix(const VkExtent2D extent) const
 }
 
 void
-Cel::Renderer::CameraSystem(Query<With<Camera, GlobalTransform>>& cameras)
+Cel::Renderer::camera_system(Query<With<Camera, GlobalTransform>>& cameras)
 {
     for (auto [camera, transform] : cameras) {
-        camera.UpdateViewMatrix(transform.transform);
+        camera.update_view_matrix(transform.transform);
     }
 }

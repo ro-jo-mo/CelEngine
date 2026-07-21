@@ -14,10 +14,10 @@ using namespace Cel;
 inline void
 SpawnMixedEntities(Resource<World>& world)
 {
-    world->Spawn(Health{ 10 });
-    world->Spawn(Health{ 20 });
-    world->Spawn(Velocity{ 1.f, 0.f, 0.f });
-    world->Spawn(Health{ 30 }, Velocity{});
+    world->spawn(Health{ 10 });
+    world->spawn(Health{ 20 });
+    world->spawn(Velocity{ 1.f, 0.f, 0.f });
+    world->spawn(Health{ 30 }, Velocity{});
 }
 
 inline void
@@ -37,9 +37,9 @@ CountHealthEntities(Query<With<Health>>& query)
 inline void
 SpawnEnabledAndDisabled(Resource<World>& world)
 {
-    world->Spawn(Health{ 1 });
-    world->Spawn(Health{ 2 });
-    world->Spawn(Health{ 3 }, Disabled{});
+    world->spawn(Health{ 1 });
+    world->spawn(Health{ 2 });
+    world->spawn(Health{ 3 }, Disabled{});
 }
 
 inline void
@@ -60,16 +60,16 @@ inline Entity gHasNoEntity = 0;
 inline void
 SpawnForHasCheck(Resource<World>& world)
 {
-    gHasEntity = world->Spawn(Health{}).Get();
-    gHasNoEntity = world->Spawn(Velocity{}).Get();
+    gHasEntity = world->spawn(Health{}).get();
+    gHasNoEntity = world->spawn(Velocity{}).get();
 }
 
 inline void
 CheckHas(Query<With<Health>>& query)
 {
-    ASSERT_TRUE(query.Has(gHasEntity))
+    ASSERT_TRUE(query.has(gHasEntity))
         << "Entity with Health should be found by Has()";
-    ASSERT_FALSE(query.Has(gHasNoEntity))
+    ASSERT_FALSE(query.has(gHasNoEntity))
         << "Entity without Health should not be found by Has()";
 }
 
@@ -79,14 +79,14 @@ inline Entity gGetEntity = 0;
 inline void
 SpawnForGet(Resource<World>& world)
 {
-    gGetEntity = world->Spawn(Health{ 77 }, Velocity{ 1.f, 2.f, 3.f }).Get();
+    gGetEntity = world->spawn(Health{ 77 }, Velocity{ 1.f, 2.f, 3.f }).get();
 }
 
 inline void
 CheckGet(Query<With<Health, Velocity>>& query)
 {
-    ASSERT_TRUE(query.Has(gGetEntity));
-    auto [h, v] = query.Get(gGetEntity);
+    ASSERT_TRUE(query.has(gGetEntity));
+    auto [h, v] = query.get(gGetEntity);
     ASSERT_EQ(h.value, 77);
     ASSERT_FLOAT_EQ(v.x, 1.f);
     ASSERT_FLOAT_EQ(v.y, 2.f);
@@ -99,7 +99,7 @@ inline Entity gEntityInQuery = 0;
 inline void
 SpawnForEntityQuery(Resource<World>& world)
 {
-    gEntityInQuery = world->Spawn(Health{ 5 }).Get();
+    gEntityInQuery = world->spawn(Health{ 5 }).get();
 }
 
 inline void
@@ -122,10 +122,10 @@ CheckEntityInQuery(Query<With<Entity, Health>>& query)
 inline void
 SpawnForIntersection(Resource<World>& world)
 {
-    world->Spawn(Health{});             // Health only
-    world->Spawn(Velocity{});           // Velocity only
-    world->Spawn(Health{}, Velocity{}); // both — only this matches
-    world->Spawn(Health{}, Velocity{}); // both — two matches total
+    world->spawn(Health{});             // Health only
+    world->spawn(Velocity{});           // Velocity only
+    world->spawn(Health{}, Velocity{}); // both — only this matches
+    world->spawn(Health{}, Velocity{}); // both — two matches total
 }
 
 inline void
@@ -145,7 +145,7 @@ inline Entity gMutateEntity = 0;
 inline void
 SpawnForMutation(Resource<World>& world)
 {
-    gMutateEntity = world->Spawn(Health{ 1 }).Get();
+    gMutateEntity = world->spawn(Health{ 1 }).get();
 }
 
 inline void
@@ -161,8 +161,8 @@ MutateHealth(Query<With<Health>>& query)
 inline void
 VerifyMutation(Query<With<Health>>& query)
 {
-    ASSERT_TRUE(query.Has(gMutateEntity));
-    auto [h] = query.Get(gMutateEntity);
+    ASSERT_TRUE(query.has(gMutateEntity));
+    auto [h] = query.get(gMutateEntity);
 
     ASSERT_EQ(h.value, 10);
 }

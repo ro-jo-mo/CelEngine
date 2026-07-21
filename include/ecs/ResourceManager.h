@@ -25,10 +25,10 @@ class ResourceManager
      * @param args Arguments to initialise resource with
      */
     template<typename T, typename... Args>
-    Resource<T>& InsertResource(Args&&... args);
+    Resource<T>& insert_resource(Args&&... args);
 
     template<typename T>
-    Resource<T>& InsertResource(T resource);
+    Resource<T>& insert_resource(T resource);
 
     /**
      * @brief Return resource
@@ -44,7 +44,7 @@ class ResourceManager
 
 template<typename T, typename... Args>
 Resource<T>&
-ResourceManager::InsertResource(Args&&... args)
+ResourceManager::insert_resource(Args&&... args)
 {
     if (resources.contains(typeid(Resource<std::remove_const_t<T>>))) {
         fmt::println(stderr,
@@ -59,7 +59,7 @@ ResourceManager::InsertResource(Args&&... args)
 
 template<typename T>
 Resource<T>&
-ResourceManager::InsertResource(T resource)
+ResourceManager::insert_resource(T resource)
 {
     if (resources.contains(typeid(Resource<std::remove_const_t<T>>))) {
         fmt::println(stderr,

@@ -16,7 +16,7 @@ class Plugin
      * @param scheduler Use to schedule game systems
      * @param resourceManager Use to initialise resources
      */
-    virtual void Build(Scheduler scheduler,
+    virtual void build(Scheduler scheduler,
                        ResourceManager& resourceManager) = 0;
 
     virtual ~Plugin() = default;

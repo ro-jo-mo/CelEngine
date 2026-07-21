@@ -5,19 +5,19 @@ using namespace Cel;
 using namespace std::chrono;
 
 float
-Time::DeltaTime() const
+Time::delta_time() const
 {
     return currentDelta;
 }
 
 void
-Time::SwitchToDynamic()
+Time::switch_to_dynamic()
 {
     currentDelta = dynamicDeltaTime;
 }
 
 void
-Time::Tick()
+Time::tick()
 {
     auto currentTime = steady_clock::now();
     duration<float> delta = (currentTime - lastDynamicUpdate);

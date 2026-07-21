@@ -8,14 +8,14 @@
 using namespace Cel;
 
 void
-Renderer::RenderPlugin::Build(Scheduler scheduler,
+Renderer::RenderPlugin::build(Scheduler scheduler,
                               ResourceManager& resourceManager)
 {
-    VulkanInitialiser::Initialise(resourceManager);
+    VulkanInitialiser::initialise(resourceManager);
 
-    scheduler.AddGroup(Render::Update, SetRenderExtent, CameraSystem);
+    scheduler.add_group(Render::Update, set_render_extent, camera_system);
 
-    scheduler.AddSystem(Render::PostUpdate, Draw);
+    scheduler.add_system(Render::PostUpdate, draw);
 
-    scheduler.AddChain(TearDown::Middle, CleanupAssetServer, CleanupRenderer);
+    scheduler.add_chain(TearDown::Middle, cleanup_asset_server, cleanup_renderer);
 }

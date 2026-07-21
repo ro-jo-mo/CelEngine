@@ -2,7 +2,6 @@
 
 #include "ComponentArray.h"
 #include "Types.h"
-#include <array>
 #include <memory>
 #include <typeindex>
 #include <unordered_map>
@@ -20,7 +19,7 @@ class ComponentsManager
      * @tparam T The component type to register
      */
     template<typename T>
-    void RegisterComponent();
+    void register_component();
 
     /**
      * @brief Retrieves a compoent of type T owned by the entity
@@ -29,7 +28,7 @@ class ComponentsManager
      * @return The component
      */
     template<typename T>
-    T& GetComponent(Entity entity);
+    T& get_component(Entity entity);
 
     /**
      * @brief Add a component of type T to the entity
@@ -38,17 +37,17 @@ class ComponentsManager
      * @param component Component data to add
      */
     template<typename T>
-    void AddComponent(Entity entity, T component);
+    void add_component(Entity entity, T component);
 
     template<typename T>
-    bool HasComponent(Entity entity);
+    bool has_component(Entity entity);
     /**
      * @brief Remove a component of type T from entity
      * @tparam T Component type
      * @param entity Entity to remove from
      */
     template<typename T>
-    void RemoveComponent(Entity entity);
+    void remove_component(Entity entity);
 
     /**
      * @brief Get all components of this type. Required by queries.
@@ -56,13 +55,13 @@ class ComponentsManager
      * @return the component array
      */
     template<typename T>
-    std::shared_ptr<ComponentArray<T>> GetComponentArray();
+    std::shared_ptr<ComponentArray<T>> get_component_array();
 
     /**
      * @brief Completely remove all components owned by entity
      * @param entity Entity to destroy
      */
-    void DestroyEntity(Entity entity);
+    void destroy_entity(Entity entity);
 
   private:
     std::unordered_map<std::type_index, std::shared_ptr<IComponentArray>>
@@ -71,7 +70,7 @@ class ComponentsManager
 
 template<typename T>
 inline void
-ComponentsManager::RegisterComponent()
+ComponentsManager::register_component()
 {
     if (componentArrays.contains(typeid(T))) {
         return;
@@ -80,37 +79,37 @@ ComponentsManager::RegisterComponent()
 }
 template<typename T>
 T&
-ComponentsManager::GetComponent(Entity entity)
+ComponentsManager::get_component(Entity entity)
 {
-    return GetComponentArray<T>()->GetComponent(entity);
+    return get_component_array<T>()->get_component(entity);
 }
 
 template<typename T>
 bool
-ComponentsManager::HasComponent(Entity entity)
+ComponentsManager::has_component(Entity entity)
 {
-    return GetComponentArray<T>()->HasComponent(entity);
+    return get_component_array<T>()->has_component(entity);
 }
 
 template<typename T>
 inline void
-ComponentsManager::AddComponent(Entity entity, T component)
+ComponentsManager::add_component(Entity entity, T component)
 {
-    GetComponentArray<T>()->AddComponent(entity, component);
+    get_component_array<T>()->add_component(entity, component);
 }
 
 template<typename T>
 inline void
-ComponentsManager::RemoveComponent(Entity entity)
+ComponentsManager::remove_component(Entity entity)
 {
-    GetComponentArray<T>()->RemoveComponent(entity);
+    get_component_array<T>()->remove_component(entity);
 }
 
 template<typename T>
 inline std::shared_ptr<ComponentArray<T>>
-ComponentsManager::GetComponentArray()
+ComponentsManager::get_component_array()
 {
-    RegisterComponent<T>();
+    register_component<T>();
     return std::static_pointer_cast<ComponentArray<T>>(
         componentArrays[typeid(T)]);
 }

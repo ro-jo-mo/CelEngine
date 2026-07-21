@@ -4,9 +4,9 @@
 
 using namespace Cel;
 
-void QueryManager::UpdateQueries() const {
+void QueryManager::update_queries() const {
   for (const auto &query: queries | std::views::values) {
-    query->UpdateQuery();
+    query->update_query();
   }
 }
 

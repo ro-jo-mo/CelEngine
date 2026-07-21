@@ -2,17 +2,15 @@
 
 # PRIORITY
 
-- Update schedulers
-    - Single
-    - Group scheduling
-    - Fix chains
-- Introduce custom schedules for Ai tick and such
 - Organise public / private headers (currently all public)
 - Asynchronous asset loading
 - Split up world & commands
 - Move to Query<Get<a,b,c>,With<d,e,f>,Without<x,y,z>>
-- Adding systems should be queued, and done after all resources are inserted
+- System allocation can cheaply re run on run
+    - More flexible, currently a system can only be added once all resources it needs exist
 - Alter commands to stored type index instead of using polymorphism (also update component arrays to support this)
+- Rework world to allow for arbitrary queries
+    - World should block all parallel systems
 
 # Later
 
@@ -27,9 +25,6 @@
 - Multithreading
     - With<X, Y, Z> can run at the same time as With<X, Y> Without<Z,>
 - Improve resource manager so its less dumb i.e. probably remove the resource wrapper or alias unique pointer ...
-- Update fixed assumptions in types.h
-- Switch to snake case
-- Queue system registry instead of instantly registering on add sys (why???)
 - Clean up public headers
 - Rendering
 - Physics

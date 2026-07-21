@@ -3,19 +3,19 @@
 using namespace Cel;
 
 void
-World::Destroy(const Entity entity)
+World::destroy(const Entity entity)
 {
     toDestroy.push_back(entity);
 }
 
 void
-World::AddChild(const Entity parent, const Entity child)
+World::add_child(const Entity parent, const Entity child)
 {
     toAddChild.emplace_back(parent, child, *this);
 }
 
 void
-World::RemoveChild(const Entity parent, const Entity child)
+World::remove_child(const Entity parent, const Entity child)
 {
     toRemoveChild.emplace_back(parent, child, *this);
 }
@@ -27,10 +27,10 @@ RecurseThroughChildren(const Entity entity,
 {
     toRemove.insert(entity);
     // Does this entity have children?
-    if (componentsManager.HasComponent<Children>(entity)) {
+    if (componentsManager.has_component<Children>(entity)) {
         // If so, delete their children
         const auto [children] =
-            componentsManager.GetComponent<Children>(entity);
+            componentsManager.get_component<Children>(entity);
 
         for (auto& child : children) {
             RecurseThroughChildren(child, toRemove, componentsManager);
@@ -39,23 +39,23 @@ RecurseThroughChildren(const Entity entity,
 }
 
 bool
-World::Flush()
+World::flush()
 {
     // order
     // add
     // remove
     // destroy
     for (const auto& cmd : toAdd) {
-        cmd->Execute();
+        cmd->execute();
     }
     for (const auto& cmd : toAddChild) {
-        cmd.Execute();
+        cmd.execute();
     }
     for (const auto& cmd : toRemove) {
-        cmd->Execute();
+        cmd->execute();
     }
     for (const auto& cmd : toRemoveChild) {
-        cmd.Execute();
+        cmd.execute();
     }
 
     // Destroy all child entities of destroyed entity
@@ -64,7 +64,7 @@ World::Flush()
         RecurseThroughChildren(entity, toDestroySet, componentsManager);
     }
     for (const auto& entity : toDestroySet) {
-        ExecuteDestroy(entity);
+        execute_destroy(entity);
     }
 
     const auto changesMade = toAdd.size() + toRemove.size() + toDestroy.size() +
@@ -80,48 +80,48 @@ World::Flush()
 }
 
 void
-World::ExecuteDestroy(const Entity entity) const
+World::execute_destroy(const Entity entity) const
 {
-    entityManager.DestroyEntity(entity);
-    componentsManager.DestroyEntity(entity);
+    entityManager.destroy_entity(entity);
+    componentsManager.destroy_entity(entity);
 }
 void
-World::AddChildCommand::Execute() const
+World::AddChildCommand::execute() const
 {
     // If parent has no children, add component
-    if (!world.get().componentsManager.HasComponent<Children>(parent)) {
-        world.get().componentsManager.AddComponent(parent, Children{});
+    if (!world.get().componentsManager.has_component<Children>(parent)) {
+        world.get().componentsManager.add_component(parent, Children{});
     }
 
-    if (world.get().componentsManager.HasComponent<Parent>(child)) {
+    if (world.get().componentsManager.has_component<Parent>(child)) {
         throw std::runtime_error(
             "Child entity already has a parent! Unparent the object first if "
             "you want to change its parent");
     }
 
-    world.get().componentsManager.AddComponent(child, Parent{ parent });
+    world.get().componentsManager.add_component(child, Parent{ parent });
     auto& [children] =
-        world.get().componentsManager.GetComponent<Children>(parent);
+        world.get().componentsManager.get_component<Children>(parent);
     children.insert(child);
 }
 void
-World::RemoveChildCommand::Execute() const
+World::RemoveChildCommand::execute() const
 {
-    world.get().componentsManager.RemoveComponent<Parent>(child);
+    world.get().componentsManager.remove_component<Parent>(child);
     auto& [children] =
-        world.get().componentsManager.GetComponent<Children>(parent);
+        world.get().componentsManager.get_component<Children>(parent);
     children.erase(child);
     if (children.empty()) {
-        world.get().componentsManager.RemoveComponent<Children>(parent);
+        world.get().componentsManager.remove_component<Children>(parent);
     }
 }
 Entity
-EntityBuilder::Get() const
+EntityBuilder::get() const
 {
     return entity;
 }
 Entity
-ChildBuilder::Get() const
+ChildBuilder::get() const
 {
     return parent;
 }

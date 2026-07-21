@@ -4,18 +4,18 @@
 #include "input/Input.h"
 
 void
-Cel::CorePlugin::Build(Scheduler scheduler, ResourceManager& resourceManager)
+Cel::CorePlugin::build(Scheduler scheduler, ResourceManager& resourceManager)
 {
-    resourceManager.InsertResource<Input::Input>();
+    resourceManager.insert_resource<Input::Input>();
 
-    scheduler.AddSystem(MainUpdate::First, Input::ProcessInputEvents);
+    scheduler.add_system(MainUpdate::First, Input::process_input_events);
 
     // There are several places we need to propagate the hierarchy
     // Effectively anyplace where we expect changes to a transform to be finalized
-    scheduler.AddChain(
-        MainUpdate::Last, ComputeRootGlobalTransform, HierarchyPropagation);
-    scheduler.AddChain(
-        PhysicsUpdate::Last, ComputeRootGlobalTransform, HierarchyPropagation);
-    scheduler.AddChain(
-        Startup::Last, ComputeRootGlobalTransform, HierarchyPropagation);
+    scheduler.add_chain(
+        MainUpdate::Last, compute_root_global_transform, hierarchy_propagation);
+    scheduler.add_chain(
+        PhysicsUpdate::Last, compute_root_global_transform, hierarchy_propagation);
+    scheduler.add_chain(
+        Startup::Last, compute_root_global_transform, hierarchy_propagation);
 }

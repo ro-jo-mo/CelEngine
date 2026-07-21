@@ -14,6 +14,6 @@ namespace Cel {
         /**
          * @brief A method to update the set of entities this query accesses
          */
-        virtual void UpdateQuery() = 0;
+        virtual void update_query() = 0;
     };
 }

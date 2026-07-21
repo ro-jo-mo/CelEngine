@@ -17,7 +17,7 @@ class MegaBuffer
                         VmaMemoryUsage usage,
                         const char* allocName,
                         const VmaAllocator& allocator)
-        : buffer(Utils::CreateBuffer(size, flags, usage, allocName, allocator))
+        : buffer(Utils::create_buffer(size, flags, usage, allocName, allocator))
         , maxUsage(size)
     {
     }
@@ -29,14 +29,14 @@ class MegaBuffer
      * @param alignment the alignment requirements of the data
      * @return Pointer to where this data begins in the buffer
      */
-    uint32_t UploadData(const void* data,
+    uint32_t upload_data(const void* data,
                         uint32_t size,
                         uint32_t alignment,
                         VulkanContext& context,
                         VmaAllocator& allocator,
                         ImmediateSubmit& immediate,
                         GraphicsQueue& queue);
-    void Cleanup(const VmaAllocator& allocator);
+    void cleanup(const VmaAllocator& allocator);
 
     AllocatedBuffer buffer;
 

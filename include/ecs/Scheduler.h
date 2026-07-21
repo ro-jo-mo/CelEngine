@@ -52,15 +52,15 @@ class RelativeScheduler
     {
     }
 
-    RelativeScheduler& After(const RelativeScheduler& runsBefore);
+    RelativeScheduler& after(const RelativeScheduler& runsBefore);
 
     template<typename System>
-    RelativeScheduler& After(System runsBefore);
+    RelativeScheduler& after(System runsBefore);
 
-    RelativeScheduler& Before(const RelativeScheduler& runsAfter);
+    RelativeScheduler& before(const RelativeScheduler& runsAfter);
 
     template<typename System>
-    RelativeScheduler& Before(System runsAfter);
+    RelativeScheduler& before(System runsAfter);
 
   private:
     ScheduleGraph& graph;
@@ -70,12 +70,12 @@ class RelativeScheduler
 
 template<typename System>
 RelativeScheduler&
-RelativeScheduler::After(System runsBefore)
+RelativeScheduler::after(System runsBefore)
 {
-    graph.AddNode(runsBefore);
+    graph.add_node(runsBefore);
 
     for (const auto& entry : this->entrance) {
-        graph.AddEdge(reinterpret_cast<void*>(runsBefore), entry);
+        graph.add_edge(reinterpret_cast<void*>(runsBefore), entry);
     }
 
     return *this;
@@ -83,12 +83,12 @@ RelativeScheduler::After(System runsBefore)
 
 template<typename System>
 RelativeScheduler&
-RelativeScheduler::Before(System runsAfter)
+RelativeScheduler::before(System runsAfter)
 {
-    graph.AddNode(runsAfter);
+    graph.add_node(runsAfter);
 
     for (const auto& exits : this->exit) {
-        graph.AddEdge(exits, reinterpret_cast<void*>(runsAfter));
+        graph.add_edge(exits, reinterpret_cast<void*>(runsAfter));
     }
 
     return *this;
@@ -120,17 +120,17 @@ class Scheduler
      * @return A scheduling object for ordering this system relative to others
      */
     template<ScheduleEnum Schedule, typename System>
-    RelativeScheduler AddSystem(Schedule schedule, System system);
+    RelativeScheduler add_system(Schedule schedule, System system);
 
     template<ScheduleEnum Schedule, typename... Systems>
-    RelativeScheduler AddGroup(Schedule schedule, Systems... systems);
+    RelativeScheduler add_group(Schedule schedule, Systems... systems);
 
     template<ScheduleEnum Schedule, typename... Systems>
-    RelativeScheduler AddChain(Schedule schedule, Systems... systems);
+    RelativeScheduler add_chain(Schedule schedule, Systems... systems);
 
   private:
     template<ScheduleEnum Schedule>
-    ScheduleGraph& GetGraph(Schedule schedule);
+    ScheduleGraph& get_graph(Schedule schedule);
 
     std::map<ScheduleKey, ScheduleGraph>& schedules;
     SystemAllocator& systemAllocator;
@@ -138,7 +138,7 @@ class Scheduler
 
 template<ScheduleEnum Schedule>
 ScheduleGraph&
-Scheduler::GetGraph(Schedule schedule)
+Scheduler::get_graph(Schedule schedule)
 {
     return schedules
         .try_emplace({ typeid(Schedule), static_cast<uint32_t>(schedule) },
@@ -148,38 +148,38 @@ Scheduler::GetGraph(Schedule schedule)
 
 template<ScheduleEnum Schedule, typename System>
 RelativeScheduler
-Scheduler::AddSystem(Schedule schedule, System system)
+Scheduler::add_system(Schedule schedule, System system)
 {
-    auto& graph = GetGraph(schedule);
+    auto& graph = get_graph(schedule);
 
-    graph.AddNode(system);
+    graph.add_node(system);
     return RelativeScheduler{ graph, reinterpret_cast<void*>(system) };
 }
 
 template<ScheduleEnum Schedule, typename... Systems>
 RelativeScheduler
-Scheduler::AddGroup(Schedule schedule, Systems... systems)
+Scheduler::add_group(Schedule schedule, Systems... systems)
 {
-    auto& graph = GetGraph(schedule);
+    auto& graph = get_graph(schedule);
 
-    (void(graph.AddNode(systems)), ...);
+    (void(graph.add_node(systems)), ...);
 
     return RelativeScheduler{ graph, { reinterpret_cast<void*>(systems)... } };
 }
 
 template<ScheduleEnum Schedule, typename... Systems>
 RelativeScheduler
-Scheduler::AddChain(Schedule schedule, Systems... systems)
+Scheduler::add_chain(Schedule schedule, Systems... systems)
 {
-    auto& graph = GetGraph(schedule);
+    auto& graph = get_graph(schedule);
 
-    (void(graph.AddNode(systems)), ...);
+    (void(graph.add_node(systems)), ...);
 
     auto tuple = std::make_tuple(systems...);
     constexpr size_t SIZE = sizeof...(Systems);
 
     [&]<size_t... Index>(std::index_sequence<Index...>) {
-        (void(graph.AddEdge(
+        (void(graph.add_edge(
              reinterpret_cast<void*>(std::get<Index>(tuple)),
              reinterpret_cast<void*>(std::get<Index + 1>(tuple)))),
          ...);

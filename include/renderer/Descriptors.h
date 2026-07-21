@@ -15,18 +15,18 @@ class DescriptorAllocator
         float ratio;
     };
 
-    void Init(VkDevice device,
+    void init(VkDevice device,
               uint32_t initialSets,
               std::span<PoolSizeRatio> poolRatios);
-    void ClearPools();
-    void DestroyPools();
+    void clear_pools();
+    void destroy_pools();
 
-    VkDescriptorSet Allocate(VkDescriptorSetLayout layout,
+    VkDescriptorSet allocate(VkDescriptorSetLayout layout,
                              const void* pNext = nullptr);
 
   private:
-    VkDescriptorPool GetPool();
-    VkDescriptorPool CreatePool(uint32_t setCount,
+    VkDescriptorPool get_pool();
+    VkDescriptorPool create_pool(uint32_t setCount,
                                 std::span<PoolSizeRatio> poolRatios);
 
     std::vector<PoolSizeRatio> ratios;
@@ -39,17 +39,17 @@ class DescriptorAllocator
 class DescriptorLayoutBuilder
 {
   public:
-    void AddBinding(uint32_t binding, VkDescriptorType type);
-    void Clear();
+    void add_binding(uint32_t binding, VkDescriptorType type);
+    void clear();
 
-    [[nodiscard]] VkDescriptorSetLayout Build(
+    [[nodiscard]] VkDescriptorSetLayout build(
         VkDevice device,
         VkShaderStageFlags shaderStages,
         const void* pNext = nullptr,
         VkDescriptorSetLayoutCreateFlags flags = 0);
 
     // For a case where shader stages are different and set manually
-    [[nodiscard]] VkDescriptorSetLayout Build(
+    [[nodiscard]] VkDescriptorSetLayout build(
         VkDevice device,
         const void* pNext = nullptr,
         VkDescriptorSetLayoutCreateFlags flags = 0);
@@ -60,21 +60,21 @@ class DescriptorLayoutBuilder
 class DescriptorWriter
 {
   public:
-    void WriteImage(int binding,
+    void write_image(int binding,
                     VkImageView image,
                     VkSampler sampler,
                     VkImageLayout layout,
                     VkDescriptorType type);
-    void WriteBuffer(int binding,
+    void write_buffer(int binding,
                      VkBuffer buffer,
                      size_t size,
                      size_t offset,
                      VkDescriptorType type);
 
-    void Write(VkWriteDescriptorSet set);
+    void write(VkWriteDescriptorSet set);
 
-    void Clear();
-    void UpdateSet(VkDevice device, VkDescriptorSet set);
+    void clear();
+    void update_set(VkDevice device, VkDescriptorSet set);
 
   private:
     std::deque<VkDescriptorImageInfo> imageInfos;
@@ -84,7 +84,7 @@ class DescriptorWriter
 
 struct TextureCache
 {
-    uint32_t AddTexture(VkImageView imageView, VkSampler sampler);
+    uint32_t add_texture(VkImageView imageView, VkSampler sampler);
     std::vector<VkDescriptorImageInfo> descriptors;
 };
 

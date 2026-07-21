@@ -17,18 +17,18 @@ struct GlobalTransform
 {
     glm::mat4 transform;
 
-    glm::vec3 GetTranslation();
+    glm::vec3 get_translation();
 
-    glm::quat GetRotation();
+    glm::quat get_rotation();
 
-    glm::vec3 GetScale();
+    glm::vec3 get_scale();
 
-    void TransformPropagation(const GlobalTransform& parent,
+    void transform_propagation(const GlobalTransform& parent,
                               const Position& localPosition,
                               const Rotation& localRotation,
                               const Scale& localScale);
 
-    static glm::mat4 TransformFromLocal(const Position& localPosition,
+    static glm::mat4 transform_from_local(const Position& localPosition,
                                         const Rotation& localRotation,
                                         const Scale& localScale);
 };
@@ -54,7 +54,7 @@ struct Position
     }
 
     explicit Position(const glm::mat4& transform)
-        : position(GlobalTransform{ transform }.GetTranslation())
+        : position(GlobalTransform{ transform }.get_translation())
     {
     }
 };
@@ -84,7 +84,7 @@ struct Rotation
     }
 
     explicit Rotation(const glm::mat4& transform)
-        : rotation(GlobalTransform{ transform }.GetRotation())
+        : rotation(GlobalTransform{ transform }.get_rotation())
     {
     }
 };
@@ -114,13 +114,13 @@ struct Scale
     }
 
     explicit Scale(const glm::mat4& transform)
-        : scale(GlobalTransform{ transform }.GetScale())
+        : scale(GlobalTransform{ transform }.get_scale())
     {
     }
 };
 
 void
-HierarchyPropagation(
+hierarchy_propagation(
     Query<With<const GlobalTransform, const Children>, Without<Parent>>&
         rootQuery,
     Query<With<const Children>>& parentQuery,
@@ -128,7 +128,7 @@ HierarchyPropagation(
         childQuery);
 
 void
-ComputeRootGlobalTransform(
+compute_root_global_transform(
     Query<With<GlobalTransform, Position, Rotation, Scale>, Without<Parent>>&
         rootQuery);
 

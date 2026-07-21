@@ -2,20 +2,20 @@
 #include "renderer/VulkanTypes.h"
 
 void
-Cel::Renderer::CleanupRenderer(Resource<FinalCleanup>& cleanup,
+Cel::Renderer::cleanup_renderer(Resource<FinalCleanup>& cleanup,
                                Resource<FrameData>& frameData,
                                Resource<VulkanContext>& context)
 {
     vkDeviceWaitIdle(context->device);
 
     for (auto& frame : frameData->frames) {
-        frame.toDelete.Flush();
+        frame.toDelete.flush();
     }
-    cleanup->Flush();
+    cleanup->flush();
 }
 
 void
-Cel::Renderer::CleanupAssetServer(Resource<AssetServer>& assetServer)
+Cel::Renderer::cleanup_asset_server(Resource<AssetServer>& assetServer)
 {
-    assetServer->Cleanup();
+    assetServer->cleanup();
 }

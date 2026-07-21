@@ -17,51 +17,51 @@ class Input
      * @param key
      * @return Has the key moved up this frame?
      */
-    [[nodiscard]] bool KeyUp(SDL_Scancode key) const;
+    [[nodiscard]] bool key_up(SDL_Scancode key) const;
 
     /**
      * @brief True if the user just pressed this key
      * @param key
      * @return Has the key been pressed down this frame?
      */
-    [[nodiscard]] bool KeyDown(SDL_Scancode key) const;
+    [[nodiscard]] bool key_down(SDL_Scancode key) const;
     /**
      * @brief True if this key has been pressed since last frame
      * @param key
      * @return Has the key been pressed down this frame and the last?
      */
-    [[nodiscard]] bool KeyHeld(SDL_Scancode key) const;
+    [[nodiscard]] bool key_held(SDL_Scancode key) const;
 
     /**
      * @brief Return the mouse movement of this frame
      * Raw input only
      * @return X for horizontal, Y for vertical
      */
-    [[nodiscard]] glm::vec2 MouseDelta() const;
+    [[nodiscard]] glm::vec2 mouse_delta() const;
     /**
      * @brief Returns a vec2 of the scrolling done
      * @return x for horizontal scrolling, y for vertical scrolling
      */
-    [[nodiscard]] glm::vec2 MouseScroll() const;
+    [[nodiscard]] glm::vec2 mouse_scroll() const;
 
     /**
      * @brief True if this mouse button was just released
      * @param button SDL_BUTTON_LEFT, SDL_BUTTON_RIGHT etc
      * @return Has this button been released this frame
      */
-    [[nodiscard]] bool MouseButtonUp(uint32_t button) const;
+    [[nodiscard]] bool mouse_button_up(uint32_t button) const;
     /**
      * @brief True if this mouse button was just pressed
      * @param button SDL_BUTTON_LEFT, SDL_BUTTON_RIGHT etc
      * @return Has this button been pressed down this frame
      */
-    [[nodiscard]] bool MouseButtonDown(uint32_t button) const;
+    [[nodiscard]] bool mouse_button_down(uint32_t button) const;
     /**
      * @brief True if this mouse button is held down
      * @param button SDL_BUTTON_LEFT, SDL_BUTTON_RIGHT etc
      * @return Has this button been pressed down this frame and the last
      */
-    [[nodiscard]] bool MouseButtonHeld(uint32_t button) const;
+    [[nodiscard]] bool mouse_button_held(uint32_t button) const;
 
   private:
     void TickInput();
@@ -76,11 +76,11 @@ class Input
     glm::vec2 mouseScroll;
     glm::vec2 mouseDelta;
 
-    friend void ProcessInputEvents(Resource<Input>& input,
+    friend void process_input_events(Resource<Input>& input,
                                    Resource<Running>& isRunning);
 };
 
 void
-ProcessInputEvents(Resource<Input>& input, Resource<Running>& isRunning);
+process_input_events(Resource<Input>& input, Resource<Running>& isRunning);
 
 }

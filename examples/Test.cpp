@@ -28,30 +28,30 @@ struct PlayerCamera
 void
 SpawnCamera(Resource<World>& world)
 {
-    world->Spawn(Renderer::Camera::Camera3d(90, 0.1, 1000), PlayerCamera{});
+    world->spawn(Renderer::Camera::Camera3d(90, 0.1, 1000), PlayerCamera{});
 }
 
 void
 SpawnAsset(Resource<World>& world, Resource<Renderer::AssetServer>& server)
 {
-    auto handle = server->LoadGltfAsset("../../examples/assets/horse.glb");
+    auto handle = server->load_gltf_asset("../../examples/assets/horse.glb");
 
     // Spawn a parent class that we rotate for fun (test transform propagation)
-    world->Spawn(RotateMe{}).WithChildren([&](ChildBuilder builder) {
+    world->spawn(RotateMe{}).with_children([&](ChildBuilder builder) {
         // astoundingly large horse
         // In order to view it we must bring it to a 100th scale
-        auto child = builder.Spawn(
+        auto child = builder.spawn(
             Position{ 0, 0, -1 }, Scale{ 0.01 }, MyAsset{}, RotateMe{});
-        server->AddAssetToEntity(child.Get(), handle, world);
+        server->add_asset_to_entity(child.get(), handle, world);
     });
-    server->AddAssetToEntity(
-        world->Spawn(Position{ 0, 0, 5 }, Scale{ 0.01 }).Get(), handle, world);
+    server->add_asset_to_entity(
+        world->spawn(Position{ 0, 0, 5 }, Scale{ 0.01 }).get(), handle, world);
 }
 
 void
 SpinIt(Query<With<RotateMe, Rotation>>& query, Resource<Time>& time)
 {
-    const auto rot = glm::angleAxis(time->DeltaTime(), glm::vec3(0, 1, 0));
+    const auto rot = glm::angleAxis(time->delta_time(), glm::vec3(0, 1, 0));
     for (auto [_, rotation] : query) {
         rotation.rotation *= rot;
     }
@@ -67,32 +67,32 @@ CameraController(
     constexpr float SENSITIVITY = 0.07;
     constexpr float SPEED = 3.0;
 
-    auto mouse = input->MouseDelta() * SENSITIVITY;
-    auto scroll = input->MouseScroll();
+    auto mouse = input->mouse_delta() * SENSITIVITY;
+    auto scroll = input->mouse_scroll();
 
     auto rotation = glm::angleAxis(mouse.x, glm::vec3(0, 1, 0));
     rotation *= glm::angleAxis(mouse.y, glm::vec3(1, 0, 0));
 
     auto translation = glm::vec3(0.0);
 
-    if (input->KeyHeld(SDL_SCANCODE_A)) {
+    if (input->key_held(SDL_SCANCODE_A)) {
         translation.x -= 1;
     }
 
-    if (input->KeyHeld(SDL_SCANCODE_D)) {
+    if (input->key_held(SDL_SCANCODE_D)) {
         translation.x += 1;
     }
 
-    if (input->KeyHeld(SDL_SCANCODE_W)) {
+    if (input->key_held(SDL_SCANCODE_W)) {
         translation.z += 1;
     }
-    if (input->KeyHeld(SDL_SCANCODE_S)) {
+    if (input->key_held(SDL_SCANCODE_S)) {
         translation.z -= 1;
     }
-    if (input->KeyHeld(SDL_SCANCODE_SPACE)) {
+    if (input->key_held(SDL_SCANCODE_SPACE)) {
         translation.y += 1;
     }
-    if (input->KeyHeld(SDL_SCANCODE_LCTRL)) {
+    if (input->key_held(SDL_SCANCODE_LCTRL)) {
         translation.y -= 1;
     }
 
@@ -107,10 +107,10 @@ CameraController(
 
         cam.fov -= scroll.y * 0.1;
 
-        pos.position += rot.rotation * translation * time->DeltaTime();
+        pos.position += rot.rotation * translation * time->delta_time();
     }
 
-    if (input->MouseButtonDown(SDL_BUTTON_RIGHT)) {
+    if (input->mouse_button_down(SDL_BUTTON_RIGHT)) {
         static bool toggle = false;
         toggle = !toggle;
         SDL_SetWindowRelativeMouseMode(window->window, toggle);
@@ -120,12 +120,12 @@ CameraController(
 class MyPlugin : public Plugin
 {
   public:
-    void Build(Scheduler scheduler, ResourceManager& resourceManager) override
+    void build(Scheduler scheduler, ResourceManager& resourceManager) override
     {
-        scheduler.AddSystem(Startup::Start, SpawnCamera);
-        scheduler.AddSystem(Startup::Start, SpawnAsset);
-        scheduler.AddSystem(MainUpdate::Update, SpinIt);
-        scheduler.AddSystem(MainUpdate::Last, CameraController);
+        scheduler.add_system(Startup::Start, SpawnCamera);
+        scheduler.add_system(Startup::Start, SpawnAsset);
+        scheduler.add_system(MainUpdate::Update, SpinIt);
+        scheduler.add_system(MainUpdate::Last, CameraController);
     }
 };
 
@@ -133,14 +133,14 @@ int
 main()
 {
     App ecs;
-    ecs.AddPlugin<CorePlugin>()
-        .AddPlugin<Renderer::RenderPlugin>()
-        .AddPlugin<MyPlugin>();
-    ecs.Start<Startup>()
-        .Loop<FixedSchedule<PhysicsUpdate, 50>,
+    ecs.add_plugin<CorePlugin>()
+        .add_plugin<Renderer::RenderPlugin>()
+        .add_plugin<MyPlugin>();
+    ecs.start<Startup>()
+        .loop<FixedSchedule<PhysicsUpdate, 50>,
               DynamicSchedule<MainUpdate>,
               DynamicSchedule<Render>>()
-        .End<TearDown>();
+        .end<TearDown>();
 
     return 0;
 }

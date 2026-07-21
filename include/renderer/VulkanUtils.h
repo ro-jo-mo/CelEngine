@@ -11,30 +11,30 @@
 
 namespace Cel::Renderer::Utils {
 bool
-LoadShader(const char* path, VkDevice device, VkShaderModule* outShaderModule);
+load_shader(const char* path, VkDevice device, VkShaderModule* outShaderModule);
 
 void
-TransitionImageLayout(VkCommandBuffer cmd,
+transition_image_layout(VkCommandBuffer cmd,
                       VkImage image,
                       VkImageLayout currentLayout,
                       VkImageLayout newLayout);
 
 void
-TransitionImageLayout(VkCommandBuffer cmd,
+transition_image_layout(VkCommandBuffer cmd,
                       VkImage image,
                       VkImageLayout currentLayout,
                       VkImageLayout newLayout,
                       VkImageSubresourceRange subresourceRange);
 
 void
-CopyImageToImage(VkCommandBuffer cmd,
+copy_image_to_image(VkCommandBuffer cmd,
                  VkImage source,
                  VkImage destination,
                  VkExtent2D srcSize,
                  VkExtent2D dstSize);
 
 [[nodiscard]] AllocatedImage
-CreateImage(const void* data,
+create_image(const void* data,
             VkExtent3D size,
             VkFormat format,
             VkImageUsageFlags usage,
@@ -47,7 +47,7 @@ CreateImage(const void* data,
             const GraphicsQueue& graphicsQueue);
 
 [[nodiscard]] AllocatedImage
-CreateImage(VkExtent3D size,
+create_image(VkExtent3D size,
             VkFormat format,
             VkImageUsageFlags usage,
             bool mipmapped,
@@ -57,7 +57,7 @@ CreateImage(VkExtent3D size,
             VmaAllocator& allocator);
 
 [[nodiscard]] AllocatedImage
-CreateImage(VkImageCreateInfo imageCreateInfo,
+create_image(VkImageCreateInfo imageCreateInfo,
             VkImageViewCreateInfo imageViewCreateInfo,
 
             const char* allocName,
@@ -65,7 +65,7 @@ CreateImage(VkImageCreateInfo imageCreateInfo,
             VmaAllocator& allocator);
 
 [[nodiscard]] AllocatedImage
-CreateCubeMap(ktxTexture* texture,
+create_cube_map(ktxTexture* texture,
               VkFormat format,
 
               const char* allocName,
@@ -75,7 +75,7 @@ CreateCubeMap(ktxTexture* texture,
               const GraphicsQueue& graphicsQueue);
 
 [[nodiscard]] AllocatedBuffer
-CreateBuffer(size_t allocSize,
+create_buffer(size_t allocSize,
              VkBufferUsageFlags usage,
              VmaMemoryUsage memoryUsage,
 
@@ -83,7 +83,7 @@ CreateBuffer(size_t allocSize,
              const VmaAllocator& allocator);
 
 [[nodiscard]] AllocatedMeshBuffer
-UploadMesh(std::vector<uint32_t>& indices,
+upload_mesh(std::vector<uint32_t>& indices,
            std::vector<Vertex>& vertices,
            VulkanContext& context,
            VmaAllocator& allocator,
@@ -91,7 +91,7 @@ UploadMesh(std::vector<uint32_t>& indices,
            GraphicsQueue& queue);
 
 [[nodiscard]] AllocatedMeshBuffer
-UploadMesh(std::vector<uint32_t>& indices,
+upload_mesh(std::vector<uint32_t>& indices,
            std::vector<float>& vertices,
 
            VulkanContext& context,
@@ -100,25 +100,25 @@ UploadMesh(std::vector<uint32_t>& indices,
            GraphicsQueue& queue);
 
 void
-SubmitImmediate(std::function<void(VkCommandBuffer cmd)>&& function,
+submit_immediate(std::function<void(VkCommandBuffer cmd)>&& function,
                 const VulkanContext& context,
                 const ImmediateSubmit& immediate,
                 const GraphicsQueue& queue);
 
 [[nodiscard]] uint32_t
-CalculateMipMapLevels(VkExtent3D extent);
+calculate_mip_map_levels(VkExtent3D extent);
 
 [[nodiscard]] uint32_t
-CalculateMipMapLevels(VkExtent2D extent);
+calculate_mip_map_levels(VkExtent2D extent);
 
 void
-GenerateMipMaps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize);
+generate_mip_maps(VkCommandBuffer cmd, VkImage image, VkExtent2D imageSize);
 
 void
-DestroyBuffer(const AllocatedBuffer& buffer, const VmaAllocator& allocator);
+destroy_buffer(const AllocatedBuffer& buffer, const VmaAllocator& allocator);
 
 void
-UploadToBuffer(const void* data,
+upload_to_buffer(const void* data,
                uint32_t size,
                VkBuffer destination,
                uint32_t destinationOffset,

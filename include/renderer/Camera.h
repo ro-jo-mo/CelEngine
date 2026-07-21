@@ -40,9 +40,9 @@ class Camera
      */
     static Camera Camera3d(float fov, float nearPlane, float farPlane);
 
-    [[nodiscard]] glm::mat4 GetProjectionMatrix(VkExtent2D extent) const;
+    [[nodiscard]] glm::mat4 get_projection_matrix(VkExtent2D extent) const;
 
-    [[nodiscard]] glm::mat4 GetViewMatrix() const;
+    [[nodiscard]] glm::mat4 get_view_matrix() const;
 
     float fov;
     float farPlane;
@@ -55,17 +55,17 @@ class Camera
         , nearPlane(nearPlane)
         , projection(Projection::Perspective) {};
 
-    void UpdateViewMatrix(const glm::mat4& transform);
+    void update_view_matrix(const glm::mat4& transform);
 
     glm::mat4 viewMatrix = glm::mat4(1.0f);
 
     Projection projection;
 
-    friend void CameraSystem(Query<With<Camera, GlobalTransform>>& cameras);
+    friend void camera_system(Query<With<Camera, GlobalTransform>>& cameras);
 };
 
 // Update view matrix, run after transform propagation
 void
-CameraSystem(Query<With<Camera, GlobalTransform>>& cameras);
+camera_system(Query<With<Camera, GlobalTransform>>& cameras);
 
 }

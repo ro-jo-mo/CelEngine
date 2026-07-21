@@ -17,7 +17,7 @@ Renderer::Window::Window()
 }
 
 void
-Renderer::SetRenderExtent(Resource<RenderExtent>& renderExtent,
+Renderer::set_render_extent(Resource<RenderExtent>& renderExtent,
                           Resource<DrawImage>& drawImage,
                           Resource<Swapchain>& swapchain)
 {

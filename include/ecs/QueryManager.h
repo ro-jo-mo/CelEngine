@@ -16,10 +16,10 @@ namespace Cel {
       : componentsManager(manager) {
     }
 
-    void UpdateQueries() const;
+    void update_queries() const;
 
     template<typename Query>
-    Query &GetQuery();
+    Query &get_query();
 
   private:
     ComponentsManager &componentsManager;
@@ -27,7 +27,7 @@ namespace Cel {
   };
 
   template<typename Query>
-  Query &QueryManager::GetQuery() {
+  Query &QueryManager::get_query() {
     auto [query,_] = queries.try_emplace(typeid(Query), std::make_unique<Query>(componentsManager));
 
     return *static_cast<Query *>(query->second.get());

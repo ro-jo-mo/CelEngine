@@ -8,20 +8,20 @@
 using namespace Cel;
 
 void
-ScheduleGraph::AddEdge(void* from, void* to)
+ScheduleGraph::add_edge(void* from, void* to)
 {
     adjacencyList[from].insert(to);
     requirements[to].insert(from);
 }
 
 void
-ScheduleGraph::Execute()
+ScheduleGraph::execute()
 {
     std::unordered_set<void*> executed;
 
     for (const auto& [id, requirement] : requirements) {
         if (requirement.empty()) {
-            ExecuteSystem(id, executed);
+            execute_system(id, executed);
         }
     }
     assert(executed.size() == adjacencyList.size() &&
@@ -29,18 +29,18 @@ ScheduleGraph::Execute()
 }
 
 void
-ScheduleGraph::ExecuteSystem(void* id, std::unordered_set<void*>& executed)
+ScheduleGraph::execute_system(void* id, std::unordered_set<void*>& executed)
 {
     // if this node has no requirements, we can start executing it
     idToSystem[id]();
     executed.insert(id);
 
     // additionally execute nodes that require this
-    RecursivelyExecute(id, executed);
+    recursively_execute(id, executed);
 }
 
 bool
-ScheduleGraph::CheckRequirements(void* id, std::unordered_set<void*>& executed)
+ScheduleGraph::check_requirements(void* id, std::unordered_set<void*>& executed)
 {
     return std::ranges::all_of(requirements[id], [&executed](auto& required) {
         return executed.contains(required);
@@ -48,12 +48,12 @@ ScheduleGraph::CheckRequirements(void* id, std::unordered_set<void*>& executed)
 }
 
 void
-ScheduleGraph::RecursivelyExecute(void* parentId,
+ScheduleGraph::recursively_execute(void* parentId,
                                   std::unordered_set<void*>& executed)
 {
     for (auto& id : adjacencyList[parentId]) {
-        if (CheckRequirements(id, executed)) {
-            ExecuteSystem(id, executed);
+        if (check_requirements(id, executed)) {
+            execute_system(id, executed);
         }
     }
 }

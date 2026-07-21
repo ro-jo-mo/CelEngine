@@ -7,22 +7,22 @@ namespace {
 TEST(ResourceManagerTest, InsertAndGetIntResource)
 {
     App ecs;
-    ecs.AddPlugin<CorePlugin>()
-        .AddPlugin<ResourcePlugin<IntResource, 42>>()
-        .AddPlugin<SingleSystemPlugin<Startup::Start, ReadIntResource>>();
+    ecs.add_plugin<CorePlugin>()
+        .add_plugin<ResourcePlugin<IntResource, 42>>()
+        .add_plugin<SingleSystemPlugin<Startup::Start, ReadIntResource>>();
 
-    ecs.Start<Startup>();
+    ecs.start<Startup>();
 }
 
 TEST(ResourceManagerTest, ResourceMutationPersists)
 {
     App ecs;
-    ecs.AddPlugin<CorePlugin>()
-        .AddPlugin<ResourcePlugin<IntResource, 42>>()
-        .AddPlugin<SingleSystemPlugin<Startup::Start, MutateIntResource>>()
-        .AddPlugin<
+    ecs.add_plugin<CorePlugin>()
+        .add_plugin<ResourcePlugin<IntResource, 42>>()
+        .add_plugin<SingleSystemPlugin<Startup::Start, MutateIntResource>>()
+        .add_plugin<
             SingleSystemPlugin<Startup::PostStart, VerifyMutatedIntResource>>();
-    ecs.Start<Startup>();
+    ecs.start<Startup>();
 }
 
 }

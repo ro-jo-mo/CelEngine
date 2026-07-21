@@ -18,10 +18,10 @@ using namespace Cel::Renderer;
 constexpr bool useValidationLayers = true;
 
 void
-InitVulkan(ResourceManager& resourceManager)
+init_vulkan(ResourceManager& resourceManager)
 {
     // Firstly create a window
-    auto& window = resourceManager.InsertResource<Window>();
+    auto& window = resourceManager.insert_resource<Window>();
     VkSurfaceKHR surface;
 
     // Create a vulkan instance with our requirements
@@ -79,16 +79,13 @@ InitVulkan(ResourceManager& resourceManager)
                            .device = deviceBuild.device,
                            .surface = surface };
 
-    resourceManager.InsertResource(context);
+    resourceManager.insert_resource(context);
 
-    auto graphicsQueue =
-        deviceBuild.get_queue(vkb::QueueType::graphics).value();
-    auto graphicsQueueFamily =
-        deviceBuild.get_queue_index(vkb::QueueType::graphics).value();
+    auto [graphicsQueue,graphicsQueueFamily] = deviceBuild.get_queue_and_index(vkb::QueueType::graphics).value();
 
     GraphicsQueue queue{ graphicsQueue, graphicsQueueFamily };
 
-    resourceManager.InsertResource(queue);
+    resourceManager.insert_resource(queue);
 
     VmaAllocator allocator;
     VmaAllocatorCreateInfo allocatorInfo = {};
@@ -98,11 +95,11 @@ InitVulkan(ResourceManager& resourceManager)
     allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     vmaCreateAllocator(&allocatorInfo, &allocator);
 
-    resourceManager.InsertResource(allocator);
+    resourceManager.insert_resource(allocator);
 
     auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
-    cleanup->Push([=, &window]() {
+    cleanup->push([=, &window]() {
         vmaDestroyAllocator(allocator);
         vkDestroyDevice(context.device, nullptr);
         vkDestroySurfaceKHR(instanceBuild, context.surface, nullptr);
@@ -116,7 +113,7 @@ InitVulkan(ResourceManager& resourceManager)
 }
 
 void
-InitSwapchain(ResourceManager& resourceManager)
+init_swapchain(ResourceManager& resourceManager)
 {
     auto& context = resourceManager.GetResource<VulkanContext>();
 
@@ -144,7 +141,7 @@ InitSwapchain(ResourceManager& resourceManager)
 
     // Create semaphores for swapchain images
     VkSemaphoreCreateInfo semaphoreCreateInfo =
-        Initialisers::SemaphoreCreateInfo();
+        Initialisers::semaphore_create_info();
 
     swapchain.submitSemaphores =
         std::vector<VkSemaphore>(swapchain.images.size());
@@ -156,11 +153,11 @@ InitSwapchain(ResourceManager& resourceManager)
                           &swapchain.submitSemaphores[i]);
     }
 
-    resourceManager.InsertResource(swapchain);
+    resourceManager.insert_resource(swapchain);
 
     auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
-    cleanup->Push([=, &context]() {
+    cleanup->push([=, &context]() {
         vkDestroySwapchainKHR(context->device, swapchain.swapchain, nullptr);
         for (int i = 0; i < swapchain.imageViews.size(); i++) {
             vkDestroyImageView(
@@ -172,7 +169,7 @@ InitSwapchain(ResourceManager& resourceManager)
 }
 
 void
-InitDrawImages(ResourceManager& resourceManager)
+init_draw_images(ResourceManager& resourceManager)
 {
     auto& swapchain = resourceManager.GetResource<Swapchain>();
     auto& allocator = resourceManager.GetResource<VmaAllocator>();
@@ -191,7 +188,7 @@ InitDrawImages(ResourceManager& resourceManager)
     drawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
     drawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    VkImageCreateInfo drawImageCreateInfo = Initialisers::ImageCreateInfo(
+    VkImageCreateInfo drawImageCreateInfo = Initialisers::image_create_info(
         drawImage.imageFormat, drawImageUsages, drawImage.imageExtent);
 
     VmaAllocationCreateInfo drawImageAllocationInfo{};
@@ -207,13 +204,13 @@ InitDrawImages(ResourceManager& resourceManager)
     vmaSetAllocationName(*allocator, drawImage.allocation, "draw_image_alloc");
 
     VkImageViewCreateInfo drawViewCreateInfo =
-        Initialisers::ImageViewCreateInfo(
+        Initialisers::image_view_create_info(
             drawImage.imageFormat, drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
 
-    VkCheck(vkCreateImageView(
+    vk_check(vkCreateImageView(
         context->device, &drawViewCreateInfo, nullptr, &drawImage.imageView));
 
-    resourceManager.InsertResource(drawImage);
+    resourceManager.insert_resource(drawImage);
 
     // Create depth image
     DepthImage depth;
@@ -221,7 +218,7 @@ InitDrawImages(ResourceManager& resourceManager)
     depth.imageExtent = drawImage.imageExtent;
     VkImageUsageFlags depthImageUsages{};
     depthImageUsages |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    VkImageCreateInfo depthImageCreateInfo = Initialisers::ImageCreateInfo(
+    VkImageCreateInfo depthImageCreateInfo = Initialisers::image_create_info(
         depth.imageFormat, depthImageUsages, drawImage.imageExtent);
 
     vmaCreateImage(*allocator,
@@ -233,16 +230,16 @@ InitDrawImages(ResourceManager& resourceManager)
 
     vmaSetAllocationName(*allocator, depth.allocation, "depth_image_alloc");
     VkImageViewCreateInfo depthImageViewCreateInfo =
-        Initialisers::ImageViewCreateInfo(
+        Initialisers::image_view_create_info(
             depth.imageFormat, depth.image, VK_IMAGE_ASPECT_DEPTH_BIT);
-    VkCheck(vkCreateImageView(
+    vk_check(vkCreateImageView(
         context->device, &depthImageViewCreateInfo, nullptr, &depth.imageView));
 
-    resourceManager.InsertResource(depth);
+    resourceManager.insert_resource(depth);
 
     auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
-    cleanup->Push([=, &context, &allocator]() {
+    cleanup->push([=, &context, &allocator]() {
         vkDestroyImageView(context->device, drawImage.imageView, nullptr);
         vkDestroyImageView(context->device, depth.imageView, nullptr);
         vmaDestroyImage(*allocator, drawImage.image, drawImage.allocation);
@@ -251,7 +248,7 @@ InitDrawImages(ResourceManager& resourceManager)
 }
 
 void
-InitFrameData(ResourceManager& resourceManager)
+init_frame_data(ResourceManager& resourceManager)
 {
     auto& queue = resourceManager.GetResource<GraphicsQueue>();
     auto& context = resourceManager.GetResource<VulkanContext>();
@@ -260,42 +257,42 @@ InitFrameData(ResourceManager& resourceManager)
     FrameData frameData{ .totalFrames = FRAME_OVERLAP };
 
     VkCommandPoolCreateInfo commandPoolCreateInfo =
-        Initialisers::CommandPoolCreateInfo(
+        Initialisers::command_pool_create_info(
             queue->family, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
     VkFenceCreateInfo fenceCreateInfo =
-        Initialisers::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+        Initialisers::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
     VkSemaphoreCreateInfo semaphoreCreateInfo =
-        Initialisers::SemaphoreCreateInfo();
+        Initialisers::semaphore_create_info();
 
     // Create per frame resources
     for (int i = 0; i < FRAME_OVERLAP; i++) {
         CurrentFrameData frame{};
 
         // Firstly create command pool / buffer
-        VkCheck(vkCreateCommandPool(context->device,
+        vk_check(vkCreateCommandPool(context->device,
                                     &commandPoolCreateInfo,
                                     nullptr,
                                     &frame.commandPool));
 
         VkCommandBufferAllocateInfo commandBufferAllocateInfo =
-            Initialisers::CommandBufferAllocateInfo(frame.commandPool, 1);
+            Initialisers::command_buffer_allocate_info(frame.commandPool, 1);
 
-        VkCheck(vkAllocateCommandBuffers(
+        vk_check(vkAllocateCommandBuffers(
             context->device, &commandBufferAllocateInfo, &frame.commandBuffer));
 
         // Next create synchronisation primitives
-        VkCheck(vkCreateFence(
+        vk_check(vkCreateFence(
             context->device, &fenceCreateInfo, nullptr, &frame.renderFence));
 
-        VkCheck(vkCreateSemaphore(context->device,
+        vk_check(vkCreateSemaphore(context->device,
                                   &semaphoreCreateInfo,
                                   nullptr,
                                   &frame.acquireSemaphore));
 
         frameData.frames.push_back(frame);
 
-        cleanup->Push([=, &context]() {
+        cleanup->push([=, &context]() {
             vkDestroyCommandPool(context->device, frame.commandPool, nullptr);
             vkDestroyFence(context->device, frame.renderFence, nullptr);
 
@@ -306,31 +303,31 @@ InitFrameData(ResourceManager& resourceManager)
 
     // Lastly create resources for immediate submit
     ImmediateSubmit immediate{};
-    VkCheck(vkCreateCommandPool(context->device,
+    vk_check(vkCreateCommandPool(context->device,
                                 &commandPoolCreateInfo,
                                 nullptr,
                                 &immediate.commandPool));
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo =
-        Initialisers::CommandBufferAllocateInfo(immediate.commandPool, 1);
+        Initialisers::command_buffer_allocate_info(immediate.commandPool, 1);
 
-    VkCheck(vkAllocateCommandBuffers(
+    vk_check(vkAllocateCommandBuffers(
         context->device, &commandBufferAllocateInfo, &immediate.commandBuffer));
 
-    VkCheck(vkCreateFence(
+    vk_check(vkCreateFence(
         context->device, &fenceCreateInfo, nullptr, &immediate.fence));
 
-    resourceManager.InsertResource(immediate);
-    resourceManager.InsertResource(frameData);
+    resourceManager.insert_resource(immediate);
+    resourceManager.insert_resource(frameData);
 
-    cleanup->Push([=, &context]() {
+    cleanup->push([=, &context]() {
         vkDestroyCommandPool(context->device, immediate.commandPool, nullptr);
         vkDestroyFence(context->device, immediate.fence, nullptr);
     });
 }
 
 void
-InitDescriptorData(ResourceManager& resourceManager)
+init_descriptor_data(ResourceManager& resourceManager)
 {
     auto& context = resourceManager.GetResource<VulkanContext>();
     auto& frameData = resourceManager.GetResource<FrameData>();
@@ -343,13 +340,13 @@ InitDescriptorData(ResourceManager& resourceManager)
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
     };
 
-    global.allocator.Init(context->device, 10, sizes);
+    global.allocator.init(context->device, 10, sizes);
 
     // Set scene layout
     {
         DescriptorLayoutBuilder builder;
-        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        builder.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        builder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         VkDescriptorSetLayoutBindingFlagsCreateInfo bindFlags = {
             .sType =
                 VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
@@ -367,7 +364,7 @@ InitDescriptorData(ResourceManager& resourceManager)
         bindFlags.bindingCount = 2;
         bindFlags.pBindingFlags = flagArray.data();
 
-        global.sceneLayout = builder.Build(context->device,
+        global.sceneLayout = builder.build(context->device,
                                            VK_SHADER_STAGE_VERTEX_BIT |
                                                VK_SHADER_STAGE_FRAGMENT_BIT,
                                            &bindFlags);
@@ -376,13 +373,13 @@ InitDescriptorData(ResourceManager& resourceManager)
     // Skybox layout
     {
         DescriptorLayoutBuilder builder;
-        builder.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
         builder.bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-        builder.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        builder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
         builder.bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-        global.skyboxLayout = builder.Build(context->device);
+        global.skyboxLayout = builder.build(context->device);
     }
 
     auto& frames = frameData->frames;
@@ -397,25 +394,25 @@ InitDescriptorData(ResourceManager& resourceManager)
             { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 },
         };
 
-        frames[i].descriptorAllocator.Init(context->device, 1000, frameSizes);
+        frames[i].descriptorAllocator.init(context->device, 1000, frameSizes);
 
-        cleanup->Push(
-            [&, i]() { frames[i].descriptorAllocator.DestroyPools(); });
+        cleanup->push(
+            [&, i]() { frames[i].descriptorAllocator.destroy_pools(); });
     }
 
-    auto& globalRes = resourceManager.InsertResource(global);
+    auto& globalRes = resourceManager.insert_resource(global);
 
-    cleanup->Push([&]() {
+    cleanup->push([&]() {
         vkDestroyDescriptorSetLayout(
             context->device, globalRes->sceneLayout, nullptr);
         vkDestroyDescriptorSetLayout(
             context->device, globalRes->skyboxLayout, nullptr);
-        globalRes->allocator.DestroyPools();
+        globalRes->allocator.destroy_pools();
     });
 }
 
 void
-InitAssetServer(ResourceManager& resourceManager)
+init_asset_server(ResourceManager& resourceManager)
 {
     auto& context = resourceManager.GetResource<VulkanContext>();
     auto& queue = resourceManager.GetResource<GraphicsQueue>();
@@ -423,12 +420,12 @@ InitAssetServer(ResourceManager& resourceManager)
     auto& immediate = resourceManager.GetResource<ImmediateSubmit>();
     auto& global = resourceManager.GetResource<GlobalDescriptorData>();
 
-    resourceManager.InsertResource<AssetServer>(
+    resourceManager.insert_resource<AssetServer>(
         context, allocator, immediate, queue, global);
 }
 
 void
-InitPipeline(ResourceManager& resourceManager)
+init_pipeline(ResourceManager& resourceManager)
 {
     auto& context = resourceManager.GetResource<VulkanContext>();
     auto& drawImage = resourceManager.GetResource<DrawImage>();
@@ -436,25 +433,25 @@ InitPipeline(ResourceManager& resourceManager)
     auto& global = resourceManager.GetResource<GlobalDescriptorData>();
 
     VkShaderModule meshVert;
-    if (!Utils::LoadShader(
+    if (!Utils::load_shader(
             "../../shaders/mesh.vert.spv", context->device, &meshVert)) {
-        ThrowError("Failed to load vertex shader");
+        throw_error("Failed to load vertex shader");
     }
 
     VkShaderModule meshFrag;
-    if (!Utils::LoadShader(
+    if (!Utils::load_shader(
             "../../shaders/mesh.frag.spv", context->device, &meshFrag)) {
-        ThrowError("Failed to load vertex shader");
+        throw_error("Failed to load vertex shader");
     }
 
     VkPipelineLayoutCreateInfo meshLayoutInfo =
-        Initialisers::PipelineLayoutCreateInfo();
+        Initialisers::pipeline_layout_create_info();
     meshLayoutInfo.setLayoutCount = 1;
     meshLayoutInfo.pSetLayouts = &global->sceneLayout;
     meshLayoutInfo.pushConstantRangeCount = 0;
 
     VkPipelineLayout meshLayout;
-    VkCheck(vkCreatePipelineLayout(
+    vk_check(vkCreatePipelineLayout(
         context->device, &meshLayoutInfo, nullptr, &meshLayout));
 
     // #####################
@@ -463,47 +460,47 @@ InitPipeline(ResourceManager& resourceManager)
 
     // use the triangle layout we created
     pipelineBuilder.pipelineLayout = meshLayout;
-    pipelineBuilder.SetVertexInputNone();
+    pipelineBuilder.set_vertex_input_none();
     // connecting the vertex and pixel shaders to the pipeline
-    pipelineBuilder.SetShaders(meshVert, meshFrag);
+    pipelineBuilder.set_shaders(meshVert, meshFrag);
     // it will draw triangles
-    pipelineBuilder.SetInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
     // filled triangles
-    pipelineBuilder.SetPolygonMode(VK_POLYGON_MODE_FILL);
+    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
     // no backface culling
-    pipelineBuilder.SetCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE);
     // no multisampling
-    pipelineBuilder.SetMutisamplingNone();
+    pipelineBuilder.set_mutisampling_none();
     // Enable blending later once I figure it out
-    pipelineBuilder.DisableBlending();
+    pipelineBuilder.disable_blending();
     // enable depth test
-    pipelineBuilder.EnableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+    pipelineBuilder.enable_depth_test(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
 
     // connect the image format we will draw into, from draw image
-    pipelineBuilder.SetColourAttachment(drawImage->imageFormat);
-    pipelineBuilder.SetDepthAttachment(depthImage->imageFormat);
+    pipelineBuilder.set_colour_attachment(drawImage->imageFormat);
+    pipelineBuilder.set_depth_attachment(depthImage->imageFormat);
 
     // finally build the pipeline
-    auto meshPipeline = pipelineBuilder.BuildPipeline(context->device);
+    auto meshPipeline = pipelineBuilder.build_pipeline(context->device);
 
-    resourceManager.InsertResource<MeshPipeline>(meshPipeline, meshLayout);
+    resourceManager.insert_resource<MeshPipeline>(meshPipeline, meshLayout);
 
     // Create skybox pipeline
 
     VkShaderModule skyboxVert;
-    if (!Utils::LoadShader(
+    if (!Utils::load_shader(
             "../../shaders/skybox.vert.spv", context->device, &skyboxVert)) {
-        ThrowError("Failed to load skybox vert shader");
+        throw_error("Failed to load skybox vert shader");
     }
 
     VkShaderModule skyboxFrag;
-    if (!Utils::LoadShader(
+    if (!Utils::load_shader(
             "../../shaders/skybox.frag.spv", context->device, &skyboxFrag)) {
-        ThrowError("Failed to load skybox frag shader");
+        throw_error("Failed to load skybox frag shader");
     }
 
     VkPipelineLayoutCreateInfo skyboxLayoutCreateInfo =
-        Initialisers::PipelineLayoutCreateInfo();
+        Initialisers::pipeline_layout_create_info();
     skyboxLayoutCreateInfo.setLayoutCount = 1;
     skyboxLayoutCreateInfo.pSetLayouts = &global->skyboxLayout;
 
@@ -513,13 +510,13 @@ InitPipeline(ResourceManager& resourceManager)
         context->device, &skyboxLayoutCreateInfo, nullptr, &skyboxLayout);
 
     pipelineBuilder.pipelineLayout = skyboxLayout;
-    pipelineBuilder.SetShaders(skyboxVert, skyboxFrag);
-    pipelineBuilder.SetCullMode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE);
-    pipelineBuilder.SetVertexInputFloatArray();
+    pipelineBuilder.set_shaders(skyboxVert, skyboxFrag);
+    pipelineBuilder.set_cull_mode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE);
+    pipelineBuilder.set_vertex_input_float_array();
 
-    auto skyboxPipeline = pipelineBuilder.BuildPipeline(context->device);
+    auto skyboxPipeline = pipelineBuilder.build_pipeline(context->device);
 
-    resourceManager.InsertResource<SkyboxPipeline>(skyboxPipeline,
+    resourceManager.insert_resource<SkyboxPipeline>(skyboxPipeline,
                                                    skyboxLayout);
 
     // clean structures
@@ -530,7 +527,7 @@ InitPipeline(ResourceManager& resourceManager)
 
     auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
-    cleanup->Push([=, &context]() {
+    cleanup->push([=, &context]() {
         vkDestroyPipelineLayout(context->device, meshLayout, nullptr);
         vkDestroyPipeline(context->device, meshPipeline, nullptr);
 
@@ -540,17 +537,17 @@ InitPipeline(ResourceManager& resourceManager)
 }
 
 void
-VulkanInitialiser::Initialise(ResourceManager& resourceManager)
+VulkanInitialiser::initialise(ResourceManager& resourceManager)
 {
-    resourceManager.InsertResource<FinalCleanup>();
-    resourceManager.InsertResource<RenderExtent>();
+    resourceManager.insert_resource<FinalCleanup>();
+    resourceManager.insert_resource<RenderExtent>();
 
-    InitVulkan(resourceManager);
-    InitSwapchain(resourceManager);
-    InitDrawImages(resourceManager);
-    InitFrameData(resourceManager);
-    InitDescriptorData(resourceManager);
-    InitAssetServer(resourceManager);
+    init_vulkan(resourceManager);
+    init_swapchain(resourceManager);
+    init_draw_images(resourceManager);
+    init_frame_data(resourceManager);
+    init_descriptor_data(resourceManager);
+    init_asset_server(resourceManager);
 
-    InitPipeline(resourceManager);
+    init_pipeline(resourceManager);
 }

@@ -1,15 +1,17 @@
 #pragma once
+
 #include "core/Error.h"
 
 #include <stdexcept>
 #include <vector>
+
 namespace Cel::Common {
 // Based on Allan Deutsch talk from C++ Now 2017
 template<typename T>
 class SlotMap
 {
   public:
-    SlotMap() { AddFreeListSLots(); }
+    SlotMap() { add_free_list_slots(); }
 
     // Index points to the data array
     // Generation ensures a slot is still valid
@@ -19,13 +21,13 @@ class SlotMap
         uint32_t generation = 0;
     };
 
-    Slot Push(T value);
-    void Remove(Slot slot);
-    T Get(Slot slot);
-    bool Valid(Slot slot);
+    Slot push(T value);
+    void remove(Slot slot);
+    T get(Slot slot);
+    bool valid(Slot slot);
 
   private:
-    void AddFreeListSLots();
+    void add_free_list_slots();
 
     std::vector<Slot> indices;
     std::vector<T> data;
@@ -36,11 +38,11 @@ class SlotMap
 
 template<typename T>
 SlotMap<T>::Slot
-SlotMap<T>::Push(T value)
+SlotMap<T>::push(T value)
 {
     // If free list empty:
     if (freeListHead == UINT32_MAX) {
-        AddFreeListSLots();
+        add_free_list_slots();
     }
 
     data.push_back(std::move(value));
@@ -64,10 +66,10 @@ SlotMap<T>::Push(T value)
 
 template<typename T>
 void
-SlotMap<T>::Remove(Slot slot)
+SlotMap<T>::remove(Slot slot)
 {
-    if (!Valid(slot)) {
-        ThrowError("Tried to remove out of date slot");
+    if (!valid(slot)) {
+        throw_error("Tried to remove out of date slot");
     }
     // Mark out of date
     ++indices[slot.index].generation;
@@ -94,24 +96,24 @@ SlotMap<T>::Remove(Slot slot)
 
 template<typename T>
 T
-SlotMap<T>::Get(Slot slot)
+SlotMap<T>::get(Slot slot)
 {
-    if (!Valid(slot)) {
-        ThrowError("Attempted to read an outdated slot");
+    if (!valid(slot)) {
+        throw_error("Attempted to read an outdated slot");
     }
     return data[indices[slot.index].index];
 }
 
 template<typename T>
 bool
-SlotMap<T>::Valid(Slot slot)
+SlotMap<T>::valid(Slot slot)
 {
     return indices[slot.index].generation == slot.generation;
 }
 
 template<typename T>
 void
-SlotMap<T>::AddFreeListSLots()
+SlotMap<T>::add_free_list_slots()
 {
     // For our typical use case i.e. asset loading, it's not expected that the
     // list will need to change size much after startup

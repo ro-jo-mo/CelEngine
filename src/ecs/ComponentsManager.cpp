@@ -8,9 +8,9 @@
 using namespace Cel;
 
 void
-ComponentsManager::DestroyEntity(const Entity entity)
+ComponentsManager::destroy_entity(const Entity entity)
 {
     for (const auto& componentArrayPtr : componentArrays | std::views::values) {
-        componentArrayPtr->DestroyEntity(entity);
+        componentArrayPtr->destroy_entity(entity);
     }
 }

@@ -63,6 +63,8 @@ target_sources(${PROJECT_NAME}
         "renderer/Descriptors.cpp"
         "renderer/Camera.cpp"
         "renderer/MegaBuffer.cpp"
+        "renderer/render-graph/PassBuilder.cpp"
+        "renderer/render-graph/RenderGraph.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -119,7 +121,10 @@ set(public_headers
         include/renderer/Descriptors.h
         include/renderer/Camera.h
         include/renderer/MegaBuffer.h
-        include/renderer/render-graph/RenderGraph.
+
+        include/renderer/render-graph/RenderGraph.h
+        include/renderer/render-graph/PassBuilder.h
+
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")
