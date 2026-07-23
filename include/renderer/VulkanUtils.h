@@ -13,97 +13,111 @@ namespace Cel::Renderer::Utils {
 bool
 load_shader(const char* path, VkDevice device, VkShaderModule* outShaderModule);
 
-void
-transition_image_layout(VkCommandBuffer cmd,
-                      VkImage image,
-                      VkImageLayout currentLayout,
-                      VkImageLayout newLayout);
+/**
+ * @brief Load a shader from a pointer to raw spv data
+ * @param data spv data
+ * @param size In bytes
+ * @param device
+ * @param outShaderModule
+ * @return
+ */
+bool
+load_shader(const uint32_t* data,
+            size_t size,
+            VkDevice device,
+            VkShaderModule* outShaderModule);
 
 void
 transition_image_layout(VkCommandBuffer cmd,
-                      VkImage image,
-                      VkImageLayout currentLayout,
-                      VkImageLayout newLayout,
-                      VkImageSubresourceRange subresourceRange);
+                        VkImage image,
+                        VkImageLayout currentLayout,
+                        VkImageLayout newLayout);
+
+void
+transition_image_layout(VkCommandBuffer cmd,
+                        VkImage image,
+                        VkImageLayout currentLayout,
+                        VkImageLayout newLayout,
+                        VkImageSubresourceRange subresourceRange);
 
 void
 copy_image_to_image(VkCommandBuffer cmd,
-                 VkImage source,
-                 VkImage destination,
-                 VkExtent2D srcSize,
-                 VkExtent2D dstSize);
+                    VkImage source,
+                    VkImage destination,
+                    VkExtent2D srcSize,
+                    VkExtent2D dstSize);
 
 [[nodiscard]] AllocatedImage
 create_image(const void* data,
-            VkExtent3D size,
-            VkFormat format,
-            VkImageUsageFlags usage,
-            bool mipmapped,
+             VkExtent3D size,
+             VkFormat format,
+             VkImageUsageFlags usage,
+             bool mipmapped,
 
-            const char* allocName,
-            VulkanContext& context,
-            VmaAllocator& allocator,
-            const ImmediateSubmit& immediate,
-            const GraphicsQueue& graphicsQueue);
+             const char* allocName,
+             VulkanContext& context,
+             VmaAllocator& allocator,
+             const ImmediateSubmit& immediate,
+             const GraphicsQueue& graphicsQueue);
 
 [[nodiscard]] AllocatedImage
 create_image(VkExtent3D size,
-            VkFormat format,
-            VkImageUsageFlags usage,
-            bool mipmapped,
+             VkFormat format,
+             VkImageUsageFlags usage,
+             bool mipmapped,
 
-            const char* allocName,
-            VulkanContext& context,
-            VmaAllocator& allocator);
+             const char* allocName,
+             VulkanContext& context,
+             VmaAllocator& allocator);
 
 [[nodiscard]] AllocatedImage
 create_image(VkImageCreateInfo imageCreateInfo,
-            VkImageViewCreateInfo imageViewCreateInfo,
+             VkImageViewCreateInfo imageViewCreateInfo,
 
-            const char* allocName,
-            VulkanContext& context,
-            VmaAllocator& allocator);
+             const char* allocName,
+             VulkanContext& context,
+             VmaAllocator& allocator);
 
 [[nodiscard]] AllocatedImage
 create_cube_map(ktxTexture* texture,
-              VkFormat format,
+                VkFormat format,
 
-              const char* allocName,
-              VulkanContext& context,
-              VmaAllocator& allocator,
-              const ImmediateSubmit& immediate,
-              const GraphicsQueue& graphicsQueue);
+                const char* allocName,
+                VulkanContext& context,
+                VmaAllocator& allocator,
+                const ImmediateSubmit& immediate,
+                const GraphicsQueue& graphicsQueue);
 
 [[nodiscard]] AllocatedBuffer
 create_buffer(size_t allocSize,
-             VkBufferUsageFlags usage,
-             VmaMemoryUsage memoryUsage,
+              VkBufferUsageFlags usage,
+              VmaMemoryUsage memoryUsage,
 
-             const char* allocName,
-             const VmaAllocator& allocator);
-
-[[nodiscard]] AllocatedMeshBuffer
-upload_mesh(std::vector<uint32_t>& indices,
-           std::vector<Vertex>& vertices,
-           VulkanContext& context,
-           VmaAllocator& allocator,
-           ImmediateSubmit& immediate,
-           GraphicsQueue& queue);
+              const char* allocName,
+              const VmaAllocator& allocator);
 
 [[nodiscard]] AllocatedMeshBuffer
 upload_mesh(std::vector<uint32_t>& indices,
-           std::vector<float>& vertices,
+            std::vector<Vertex>& vertices,
+            VulkanContext& context,
+            VmaAllocator& allocator,
+            ImmediateSubmit& immediate,
+            GraphicsQueue& queue);
 
-           VulkanContext& context,
-           VmaAllocator& allocator,
-           ImmediateSubmit& immediate,
-           GraphicsQueue& queue);
+[[nodiscard]] AllocatedMeshBuffer
+upload_mesh(std::vector<uint32_t>& indices,
+            std::vector<float>& vertices,
+
+            VulkanContext& context,
+            VmaAllocator& allocator,
+            ImmediateSubmit& immediate,
+            GraphicsQueue& queue);
 
 void
 submit_immediate(std::function<void(VkCommandBuffer cmd)>&& function,
-                const VulkanContext& context,
-                const ImmediateSubmit& immediate,
-                const GraphicsQueue& queue);
+                 const VulkanContext& context,
+                 const ImmediateSubmit& immediate,
+                 const GraphicsQueue& queue);
 
 [[nodiscard]] uint32_t
 calculate_mip_map_levels(VkExtent3D extent);
@@ -119,12 +133,12 @@ destroy_buffer(const AllocatedBuffer& buffer, const VmaAllocator& allocator);
 
 void
 upload_to_buffer(const void* data,
-               uint32_t size,
-               VkBuffer destination,
-               uint32_t destinationOffset,
+                 uint32_t size,
+                 VkBuffer destination,
+                 uint32_t destinationOffset,
 
-               VulkanContext& context,
-               VmaAllocator& allocator,
-               ImmediateSubmit& immediate,
-               GraphicsQueue& queue);
+                 VulkanContext& context,
+                 VmaAllocator& allocator,
+                 ImmediateSubmit& immediate,
+                 GraphicsQueue& queue);
 };

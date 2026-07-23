@@ -5,18 +5,23 @@
 
 namespace Cel::Renderer {
 
-// RenderGraph
-// A DAG of render passes
-// Handles the insertion of barriers and transitions between passes
+// Design notes:
 
-// RenderPass
-// An individual pass in the render pipeline
-// As a baseline, each pass
+// After creating a resource, a handle can be returned
+// Additionally, you can request a handle by the corresponding name
 
-// Ideally the render graph will handle allocations of per frame resources
-// i.e. buffers for indirect draws
+// Following islands design, a pointer to some arbitrary data can be passed to
+// the draw function
 
-// For now other buffers can be handled by the
+// Creating resources can simply follow the same layout as the existing
+// Utils::create_xx functions
+
+// Buffers should be created per frame?
+// Images can be created once?
+
+// I'll also simplify the pipeline creation
+// spirv reflect should be able to automate a large amount of it
+
 
 class RenderGraph
 {

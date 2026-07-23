@@ -1,3 +1,5 @@
+#language slang 2026
+
 struct VSInput {
     float3 pos;
 }

@@ -10,7 +10,7 @@ find_package(VulkanUtilityLibraries REQUIRED)
 find_package(fastgltf CONFIG REQUIRED)
 find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
-
+find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC)
 
@@ -29,6 +29,7 @@ target_link_libraries(${PROJECT_NAME}
         Vulkan::UtilityHeaders
         fastgltf::fastgltf
         KTX::ktx
+        unofficial::spirv-reflect
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
@@ -65,6 +66,7 @@ target_sources(${PROJECT_NAME}
         "renderer/MegaBuffer.cpp"
         "renderer/render-graph/PassBuilder.cpp"
         "renderer/render-graph/RenderGraph.cpp"
+        "renderer/render-graph/PipelineBuilder.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -124,7 +126,7 @@ set(public_headers
 
         include/renderer/render-graph/RenderGraph.h
         include/renderer/render-graph/PassBuilder.h
-
+        include/renderer/render-graph/PipelineBuilder.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

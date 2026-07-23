@@ -1,3 +1,5 @@
+#language slang 2026
+
 module common;
 
 public struct SceneData

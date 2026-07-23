@@ -16,6 +16,7 @@
     "fastgltf",
     "stb",
     "gtest",
-    "ktx"
+    "ktx",
+    "spirv-reflect"
   ]
 }

@@ -2,10 +2,13 @@
 
 #include "RenderGraph.h"
 #include "renderer/VulkanTypes.h"
+#include "renderer/VulkanUtils.h"
 
 #include <string>
 
 namespace Cel::Renderer {
+
+// Create image
 
 struct PassBuffer;
 struct PassImage;
@@ -18,10 +21,10 @@ class PassBuilder
     {
     }
 
-    Handle<PassBuffer> create_buffer(size_t allocSize,
+    Handle<PassBuffer> create_buffer(std::string name,
+                                     size_t allocSize,
                                      VkBufferUsageFlags usage,
-                                     VmaMemoryUsage memoryUsage,
-                                     std::string name);
+                                     VmaMemoryUsage memoryUsage);
     void create_image();
 
     void read_buffer();

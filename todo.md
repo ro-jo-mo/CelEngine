@@ -11,6 +11,7 @@
 - Alter commands to stored type index instead of using polymorphism (also update component arrays to support this)
 - Rework world to allow for arbitrary queries
     - World should block all parallel systems
+    - Resource<const World> can imply read locks on all
 
 # Later
 

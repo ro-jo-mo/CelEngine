@@ -118,6 +118,12 @@ struct Handle
     uint32_t index;
 };
 
+struct Pipeline
+{
+    VkPipeline pipeline;
+    VkPipelineLayout pipelineLayout;
+};
+
 namespace Detail {
 
 template<typename T>

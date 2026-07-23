@@ -9,6 +9,8 @@
 #include "renderer/VulkanTypes.h"
 #include "renderer/VulkanUtils.h"
 #include "renderer/Window.h"
+#include "renderer/render-graph/PipelineBuilder.h"
+
 #include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>
 
@@ -81,7 +83,8 @@ init_vulkan(ResourceManager& resourceManager)
 
     resourceManager.insert_resource(context);
 
-    auto [graphicsQueue,graphicsQueueFamily] = deviceBuild.get_queue_and_index(vkb::QueueType::graphics).value();
+    auto [graphicsQueue, graphicsQueueFamily] =
+        deviceBuild.get_queue_and_index(vkb::QueueType::graphics).value();
 
     GraphicsQueue queue{ graphicsQueue, graphicsQueueFamily };
 
@@ -271,9 +274,9 @@ init_frame_data(ResourceManager& resourceManager)
 
         // Firstly create command pool / buffer
         vk_check(vkCreateCommandPool(context->device,
-                                    &commandPoolCreateInfo,
-                                    nullptr,
-                                    &frame.commandPool));
+                                     &commandPoolCreateInfo,
+                                     nullptr,
+                                     &frame.commandPool));
 
         VkCommandBufferAllocateInfo commandBufferAllocateInfo =
             Initialisers::command_buffer_allocate_info(frame.commandPool, 1);
@@ -286,9 +289,9 @@ init_frame_data(ResourceManager& resourceManager)
             context->device, &fenceCreateInfo, nullptr, &frame.renderFence));
 
         vk_check(vkCreateSemaphore(context->device,
-                                  &semaphoreCreateInfo,
-                                  nullptr,
-                                  &frame.acquireSemaphore));
+                                   &semaphoreCreateInfo,
+                                   nullptr,
+                                   &frame.acquireSemaphore));
 
         frameData.frames.push_back(frame);
 
@@ -304,9 +307,9 @@ init_frame_data(ResourceManager& resourceManager)
     // Lastly create resources for immediate submit
     ImmediateSubmit immediate{};
     vk_check(vkCreateCommandPool(context->device,
-                                &commandPoolCreateInfo,
-                                nullptr,
-                                &immediate.commandPool));
+                                 &commandPoolCreateInfo,
+                                 nullptr,
+                                 &immediate.commandPool));
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo =
         Initialisers::command_buffer_allocate_info(immediate.commandPool, 1);
@@ -428,111 +431,42 @@ void
 init_pipeline(ResourceManager& resourceManager)
 {
     auto& context = resourceManager.GetResource<VulkanContext>();
-    auto& drawImage = resourceManager.GetResource<DrawImage>();
-    auto& depthImage = resourceManager.GetResource<DepthImage>();
     auto& global = resourceManager.GetResource<GlobalDescriptorData>();
 
-    VkShaderModule meshVert;
-    if (!Utils::load_shader(
-            "../../shaders/mesh.vert.spv", context->device, &meshVert)) {
-        throw_error("Failed to load vertex shader");
-    }
+    Pipeline meshPipe = PipelineBuilder_(context->device)
+                            .add_shader_module("../../shaders/mesh.vert.spv",
+                                               VK_SHADER_STAGE_VERTEX_BIT)
+                            .add_shader_module("../../shaders/mesh.frag.spv",
+                                               VK_SHADER_STAGE_FRAGMENT_BIT)
+                            .build();
 
-    VkShaderModule meshFrag;
-    if (!Utils::load_shader(
-            "../../shaders/mesh.frag.spv", context->device, &meshFrag)) {
-        throw_error("Failed to load vertex shader");
-    }
-
-    VkPipelineLayoutCreateInfo meshLayoutInfo =
-        Initialisers::pipeline_layout_create_info();
-    meshLayoutInfo.setLayoutCount = 1;
-    meshLayoutInfo.pSetLayouts = &global->sceneLayout;
-    meshLayoutInfo.pushConstantRangeCount = 0;
-
-    VkPipelineLayout meshLayout;
-    vk_check(vkCreatePipelineLayout(
-        context->device, &meshLayoutInfo, nullptr, &meshLayout));
-
-    // #####################
-
-    PipelineBuilder pipelineBuilder;
-
-    // use the triangle layout we created
-    pipelineBuilder.pipelineLayout = meshLayout;
-    pipelineBuilder.set_vertex_input_none();
-    // connecting the vertex and pixel shaders to the pipeline
-    pipelineBuilder.set_shaders(meshVert, meshFrag);
-    // it will draw triangles
-    pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-    // filled triangles
-    pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
-    // no backface culling
-    pipelineBuilder.set_cull_mode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE);
-    // no multisampling
-    pipelineBuilder.set_mutisampling_none();
-    // Enable blending later once I figure it out
-    pipelineBuilder.disable_blending();
-    // enable depth test
-    pipelineBuilder.enable_depth_test(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
-
-    // connect the image format we will draw into, from draw image
-    pipelineBuilder.set_colour_attachment(drawImage->imageFormat);
-    pipelineBuilder.set_depth_attachment(depthImage->imageFormat);
-
-    // finally build the pipeline
-    auto meshPipeline = pipelineBuilder.build_pipeline(context->device);
-
-    resourceManager.insert_resource<MeshPipeline>(meshPipeline, meshLayout);
+    resourceManager.insert_resource<MeshPipeline>(meshPipe.pipeline,
+                                                  meshPipe.pipelineLayout);
 
     // Create skybox pipeline
 
-    VkShaderModule skyboxVert;
-    if (!Utils::load_shader(
-            "../../shaders/skybox.vert.spv", context->device, &skyboxVert)) {
-        throw_error("Failed to load skybox vert shader");
-    }
+    auto skyboxPipe = PipelineBuilder_(context->device)
+                          .add_shader_module("../../shaders/skybox.vert.spv",
+                                             VK_SHADER_STAGE_VERTEX_BIT)
+                          .add_shader_module("../../shaders/skybox.frag.spv",
+                                             VK_SHADER_STAGE_FRAGMENT_BIT)
+                          .build();
 
-    VkShaderModule skyboxFrag;
-    if (!Utils::load_shader(
-            "../../shaders/skybox.frag.spv", context->device, &skyboxFrag)) {
-        throw_error("Failed to load skybox frag shader");
-    }
-
-    VkPipelineLayoutCreateInfo skyboxLayoutCreateInfo =
-        Initialisers::pipeline_layout_create_info();
-    skyboxLayoutCreateInfo.setLayoutCount = 1;
-    skyboxLayoutCreateInfo.pSetLayouts = &global->skyboxLayout;
-
-    VkPipelineLayout skyboxLayout;
-
-    vkCreatePipelineLayout(
-        context->device, &skyboxLayoutCreateInfo, nullptr, &skyboxLayout);
-
-    pipelineBuilder.pipelineLayout = skyboxLayout;
-    pipelineBuilder.set_shaders(skyboxVert, skyboxFrag);
-    pipelineBuilder.set_cull_mode(VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_CLOCKWISE);
-    pipelineBuilder.set_vertex_input_float_array();
-
-    auto skyboxPipeline = pipelineBuilder.build_pipeline(context->device);
-
-    resourceManager.insert_resource<SkyboxPipeline>(skyboxPipeline,
-                                                   skyboxLayout);
+    resourceManager.insert_resource<SkyboxPipeline>(skyboxPipe.pipeline,
+                                                    skyboxPipe.pipelineLayout);
 
     // clean structures
-    vkDestroyShaderModule(context->device, meshFrag, nullptr);
-    vkDestroyShaderModule(context->device, meshVert, nullptr);
-    vkDestroyShaderModule(context->device, skyboxVert, nullptr);
-    vkDestroyShaderModule(context->device, skyboxFrag, nullptr);
 
     auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
     cleanup->push([=, &context]() {
-        vkDestroyPipelineLayout(context->device, meshLayout, nullptr);
-        vkDestroyPipeline(context->device, meshPipeline, nullptr);
+        vkDestroyPipelineLayout(
+            context->device, meshPipe.pipelineLayout, nullptr);
+        vkDestroyPipeline(context->device, meshPipe.pipeline, nullptr);
 
-        vkDestroyPipelineLayout(context->device, skyboxLayout, nullptr);
-        vkDestroyPipeline(context->device, skyboxPipeline, nullptr);
+        vkDestroyPipelineLayout(
+            context->device, skyboxPipe.pipelineLayout, nullptr);
+        vkDestroyPipeline(context->device, skyboxPipe.pipeline, nullptr);
     });
 }
 

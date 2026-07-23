@@ -1,3 +1,5 @@
+#language slang 2026
+
 import common;
 
 struct VSInput
