@@ -2,6 +2,7 @@
 
 #include "renderer/VulkanTypes.h"
 
+#include <array>
 #include <string>
 #include <unordered_map>
 
@@ -24,13 +25,18 @@ class RenderGraph
 {
   public:
     RenderGraph& add_pass();
+    Handle<AllocatedBuffer> get_buffer_handle_from_name(std::string name);
+    Handle<AllocatedImage> get_image_handle_from_name(std::string name);
 
   private:
-    Handle<AllocatedBuffer> add_buffer(std::string name,
-                                       AllocatedBuffer buffer);
+    Handle<AllocatedBuffer> add_buffer(
+        std::string name,
+        std::array<AllocatedBuffer, FRAME_OVERLAP> buffers);
     Handle<AllocatedImage> add_image(std::string name, AllocatedImage image);
 
     std::unordered_map<std::string, uint32_t> nameToIndex;
+    std::array<std::vector<AllocatedBuffer>, FRAME_OVERLAP> perFrameBuffers;
+    std::vector<AllocatedImage> images;
 
     friend class PassBuilder;
 };

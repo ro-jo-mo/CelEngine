@@ -9,7 +9,7 @@
 namespace Cel::Renderer {
 
 // buffers created by this are created for each frame in flight
-// The author can create their own transient buffers if they need them
+// Later I might add single buffers
 
 // Indirection through handles abstracts the per frame nature of resources
 

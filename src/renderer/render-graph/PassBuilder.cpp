@@ -30,10 +30,10 @@ PassBuilder::create_buffer(const std::string& name,
 
 Handle<AllocatedImage>
 PassBuilder::create_image(const std::string& name,
-                          VkFormat format,
-                          VkExtent3D extent,
-                          VkImageUsageFlags usages,
-                          VkImageAspectFlags aspects) const
+                          const VkFormat format,
+                          const VkExtent3D extent,
+                          const VkImageUsageFlags usages,
+                          const VkImageAspectFlags aspects) const
 {
     const VkImageCreateInfo imageInfo =
         Initialisers::image_create_info(format, usages, extent);
