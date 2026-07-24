@@ -30,10 +30,18 @@ class PassBuilder
     {
     }
 
+    /**
+     * @brief Creates a buffer per frame in flight
+     * @param name
+     * @param allocSize
+     * @param usages     * @param memoryUsage
+     * @return
+     */
     Handle<AllocatedBuffer> create_buffer(const std::string& name,
                                           size_t allocSize,
                                           VkBufferUsageFlags usages,
                                           VmaMemoryUsage memoryUsage) const;
+
     Handle<AllocatedImage> create_image(const std::string& name,
                                         VkFormat format,
                                         VkExtent3D extent,

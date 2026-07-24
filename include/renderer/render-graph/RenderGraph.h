@@ -19,7 +19,6 @@ namespace Cel::Renderer {
 
 // At a minimum a pass needs to state which images and images it will read or
 // write to
-//
 
 class RenderGraph
 {

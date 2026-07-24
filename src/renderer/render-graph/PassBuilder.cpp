@@ -11,21 +11,14 @@ PassBuilder::create_buffer(const std::string& name,
                            VkBufferUsageFlags usages,
                            VmaMemoryUsage memoryUsage) const
 {
-    // Create per frame
-    // Return a single handle
-    Handle<AllocatedBuffer> handle{};
+    std::array<AllocatedBuffer, FRAME_OVERLAP> buffers;
 
     for (size_t i = 0; i < FRAME_OVERLAP; i++) {
-        handle = graph.add_buffer(
-            name,
-            Utils::create_buffer(
-                allocSize, usages, memoryUsage, name.c_str(), allocator));
+        buffers[i] = Utils::create_buffer(
+            allocSize, usages, memoryUsage, name.c_str(), allocator);
     }
 
-    // Lazy approach, don't feel like passing the params to render graph
-    handle.index -= FRAME_OVERLAP - 1;
-
-    return handle;
+    return graph.add_buffer(name, buffers);
 }
 
 Handle<AllocatedImage>
