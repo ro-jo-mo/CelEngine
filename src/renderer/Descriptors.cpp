@@ -129,63 +129,61 @@ Cel::Renderer::DescriptorAllocator::create_pool(
 }
 
 void
-Cel::Renderer::DescriptorLayoutBuilder::add_binding(const uint32_t binding,
-                                                   VkDescriptorType type)
+Cel::Renderer::DescriptorLayoutBuilder::add_binding(
+    const uint32_t binding,
+    VkDescriptorType type,
+    VkShaderStageFlags stages,
+    VkDescriptorBindingFlags flagBits)
 {
     VkDescriptorSetLayoutBinding newBind{};
     newBind.binding = binding;
     newBind.descriptorCount = 1;
     newBind.descriptorType = type;
+    newBind.stageFlags = stages;
 
     bindings.push_back(newBind);
+    flags.push_back(flagBits);
+}
+
+void
+Cel::Renderer::DescriptorLayoutBuilder::add_binding(
+    VkDescriptorSetLayoutBinding binding,
+    VkDescriptorBindingFlags flagBits)
+{
+    bindings.push_back(binding);
+    flags.push_back(flagBits);
 }
 
 void
 Cel::Renderer::DescriptorLayoutBuilder::clear()
 {
     bindings.clear();
+    flags.clear();
+}
+
+bool
+Cel::Renderer::DescriptorLayoutBuilder::empty() const
+{
+    return bindings.empty();
 }
 
 VkDescriptorSetLayout
-Cel::Renderer::DescriptorLayoutBuilder::build(
-    VkDevice device,
-    VkShaderStageFlags shaderStages,
-    const void* pNext,
-    VkDescriptorSetLayoutCreateFlags flags)
+Cel::Renderer::DescriptorLayoutBuilder::build(VkDevice device) const
 {
-    for (auto& binding : bindings) {
-        binding.stageFlags |= shaderStages;
-    }
+    VkDescriptorSetLayoutBindingFlagsCreateInfo flagInfo{
+        .sType =
+            VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO
+    };
+    flagInfo.bindingCount = flags.size();
+    flagInfo.pBindingFlags = flags.data();
 
     VkDescriptorSetLayoutCreateInfo info = {
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
     };
-    info.pNext = pNext;
-
+    info.pNext = &flagInfo;
     info.pBindings = bindings.data();
     info.bindingCount = static_cast<uint32_t>(bindings.size());
-    info.flags = flags;
-
-    VkDescriptorSetLayout set;
-    vk_check(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
-
-    return set;
-}
-
-VkDescriptorSetLayout
-Cel::Renderer::DescriptorLayoutBuilder::build(
-    VkDevice device,
-    const void* pNext,
-    VkDescriptorSetLayoutCreateFlags flags)
-{
-    VkDescriptorSetLayoutCreateInfo info = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
-    };
-    info.pNext = pNext;
-
-    info.pBindings = bindings.data();
-    info.bindingCount = static_cast<uint32_t>(bindings.size());
-    info.flags = flags;
+    info.flags = 0;
 
     VkDescriptorSetLayout set;
     vk_check(vkCreateDescriptorSetLayout(device, &info, nullptr, &set));
@@ -195,10 +193,10 @@ Cel::Renderer::DescriptorLayoutBuilder::build(
 
 void
 Cel::Renderer::DescriptorWriter::write_image(const int binding,
-                                            VkImageView image,
-                                            VkSampler sampler,
-                                            VkImageLayout layout,
-                                            VkDescriptorType type)
+                                             VkImageView image,
+                                             VkSampler sampler,
+                                             VkImageLayout layout,
+                                             VkDescriptorType type)
 {
     const VkDescriptorImageInfo& info =
         imageInfos.emplace_back(VkDescriptorImageInfo{
@@ -219,10 +217,10 @@ Cel::Renderer::DescriptorWriter::write_image(const int binding,
 
 void
 Cel::Renderer::DescriptorWriter::write_buffer(const int binding,
-                                             VkBuffer buffer,
-                                             const size_t size,
-                                             const size_t offset,
-                                             VkDescriptorType type)
+                                              VkBuffer buffer,
+                                              const size_t size,
+                                              const size_t offset,
+                                              VkDescriptorType type)
 {
     VkDescriptorBufferInfo& info =
         bufferInfos.emplace_back(VkDescriptorBufferInfo{
@@ -256,7 +254,8 @@ Cel::Renderer::DescriptorWriter::clear()
 }
 
 void
-Cel::Renderer::DescriptorWriter::update_set(VkDevice device, VkDescriptorSet set)
+Cel::Renderer::DescriptorWriter::update_set(VkDevice device,
+                                            VkDescriptorSet set)
 {
     for (VkWriteDescriptorSet& write : writes) {
         write.dstSet = set;
@@ -284,7 +283,7 @@ Cel::Renderer::DescriptorWriter::update_set(VkDevice device, VkDescriptorSet set
 
 uint32_t
 Cel::Renderer::TextureCache::add_texture(VkImageView imageView,
-                                        VkSampler sampler)
+                                         VkSampler sampler)
 {
     for (const auto& [i, descriptor] :
          std::ranges::views::enumerate(descriptors)) {

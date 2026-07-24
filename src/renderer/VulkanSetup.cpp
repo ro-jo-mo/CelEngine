@@ -4,7 +4,6 @@
 #include "renderer/AssetServer.h"
 #include "renderer/DeletionQueue.h"
 #include "renderer/Descriptors.h"
-#include "renderer/PipelineBuilder.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanTypes.h"
 #include "renderer/VulkanUtils.h"
@@ -345,46 +344,6 @@ init_descriptor_data(ResourceManager& resourceManager)
 
     global.allocator.init(context->device, 10, sizes);
 
-    // Set scene layout
-    {
-        DescriptorLayoutBuilder builder;
-        builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        builder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        VkDescriptorSetLayoutBindingFlagsCreateInfo bindFlags = {
-            .sType =
-                VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
-            .pNext = nullptr
-        };
-
-        std::array<VkDescriptorBindingFlags, 2> flagArray{
-            0,
-            VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT |
-                VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT
-        };
-
-        builder.bindings[1].descriptorCount = 4048;
-
-        bindFlags.bindingCount = 2;
-        bindFlags.pBindingFlags = flagArray.data();
-
-        global.sceneLayout = builder.build(context->device,
-                                           VK_SHADER_STAGE_VERTEX_BIT |
-                                               VK_SHADER_STAGE_FRAGMENT_BIT,
-                                           &bindFlags);
-    }
-
-    // Skybox layout
-    {
-        DescriptorLayoutBuilder builder;
-        builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-        builder.bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-        builder.add_binding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-        builder.bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        global.skyboxLayout = builder.build(context->device);
-    }
-
     auto& frames = frameData->frames;
     auto& cleanup = resourceManager.GetResource<FinalCleanup>();
 
@@ -433,7 +392,7 @@ init_pipeline(ResourceManager& resourceManager)
     auto& context = resourceManager.GetResource<VulkanContext>();
     auto& global = resourceManager.GetResource<GlobalDescriptorData>();
 
-    Pipeline meshPipe = PipelineBuilder_(context->device)
+    Pipeline meshPipe = PipelineBuilder(context->device)
                             .add_shader_module("../../shaders/mesh.vert.spv",
                                                VK_SHADER_STAGE_VERTEX_BIT)
                             .add_shader_module("../../shaders/mesh.frag.spv",
@@ -443,14 +402,18 @@ init_pipeline(ResourceManager& resourceManager)
     resourceManager.insert_resource<MeshPipeline>(meshPipe.pipeline,
                                                   meshPipe.pipelineLayout);
 
+    global->sceneLayout = meshPipe.descriptorSets[0];
+
     // Create skybox pipeline
 
-    auto skyboxPipe = PipelineBuilder_(context->device)
+    auto skyboxPipe = PipelineBuilder(context->device)
                           .add_shader_module("../../shaders/skybox.vert.spv",
                                              VK_SHADER_STAGE_VERTEX_BIT)
                           .add_shader_module("../../shaders/skybox.frag.spv",
                                              VK_SHADER_STAGE_FRAGMENT_BIT)
                           .build();
+
+    global->skyboxLayout = skyboxPipe.descriptorSets[0];
 
     resourceManager.insert_resource<SkyboxPipeline>(skyboxPipe.pipeline,
                                                     skyboxPipe.pipelineLayout);

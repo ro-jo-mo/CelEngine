@@ -8,24 +8,37 @@
 
 namespace Cel::Renderer {
 
-// Create image
+// buffers created by this are created for each frame in flight
+// The author can create their own transient buffers if they need them
 
-struct PassBuffer;
-struct PassImage;
+// Indirection through handles abstracts the per frame nature of resources
+
+// A pass is likely to:
+// Set push constants
+// Write to buffers
+// Write to depth, color attachments
 
 class PassBuilder
 {
   public:
-    explicit PassBuilder(RenderGraph& owner)
-        : owner(owner)
+    explicit PassBuilder(RenderGraph& graph,
+                         VkDevice device,
+                         VmaAllocator& allocator)
+        : graph(graph)
+        , device(device)
+        , allocator(allocator)
     {
     }
 
-    Handle<PassBuffer> create_buffer(std::string name,
-                                     size_t allocSize,
-                                     VkBufferUsageFlags usage,
-                                     VmaMemoryUsage memoryUsage);
-    void create_image();
+    Handle<AllocatedBuffer> create_buffer(const std::string& name,
+                                          size_t allocSize,
+                                          VkBufferUsageFlags usages,
+                                          VmaMemoryUsage memoryUsage) const;
+    Handle<AllocatedImage> create_image(const std::string& name,
+                                        VkFormat format,
+                                        VkExtent3D extent,
+                                        VkImageUsageFlags usages,
+                                        VkImageAspectFlags aspects) const;
 
     void read_buffer();
     void read_image();
@@ -34,7 +47,9 @@ class PassBuilder
     void write_image();
 
   private:
-    RenderGraph& owner;
+    RenderGraph& graph;
+    VkDevice device;
+    VmaAllocator& allocator;
 };
 
 }

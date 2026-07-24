@@ -27,7 +27,7 @@ class DescriptorAllocator
   private:
     VkDescriptorPool get_pool();
     VkDescriptorPool create_pool(uint32_t setCount,
-                                std::span<PoolSizeRatio> poolRatios);
+                                 std::span<PoolSizeRatio> poolRatios);
 
     std::vector<PoolSizeRatio> ratios;
     std::vector<VkDescriptorPool> fullPools;
@@ -39,37 +39,35 @@ class DescriptorAllocator
 class DescriptorLayoutBuilder
 {
   public:
-    void add_binding(uint32_t binding, VkDescriptorType type);
+    void add_binding(uint32_t binding,
+                     VkDescriptorType type,
+                     VkShaderStageFlags stages,
+                     VkDescriptorBindingFlags flagBits = 0);
+    void add_binding(VkDescriptorSetLayoutBinding binding,
+                     VkDescriptorBindingFlags flagBits = 0);
     void clear();
+    [[nodiscard]] bool empty() const;
 
-    [[nodiscard]] VkDescriptorSetLayout build(
-        VkDevice device,
-        VkShaderStageFlags shaderStages,
-        const void* pNext = nullptr,
-        VkDescriptorSetLayoutCreateFlags flags = 0);
+    [[nodiscard]] VkDescriptorSetLayout build(VkDevice device) const;
 
-    // For a case where shader stages are different and set manually
-    [[nodiscard]] VkDescriptorSetLayout build(
-        VkDevice device,
-        const void* pNext = nullptr,
-        VkDescriptorSetLayoutCreateFlags flags = 0);
-
+  private:
     std::vector<VkDescriptorSetLayoutBinding> bindings;
+    std::vector<VkDescriptorBindingFlags> flags;
 };
 
 class DescriptorWriter
 {
   public:
     void write_image(int binding,
-                    VkImageView image,
-                    VkSampler sampler,
-                    VkImageLayout layout,
-                    VkDescriptorType type);
-    void write_buffer(int binding,
-                     VkBuffer buffer,
-                     size_t size,
-                     size_t offset,
+                     VkImageView image,
+                     VkSampler sampler,
+                     VkImageLayout layout,
                      VkDescriptorType type);
+    void write_buffer(int binding,
+                      VkBuffer buffer,
+                      size_t size,
+                      size_t offset,
+                      VkDescriptorType type);
 
     void write(VkWriteDescriptorSet set);
 

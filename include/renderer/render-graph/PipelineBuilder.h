@@ -11,9 +11,6 @@ namespace Cel::Renderer {
 
 struct DescriptorSetLayoutData
 {
-    VkDescriptorSetLayoutCreateInfo createInfo{
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO
-    };
     std::vector<VkDescriptorSetLayoutBinding> bindings;
     std::vector<VkDescriptorBindingFlags> flags;
     uint32_t layoutIndex;
@@ -23,10 +20,10 @@ struct DescriptorSetLayoutData
  * Most of the pipeline can default to the same set of assumptions about are
  * data
  */
-class PipelineBuilder_
+class PipelineBuilder
 {
   public:
-    explicit PipelineBuilder_(VkDevice device)
+    explicit PipelineBuilder(VkDevice device)
         : device(device)
     {
         initialise_defaults();
@@ -41,15 +38,15 @@ class PipelineBuilder_
      * @param stage Shader stage
      * @return this
      */
-    PipelineBuilder_& add_shader_module(const char* path,
-                                        VkShaderStageFlagBits stage);
+    PipelineBuilder& add_shader_module(const char* path,
+                                       VkShaderStageFlagBits stage);
 
-    PipelineBuilder_& enable_depth_test(
+    PipelineBuilder& enable_depth_test(
         bool depthWriteEnable,
         VkCompareOp op = VK_COMPARE_OP_GREATER_OR_EQUAL);
-    PipelineBuilder_& disable_depth_test();
-    PipelineBuilder_& set_color_attachement(VkFormat format);
-    PipelineBuilder_& set_depth_attachment(VkFormat format);
+    PipelineBuilder& disable_depth_test();
+    PipelineBuilder& set_color_attachement(VkFormat format);
+    PipelineBuilder& set_depth_attachment(VkFormat format);
 
   private:
     void generate_pipeline_layout();
@@ -68,15 +65,15 @@ class PipelineBuilder_
 
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
 
-    struct DescriptorBindingAndFlags
+    struct LayoutBindingAndFlags
     {
         VkDescriptorSetLayoutBinding binding;
         VkDescriptorBindingFlags flags;
     };
-
     // descriptor (set,binding) -> vk data
-    std::map<std::pair<uint32_t, uint32_t>, DescriptorBindingAndFlags>
+    std::map<std::pair<uint32_t, uint32_t>, LayoutBindingAndFlags>
         descriptorSetLayouts;
+    std::vector<VkDescriptorSetLayout> compiledDescriptors;
 
     std::vector<VkPushConstantRange> pushConstants;
 

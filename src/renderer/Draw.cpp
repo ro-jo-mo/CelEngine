@@ -160,7 +160,6 @@ DrawData::draw_geometry()
             .buffer = entityBuffer.buffer
         };
 
-        // TODO: add per entity data buffer address
         auto sceneBufferData =
             static_cast<SceneData*>(sceneBuffer.info.pMappedData);
         SceneData data{

@@ -122,6 +122,7 @@ struct Pipeline
 {
     VkPipeline pipeline;
     VkPipelineLayout pipelineLayout;
+    std::vector<VkDescriptorSetLayout> descriptorSets;
 };
 
 namespace Detail {

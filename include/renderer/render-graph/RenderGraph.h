@@ -1,5 +1,7 @@
 #pragma once
 
+#include "renderer/VulkanTypes.h"
+
 #include <string>
 #include <unordered_map>
 
@@ -7,21 +9,16 @@ namespace Cel::Renderer {
 
 // Design notes:
 
-// After creating a resource, a handle can be returned
-// Additionally, you can request a handle by the corresponding name
+// Need to move to a handle system for pipelines
+// As the rendergraph is reconstructed each frame, we can use systems to add
+// each pass As systems are used to add passes, we can additionally use the
+// typical queries and resources as all other systems
+// This allows us to use the same query system to for example filter only
+// shadow casters
 
-// Following islands design, a pointer to some arbitrary data can be passed to
-// the draw function
-
-// Creating resources can simply follow the same layout as the existing
-// Utils::create_xx functions
-
-// Buffers should be created per frame?
-// Images can be created once?
-
-// I'll also simplify the pipeline creation
-// spirv reflect should be able to automate a large amount of it
-
+// At a minimum a pass needs to state which images and images it will read or
+// write to
+//
 
 class RenderGraph
 {
@@ -29,6 +26,10 @@ class RenderGraph
     RenderGraph& add_pass();
 
   private:
+    Handle<AllocatedBuffer> add_buffer(std::string name,
+                                       AllocatedBuffer buffer);
+    Handle<AllocatedImage> add_image(std::string name, AllocatedImage image);
+
     std::unordered_map<std::string, uint32_t> nameToIndex;
 
     friend class PassBuilder;

@@ -56,7 +56,6 @@ target_sources(${PROJECT_NAME}
         "renderer/CleanupRenderer.cpp"
         "renderer/Window.cpp"
         "renderer/VulkanSetup.cpp"
-        "renderer/PipelineBuilder.cpp"
         "renderer/VulkanHelpers.cpp"
         "renderer/Draw.cpp"
         "renderer/VulkanUtils.cpp"
@@ -114,7 +113,6 @@ set(public_headers
         include/renderer/RenderPlugin.h
         include/renderer/VulkanSetup.h
         include/renderer/Window.h
-        include/renderer/PipelineBuilder.h
         include/renderer/VulkanHelpers.h
         include/renderer/VulkanTypes.h
         include/renderer/Draw.h
@@ -127,6 +125,7 @@ set(public_headers
         include/renderer/render-graph/RenderGraph.h
         include/renderer/render-graph/PassBuilder.h
         include/renderer/render-graph/PipelineBuilder.h
+        include/renderer/render-graph/RenderPass.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

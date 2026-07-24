@@ -19,7 +19,7 @@ auto assert_spv = [](SpvReflectResult result) {
 };
 
 Pipeline
-PipelineBuilder_::build()
+PipelineBuilder::build()
 {
     generate_pipeline_layout();
 
@@ -70,74 +70,22 @@ PipelineBuilder_::build()
 
     VkPipeline newPipeline;
 
-    if (vkCreateGraphicsPipelines(
-            device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline) ==
-        VK_SUCCESS) {
-        fmt::println("failed to create pipeline");
-        return { newPipeline, pipelineLayout };
+    vk_check(vkCreateGraphicsPipelines(
+        device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline));
+
+    for (auto& shader : shaderStages) {
+        vkDestroyShaderModule(device, shader.module, nullptr);
     }
 
-    // if failure return null
-    return { VK_NULL_HANDLE, VK_NULL_HANDLE };
-}
-
-PipelineBuilder_&
-PipelineBuilder_::enable_depth_test(bool depthWriteEnable, VkCompareOp op)
-{
-    depthStencil.depthTestEnable = VK_TRUE;
-    depthStencil.depthWriteEnable = depthWriteEnable;
-    depthStencil.depthCompareOp = op;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
-    depthStencil.stencilTestEnable = VK_FALSE;
-    depthStencil.front = {};
-    depthStencil.back = {};
-    depthStencil.minDepthBounds = 0.f;
-    depthStencil.maxDepthBounds = 1.f;
-
-    return *this;
-}
-
-PipelineBuilder_&
-PipelineBuilder_::disable_depth_test()
-{
-    depthStencil.depthTestEnable = VK_FALSE;
-    depthStencil.depthWriteEnable = VK_FALSE;
-    depthStencil.depthCompareOp = VK_COMPARE_OP_NEVER;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
-    depthStencil.stencilTestEnable = VK_FALSE;
-    depthStencil.front = {};
-    depthStencil.back = {};
-    depthStencil.minDepthBounds = 0.f;
-    depthStencil.maxDepthBounds = 1.f;
-
-    return *this;
-}
-
-PipelineBuilder_&
-PipelineBuilder_::set_color_attachement(VkFormat format)
-{
-    colorAttachmentformat = format;
-
-    renderInfo.colorAttachmentCount = 1;
-    renderInfo.pColorAttachmentFormats = &colorAttachmentformat;
-
-    return *this;
-}
-
-PipelineBuilder_&
-PipelineBuilder_::set_depth_attachment(VkFormat format)
-{
-    renderInfo.depthAttachmentFormat = format;
-
-    return *this;
+    return { newPipeline, pipelineLayout, compiledDescriptors };
 }
 
 /**
- * The default pipeline *should* be good enough to represent 90% of graphics
- * pipelines accurately without changes
+ * The aim with the defaults is to allow most graphics pipelines to be
+ * created without additional calls
  */
 void
-PipelineBuilder_::initialise_defaults()
+PipelineBuilder::initialise_defaults()
 {
     vertexInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO
@@ -182,15 +130,14 @@ PipelineBuilder_::initialise_defaults()
     };
     enable_depth_test(true);
 
+    renderInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
     // Set generic colour / depth attachments
     set_color_attachement(VK_FORMAT_R16G16B16A16_SFLOAT);
     set_depth_attachment(VK_FORMAT_D32_SFLOAT);
-
-    renderInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 }
 
 void
-PipelineBuilder_::generate_pipeline_layout()
+PipelineBuilder::generate_pipeline_layout()
 {
     VkPipelineLayoutCreateInfo createInfo =
         Initialisers::pipeline_layout_create_info();
@@ -209,67 +156,38 @@ PipelineBuilder_::generate_pipeline_layout()
 
     DescriptorLayoutBuilder builder{};
 
-    std::vector<VkDescriptorSetLayout> compiledDescriptorLayouts;
-
     // Simply add the descriptor bindings to the builder
     // If its a new set, build and push to final descriptor list
     for (const auto& [setAndBinding, layoutBinding] : descriptorSetLayouts) {
         const auto set = setAndBinding.first;
 
         if (currentSet != set) {
-            compiledDescriptorLayouts.push_back(builder.build(device));
+            compiledDescriptors.push_back(builder.build(device));
 
             builder.clear();
 
             currentSet = set;
         }
 
-        builder.bindings.push_back(layoutBinding);
+        builder.add_binding(layoutBinding.binding, layoutBinding.flags);
     }
 
     // Don't forget to compile the final descriptor
-    if (builder.bindings.size() > 0) {
-        compiledDescriptorLayouts.push_back(builder.build(device));
+    if (!builder.empty()) {
+        compiledDescriptors.push_back(builder.build(device));
     }
 
-    createInfo.setLayoutCount = compiledDescriptorLayouts.size();
-    createInfo.pSetLayouts = compiledDescriptorLayouts.data();
+    createInfo.setLayoutCount = compiledDescriptors.size();
+    createInfo.pSetLayouts = compiledDescriptors.data();
 
     vkCreatePipelineLayout(device, &createInfo, nullptr, &pipelineLayout);
 }
 
-DescriptorSetLayoutData
-get_descriptor_data_from_spv(const SpvReflectDescriptorSet& layout,
-                             VkShaderStageFlagBits stage)
-{
-    DescriptorSetLayoutData data{};
-    data.layoutIndex = layout.set;
-    data.createInfo.bindingCount = layout.binding_count;
-    data.bindings.reserve(layout.binding_count);
-    data.flags.resize(layout.binding_count);
+// ============================================================================
+// ============================================================================
+// ============================================================================
 
-    for (size_t i = 0; i < layout.binding_count; i++) {
-        VkDescriptorSetLayoutBinding bindingInfo{};
-
-        auto binding = layout.bindings[i];
-
-        bindingInfo.binding = binding->binding;
-        bindingInfo.descriptorCount = binding->count;
-        bindingInfo.descriptorType =
-            static_cast<VkDescriptorType>(binding->descriptor_type);
-        bindingInfo.stageFlags = stage;
-
-        // if run time descriptor array, we must set flags
-        if (binding->array.dims_count > 0 && binding->array.dims[0] == 0) {
-            data.flags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
-                            VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
-        }
-
-        data.bindings.push_back(bindingInfo);
-    }
-
-    return data;
-}
+// Reflection through spirv data
 
 uint32_t
 format_to_byte_size(const VkFormat format)
@@ -284,9 +202,9 @@ format_to_byte_size(const VkFormat format)
     }
 }
 
-PipelineBuilder_&
-PipelineBuilder_::add_shader_module(const char* path,
-                                    VkShaderStageFlagBits stage)
+PipelineBuilder&
+PipelineBuilder::add_shader_module(const char* path,
+                                   VkShaderStageFlagBits stage)
 {
     // open the file. With cursor at the end
     std::ifstream file(path, std::ios::ate | std::ios::binary);
@@ -354,40 +272,90 @@ PipelineBuilder_::add_shader_module(const char* path,
         reflect_vertex_data(spvModule, entry);
     }
 
+    //   spvReflectDestroyShaderModule(&spvModule);
+
     return *this;
 }
+
+DescriptorSetLayoutData
+get_descriptor_data_from_spv(const SpvReflectDescriptorSet& layout,
+                             VkShaderStageFlagBits stage)
+{
+    DescriptorSetLayoutData data{};
+    data.layoutIndex = layout.set;
+
+    data.bindings.reserve(layout.binding_count);
+    // initialise to zero, set only if needed
+    data.flags.resize(layout.binding_count);
+
+    for (size_t i = 0; i < layout.binding_count; i++) {
+        VkDescriptorSetLayoutBinding bindingInfo{};
+
+        auto binding = layout.bindings[i];
+
+        bindingInfo.binding = binding->binding;
+        bindingInfo.descriptorCount = binding->count;
+        bindingInfo.descriptorType =
+            static_cast<VkDescriptorType>(binding->descriptor_type);
+        bindingInfo.stageFlags = stage;
+
+        // if run time descriptor array, we must set flags
+        if (binding->array.dims_count > 0 && binding->array.dims[0] == 0) {
+            data.flags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+                            VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+        }
+
+        data.bindings.push_back(bindingInfo);
+    }
+
+    return data;
+}
+
 void
-PipelineBuilder_::reflect_descriptor_data(const SpvReflectEntryPoint* entry,
-                                          const VkShaderStageFlagBits stage)
+PipelineBuilder::reflect_descriptor_data(const SpvReflectEntryPoint* entry,
+                                         const VkShaderStageFlagBits stage)
 {
     for (size_t i = 0; i < entry->descriptor_set_count; i++) {
         DescriptorSetLayoutData data =
             get_descriptor_data_from_spv(entry->descriptor_sets[i], stage);
-        VkDescriptorSetLayoutCreateInfo x;
-        uint32_t set = entry->descriptor_sets[i].set;
+
         // Merge the bindings with existing data
-        for (auto& binding : data.bindings) {
-            std::pair location = { set, binding.binding };
+        for (const auto& [binding, flags] :
+             std::views::zip(data.bindings, data.flags)) {
+            std::pair location = { data.layoutIndex, binding.binding };
 
             if (descriptorSetLayouts.contains(location)) {
                 // Assign this stage to the binding as well as its existing
                 // stage
                 auto& val = descriptorSetLayouts.at(location);
-                val.stageFlags |= stage;
+                val.binding.stageFlags |= stage;
+                val.flags |= flags;
+
+                if (flags &
+                    VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) {
+                    val.binding.descriptorCount = 4000;
+                }
+
                 // basic correctness check
-                assert(val.descriptorType == binding.descriptorType &&
-                       val.descriptorCount == binding.descriptorCount);
+                assert(val.binding.descriptorType == binding.descriptorType &&
+                       val.binding.descriptorCount == binding.descriptorCount);
             } else {
-                descriptorSetLayouts.emplace(location, binding);
+                if (flags &
+                    VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) {
+                    binding.descriptorCount = 4000;
+                }
+
+                descriptorSetLayouts.emplace(
+                    location, LayoutBindingAndFlags{ binding, flags });
             }
         }
     }
 }
 
 void
-PipelineBuilder_::reflect_push_data(const SpvReflectShaderModule& spvModule,
-                                    const SpvReflectEntryPoint* entry,
-                                    VkShaderStageFlagBits stage)
+PipelineBuilder::reflect_push_data(const SpvReflectShaderModule& spvModule,
+                                   const SpvReflectEntryPoint* entry,
+                                   VkShaderStageFlagBits stage)
 {
     uint32_t pushCount;
 
@@ -418,8 +386,8 @@ PipelineBuilder_::reflect_push_data(const SpvReflectShaderModule& spvModule,
 }
 
 void
-PipelineBuilder_::reflect_vertex_data(const SpvReflectShaderModule& spvModule,
-                                      const SpvReflectEntryPoint* entry)
+PipelineBuilder::reflect_vertex_data(const SpvReflectShaderModule& spvModule,
+                                     const SpvReflectEntryPoint* entry)
 {
     uint32_t inputCount;
     assert_spv(spvReflectEnumerateEntryPointInputVariables(
@@ -480,4 +448,61 @@ PipelineBuilder_::reflect_vertex_data(const SpvReflectShaderModule& spvModule,
     vertexInputInfo.vertexAttributeDescriptionCount =
         attributeDescriptions.size();
     vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+}
+
+// ============================================================================
+// ============================================================================
+// ============================================================================
+
+// Enable / Disable specific features
+
+PipelineBuilder&
+PipelineBuilder::enable_depth_test(bool depthWriteEnable, VkCompareOp op)
+{
+    depthStencil.depthTestEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = depthWriteEnable;
+    depthStencil.depthCompareOp = op;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.stencilTestEnable = VK_FALSE;
+    depthStencil.front = {};
+    depthStencil.back = {};
+    depthStencil.minDepthBounds = 0.f;
+    depthStencil.maxDepthBounds = 1.f;
+
+    return *this;
+}
+
+PipelineBuilder&
+PipelineBuilder::disable_depth_test()
+{
+    depthStencil.depthTestEnable = VK_FALSE;
+    depthStencil.depthWriteEnable = VK_FALSE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_NEVER;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.stencilTestEnable = VK_FALSE;
+    depthStencil.front = {};
+    depthStencil.back = {};
+    depthStencil.minDepthBounds = 0.f;
+    depthStencil.maxDepthBounds = 1.f;
+
+    return *this;
+}
+
+PipelineBuilder&
+PipelineBuilder::set_color_attachement(VkFormat format)
+{
+    colorAttachmentformat = format;
+
+    renderInfo.colorAttachmentCount = 1;
+    renderInfo.pColorAttachmentFormats = &colorAttachmentformat;
+
+    return *this;
+}
+
+PipelineBuilder&
+PipelineBuilder::set_depth_attachment(VkFormat format)
+{
+    renderInfo.depthAttachmentFormat = format;
+
+    return *this;
 }
