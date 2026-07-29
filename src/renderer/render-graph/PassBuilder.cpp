@@ -5,51 +5,62 @@
 
 using namespace Cel::Renderer;
 
-Handle<AllocatedBuffer>
-PassBuilder::create_buffer(const std::string& name,
+PassBuilder&
+PassBuilder::create_buffer(const std::string& bufferName,
                            const size_t allocSize,
                            VkBufferUsageFlags usages,
-                           VmaMemoryUsage memoryUsage) const
+                           VmaMemoryUsage memoryUsage)
 {
-    std::array<AllocatedBuffer, FRAME_OVERLAP> buffers;
-
-    for (size_t i = 0; i < FRAME_OVERLAP; i++) {
-        buffers[i] = Utils::create_buffer(
-            allocSize, usages, memoryUsage, name.c_str(), allocator);
-    }
-
-    return graph.add_buffer(name, buffers);
 }
 
-Handle<AllocatedImage>
-PassBuilder::create_image(const std::string& name,
+PassBuilder&
+PassBuilder::create_image(const std::string& imageName,
                           const VkFormat format,
                           const VkExtent3D extent,
                           const VkImageUsageFlags usages,
-                          const VkImageAspectFlags aspects) const
+                          const VkImageAspectFlags aspects)
 {
-    const VkImageCreateInfo imageInfo =
-        Initialisers::image_create_info(format, usages, extent);
+}
 
-    VmaAllocationCreateInfo allocInfo{
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    };
+PassBuilder&
+PassBuilder::read_buffer(std::string bufferName,
+                         VkAccessFlags2 access,
+                         VkPipelineStageFlags2 stages,
+                         VkDeviceSize offset,
+                         VkDeviceSize size)
+{
+}
 
-    AllocatedImage image{};
+PassBuilder&
+PassBuilder::read_image(std::string imageName,
+                        VkAccessFlags2 access,
+                        VkPipelineStageFlags2 stages,
+                        VkImageLayout layout)
+{
+}
 
-    vmaCreateImage(allocator,
-                   &imageInfo,
-                   &allocInfo,
-                   &image.image,
-                   &image.allocation,
-                   nullptr);
-    vmaSetAllocationName(allocator, image.allocation, name.c_str());
+PassBuilder&
+PassBuilder::write_buffer(std::string bufferName,
+                          VkAccessFlags2 access,
+                          VkPipelineStageFlags2 stages,
+                          VkDeviceSize offset,
+                          VkDeviceSize size)
+{
+}
 
-    const VkImageViewCreateInfo viewInfo =
-        Initialisers::image_view_create_info(format, image.image, aspects);
+PassBuilder&
+PassBuilder::write_image(std::string imageName,
+                         VkAccessFlags2 access,
+                         VkPipelineStageFlags2 stages,
+                         VkImageLayout layout)
+{
+}
 
-    vk_check(vkCreateImageView(device, &viewInfo, nullptr, &image.imageView));
-
-    return graph.add_image(name, image);
+void
+PassBuilder::build(Rendergraph& graph)
+{
+    VK_IMAGE_DEPTH
+    for (const auto& cmd : commands) {
+        cmd(graph);
+    }
 }

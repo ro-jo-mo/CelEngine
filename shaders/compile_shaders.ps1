@@ -1,3 +1,5 @@
+#!/usr/bin/pwsh
+
 Get-ChildItem ".\" -Filter *.slang |
 
 Foreach-Object {

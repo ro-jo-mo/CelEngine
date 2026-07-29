@@ -96,6 +96,7 @@ Cel::Renderer::Utils::transition_image_layout(VkCommandBuffer cmd,
         Initialisers::image_subresource_range(aspectMask);
     imageBarrier.image = image;
 
+
     VkDependencyInfo depInfo{};
     depInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
     depInfo.pNext = nullptr;

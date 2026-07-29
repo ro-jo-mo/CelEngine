@@ -12,7 +12,8 @@ find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 
-add_library(${PROJECT_NAME} STATIC)
+add_library(${PROJECT_NAME} STATIC
+        ../include/renderer/render-graph/AccessFlags.h)
 
 target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -34,7 +35,7 @@ target_link_libraries(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_LEFT_HANDED)
+target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_LEFT_HANDED SPIRV_REFLECT_USE_SYSTEM_SPIRV_H)
 
 target_sources(${PROJECT_NAME}
         PRIVATE
@@ -126,6 +127,7 @@ set(public_headers
         include/renderer/render-graph/PassBuilder.h
         include/renderer/render-graph/PipelineBuilder.h
         include/renderer/render-graph/RenderPass.h
+        include/renderer/render-graph/AccessFlags.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")
