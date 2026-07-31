@@ -106,6 +106,7 @@ set(public_headers
         include/core/Running.h
 
         include/common/SlotMap.h
+        include/common/GrowVector.h
 
         include/input/Input.h
 

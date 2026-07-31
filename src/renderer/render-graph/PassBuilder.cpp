@@ -6,61 +6,88 @@
 using namespace Cel::Renderer;
 
 PassBuilder&
-PassBuilder::create_buffer(const std::string& bufferName,
-                           const size_t allocSize,
+PassBuilder::create_buffer(const std::string& name,
+                           size_t allocSize,
                            VkBufferUsageFlags usages,
                            VmaMemoryUsage memoryUsage)
 {
+    pass.newBuffers.emplace_back(name, allocSize, usages, memoryUsage);
+
+    return *this;
 }
 
 PassBuilder&
-PassBuilder::create_image(const std::string& imageName,
-                          const VkFormat format,
-                          const VkExtent3D extent,
-                          const VkImageUsageFlags usages,
-                          const VkImageAspectFlags aspects)
+PassBuilder::create_image(const std::string& name,
+                          VkFormat format,
+                          VkExtent3D extent,
+                          VkImageUsageFlags usages,
+                          VkImageAspectFlags aspects)
 {
+    pass.newImages.emplace_back(name, format, extent, usages, aspects);
+
+    return *this;
 }
 
 PassBuilder&
-PassBuilder::read_buffer(std::string bufferName,
+PassBuilder::read_buffer(const std::string& bufferName,
                          VkAccessFlags2 access,
                          VkPipelineStageFlags2 stages,
                          VkDeviceSize offset,
                          VkDeviceSize size)
 {
+    pass.bufferReads.emplace_back(bufferName, access, stages, offset, size);
+
+    return *this;
 }
 
 PassBuilder&
-PassBuilder::read_image(std::string imageName,
+PassBuilder::read_image(const std::string& imageName,
                         VkAccessFlags2 access,
                         VkPipelineStageFlags2 stages,
                         VkImageLayout layout)
 {
-}
+    pass.imageReads.emplace_back(imageName, access, stages, layout);
 
+    return *this;
+}
 PassBuilder&
-PassBuilder::write_buffer(std::string bufferName,
+PassBuilder::write_buffer(const std::string& bufferName,
+                          const std::string& outName,
                           VkAccessFlags2 access,
                           VkPipelineStageFlags2 stages,
                           VkDeviceSize offset,
                           VkDeviceSize size)
 {
+    pass.bufferWrites.emplace_back(
+        bufferName, outName, access, stages, offset, size);
+
+    return *this;
 }
 
 PassBuilder&
-PassBuilder::write_image(std::string imageName,
+PassBuilder::write_image(const std::string& imageName,
+                         const std::string& outName,
                          VkAccessFlags2 access,
                          VkPipelineStageFlags2 stages,
                          VkImageLayout layout)
 {
+    pass.imageWrites.emplace_back(imageName, outName, access, stages, layout);
+
+    return *this;
 }
 
-void
-PassBuilder::build(Rendergraph& graph)
+PassBuilder&
+PassBuilder::set_execute(const std::function<void(void*)>& execute)
 {
-    VK_IMAGE_DEPTH
-    for (const auto& cmd : commands) {
-        cmd(graph);
-    }
+    pass.execute = execute;
+
+    return *this;
+}
+
+RenderPass
+PassBuilder::build()
+{
+    // Basic validity checks
+
+    return pass;
 }

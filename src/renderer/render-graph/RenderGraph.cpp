@@ -4,6 +4,29 @@
 
 using namespace Cel::Renderer;
 
+void
+RenderGraph::add_pass(RenderPass pass)
+{
+    // Add aliases
+
+    // iter creates
+    for (auto& buff : pass.newBuffers) {
+        // index to name name to index abs blah blah
+        bufferRequirements.push_back(buff);
+    }
+    for (auto& img : pass.newImages) {
+        imageRequirements.push_back(img);
+    }
+
+    // iter writes
+    for (auto& buff : pass.bufferWrites) {
+    }
+    for (auto& img : pass.imageWrites) {
+    }
+
+    // add pass to dag
+}
+
 Handle<AllocatedBuffer>
 RenderGraph::get_buffer_handle_from_name(std::string name)
 {
@@ -31,28 +54,4 @@ RenderGraph::get_image_handle_from_name(std::string name)
     }
 
     return { nameToIndex[name] };
-}
-
-Handle<AllocatedBuffer>
-RenderGraph::add_buffer(std::string name,
-                        std::array<AllocatedBuffer, FRAME_OVERLAP> buffers)
-{
-    auto handle = get_buffer_handle_from_name(name);
-
-    for (const auto& [list, buffer] :
-         std::views::zip(perFrameBuffers, buffers)) {
-        list[handle.index] = buffer;
-    }
-
-    return handle;
-}
-
-Handle<AllocatedImage>
-RenderGraph::add_image(std::string name, AllocatedImage image)
-{
-    auto handle = get_image_handle_from_name(name);
-
-    images[handle.index] = image;
-
-    return handle;
 }

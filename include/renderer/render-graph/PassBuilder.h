@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderGraph.h"
+#include "RenderPass.h"
 #include "renderer/VulkanTypes.h"
 #include "renderer/VulkanUtils.h"
 
@@ -8,6 +8,8 @@
 #include <utility>
 
 namespace Cel::Renderer {
+
+struct RenderPass;
 
 // buffers created by this are created for each frame in flight
 // Later I might add single buffers
@@ -19,13 +21,11 @@ namespace Cel::Renderer {
 // Write to buffers
 // Write to depth, color attachments
 
+// At a later stage I'd like to improve the memory allocations here
 class PassBuilder
 {
   public:
-    explicit PassBuilder(std::string name)
-        : name(std::move(name))
-    {
-    }
+    explicit PassBuilder(std::string name) { pass.name = std::move(name); }
 
     // Creating resources should simply create a list of requirements for the
     // buffer / image
@@ -65,13 +65,13 @@ class PassBuilder
      * @param size Size of the buffer region your reading. Default 0 represents
      * a read of the entire buffer.
      */
-    PassBuilder& read_buffer(std::string bufferName,
+    PassBuilder& read_buffer(const std::string& bufferName,
                              VkAccessFlags2 access,
                              VkPipelineStageFlags2 stages,
                              VkDeviceSize offset = 0,
                              VkDeviceSize size = 0);
 
-    PassBuilder& read_image(std::string imageName,
+    PassBuilder& read_image(const std::string& imageName,
                             VkAccessFlags2 access,
                             VkPipelineStageFlags2 stages,
                             VkImageLayout layout);
@@ -90,32 +90,25 @@ class PassBuilder
     // Writing to a resource will create an output for the pass.
     // The original handle will become invalid after this pass and only
     // accessible under the new name
-    PassBuilder& write_buffer(std::string bufferName,
-                              std::string outName,
+    PassBuilder& write_buffer(const std::string& bufferName,
+                              const std::string& outName,
                               VkAccessFlags2 access,
                               VkPipelineStageFlags2 stages,
                               VkDeviceSize offset = 0,
                               VkDeviceSize size = 0);
 
-    PassBuilder& write_image(std::string imageName,
-                             std::string outName,
+    PassBuilder& write_image(const std::string& imageName,
+                             const std::string& outName,
                              VkAccessFlags2 access,
                              VkPipelineStageFlags2 stages,
                              VkImageLayout layout);
 
-    void build(RenderGraph& graph);
+    PassBuilder& set_execute(const std::function<void(void*)>& execute);
+
+    RenderPass build();
 
   private:
-    std::string name;
-
-    std::vector<BufferRequirements> newBuffers;
-    std::vector<ImageRequirements> newImages;
-
-    std::vector<BufferRead> bufferReads;
-    std::vector<ImageRead> imageReads;
-
-    std::vector<BufferWrite> bufferWrites;
-    std::vector<ImageWrite> imageWrites;
+    RenderPass pass;
 
     friend class RenderGraph;
 };
