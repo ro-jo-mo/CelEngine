@@ -4,6 +4,7 @@
 #include "Descriptors.h"
 #include "MegaBuffer.h"
 #include "VulkanTypes.h"
+#include "common/Handle.h"
 #include "ecs/Types.h"
 #include "renderer/AssetTypes.h"
 
@@ -80,8 +81,8 @@ class AssetServer
     void set_skybox(const char* filepath);
 
     void add_asset_to_entity(Entity entity,
-                          Handle<AssetNode> assetHandle,
-                          Resource<World>& world) const;
+                             Handle<AssetNode> assetHandle,
+                             Resource<World>& world) const;
 
   private:
     [[nodiscard]] Material get_material(Handle<Material> material) const;
@@ -90,7 +91,7 @@ class AssetServer
     void create_defaults();
 
     std::optional<AllocatedImage> load_image(fastgltf::Asset& asset,
-                                            fastgltf::Image& gltfImage);
+                                             fastgltf::Image& gltfImage);
 
     AllocatedImage load_skybox_image(const char* filepath);
 
@@ -104,11 +105,11 @@ class AssetServer
         size_t samplerOffset);
 
     void load_materials(fastgltf::Asset& asset,
-                       size_t imageOffset,
-                       size_t samplerOffset);
+                        size_t imageOffset,
+                        size_t samplerOffset);
     AssetNode load_nodes(fastgltf::Asset& asset, std::vector<Model>& models);
     std::vector<Model> load_models(fastgltf::Asset& asset,
-                                  size_t materialOffset);
+                                   size_t materialOffset);
 
     void cleanup();
 

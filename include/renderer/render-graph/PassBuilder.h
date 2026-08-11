@@ -90,6 +90,7 @@ class PassBuilder
     // Writing to a resource will create an output for the pass.
     // The original handle will become invalid after this pass and only
     // accessible under the new name
+
     PassBuilder& write_buffer(const std::string& bufferName,
                               const std::string& outName,
                               VkAccessFlags2 access,

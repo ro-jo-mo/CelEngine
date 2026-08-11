@@ -1,5 +1,6 @@
 #include "renderer/render-graph/PassBuilder.h"
 
+#include "core/Error.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanUtils.h"
 
@@ -88,6 +89,12 @@ RenderPass
 PassBuilder::build()
 {
     // Basic validity checks
+    if (pass.execute == nullptr) {
+        throw_error("render pass callback function has not been set");
+    }
+    if (pass.imageWrites.size() + pass.bufferWrites.size() == 0) {
+        throw_error("render pass must write to at least one resource");
+    }
 
     return pass;
 }

@@ -7,6 +7,10 @@
 #include <unordered_set>
 
 namespace Cel {
+
+// TODO: Inherit from the graph class instead of being wholly unique
+// Leave to later so scheduling doesn't get broken
+
 /**
  * @brief A directed acyclic graph representing a partial ordering of systems
  */

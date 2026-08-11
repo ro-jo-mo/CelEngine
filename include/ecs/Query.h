@@ -275,7 +275,7 @@ class Query<With<Include...>, Without<Exclude...>>::Iterator
     Iter current;
     Iter end;
     Entity ref{ 0 };
-    Query<With<Include...>, Without<Exclude...>>& view;
+    Query& view;
 };
 
 template<typename... Include, typename... Exclude>

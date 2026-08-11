@@ -17,6 +17,6 @@ struct Window
 
 void
 set_render_extent(Resource<RenderExtent>& renderExtent,
-                Resource<DrawImage>& drawImage,
-                Resource<Swapchain>& swapchain);
+                  Resource<DrawImage>& drawImage,
+                  Resource<Swapchain>& swapchain);
 }

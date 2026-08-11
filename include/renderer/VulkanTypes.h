@@ -112,12 +112,6 @@ struct AllocatedMeshBuffer
     uint32_t indexCount;
 };
 
-template<typename T>
-struct Handle
-{
-    uint32_t index;
-};
-
 struct Pipeline
 {
     VkPipeline pipeline;

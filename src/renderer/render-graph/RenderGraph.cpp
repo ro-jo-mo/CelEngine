@@ -27,7 +27,7 @@ RenderGraph::add_pass(RenderPass pass)
     // add pass to dag
 }
 
-Handle<AllocatedBuffer>
+Cel::Handle<AllocatedBuffer>
 RenderGraph::get_buffer_handle_from_name(std::string name)
 {
     // As render passes may be added out of order, I don't guarantee the handle
@@ -36,21 +36,19 @@ RenderGraph::get_buffer_handle_from_name(std::string name)
         auto size = perFrameBuffers[0].size();
         nameToIndex.emplace(name, size);
         for (auto& list : perFrameBuffers) {
-            list.resize(size + 1);
         }
     }
 
     return { nameToIndex[name] };
 }
 
-Handle<AllocatedImage>
+Cel::Handle<AllocatedImage>
 RenderGraph::get_image_handle_from_name(std::string name)
 {
     // As render passes may be added out of order, I don't guarantee the handle
     // will exist yet
     if (!nameToIndex.contains(name)) {
         nameToIndex.emplace(name, images.size());
-        images.resize(images.size() + 1);
     }
 
     return { nameToIndex[name] };

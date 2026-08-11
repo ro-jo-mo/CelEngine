@@ -2,6 +2,7 @@
 
 #include "RenderPass.h"
 #include "common/GrowVector.h"
+#include "common/Handle.h"
 #include "renderer/VulkanTypes.h"
 
 #include <array>
@@ -25,59 +26,6 @@ namespace Cel::Renderer {
 // Each node in the graph is a renderpass
 // Ordering is determined based on the input / outputs of the node
 // Barriers are automatically inserted based on a nodes read / writes
-
-struct BufferRequirements
-{
-    std::string name;
-    size_t allocSize;
-    VkBufferUsageFlags usages;
-    VmaMemoryUsage memoryUsage;
-};
-
-struct ImageRequirements
-{
-    std::string name;
-    VkFormat format;
-    VkExtent3D extent;
-    VkImageUsageFlags usages;
-    VkImageAspectFlags aspects;
-};
-
-struct BufferRead
-{
-    std::string name;
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    VkDeviceSize offset;
-    VkDeviceSize size;
-};
-
-struct BufferWrite
-{
-    std::string name;
-    std::string outName;
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    VkDeviceSize offset;
-    VkDeviceSize size;
-};
-
-struct ImageRead
-{
-    std::string name;
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    VkImageLayout layout;
-};
-
-struct ImageWrite
-{
-    std::string name;
-    std::string outName;
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    VkImageLayout layout;
-};
 
 class RenderGraph
 {
@@ -135,4 +83,5 @@ class RenderGraph
 
     friend class PassBuilder;
 };
+
 }

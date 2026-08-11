@@ -35,7 +35,7 @@ target_link_libraries(${PROJECT_NAME}
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_LEFT_HANDED SPIRV_REFLECT_USE_SYSTEM_SPIRV_H)
+target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_LEFT_HANDED)
 
 target_sources(${PROJECT_NAME}
         PRIVATE
@@ -64,9 +64,11 @@ target_sources(${PROJECT_NAME}
         "renderer/Descriptors.cpp"
         "renderer/Camera.cpp"
         "renderer/MegaBuffer.cpp"
+
         "renderer/render-graph/PassBuilder.cpp"
         "renderer/render-graph/RenderGraph.cpp"
         "renderer/render-graph/PipelineBuilder.cpp"
+        "renderer/render-graph/PassGraph.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -107,6 +109,8 @@ set(public_headers
 
         include/common/SlotMap.h
         include/common/GrowVector.h
+        include/common/Graph.h
+        include/common/Handle.h
 
         include/input/Input.h
 
@@ -129,6 +133,7 @@ set(public_headers
         include/renderer/render-graph/PipelineBuilder.h
         include/renderer/render-graph/RenderPass.h
         include/renderer/render-graph/AccessFlags.h
+        include/renderer/render-graph/PassGraph.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")
