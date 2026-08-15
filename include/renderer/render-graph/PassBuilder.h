@@ -66,32 +66,15 @@ class PassBuilder
      * a read of the entire buffer.
      */
     PassBuilder& read_buffer(const std::string& bufferName,
-                             VkAccessFlags2 access,
                              VkPipelineStageFlags2 stages,
                              VkDeviceSize offset = 0,
                              VkDeviceSize size = 0);
 
     PassBuilder& read_image(const std::string& imageName,
-                            VkAccessFlags2 access,
                             VkPipelineStageFlags2 stages,
                             VkImageLayout layout);
 
-    // I don't think writes need any different args compared to reads
-    // Barriers can be placed between writes & reads
-    // I don't believe a barrier needs to exist between a write and a write?
-    // Honestly two successive writes without a read does not make much sense.
-    // Might as well just discard the first result
-    // This can go further to say creating an image resource without writing to
-    // it does not make sense
-    // Two consecutive reads might require a barrier if the format is different
-    // Similarly if you read a specific segment of a buffer, and read another
-    // segment that is not a subset of the prior read, a barrier will require
-    // insertion
-    // Writing to a resource will create an output for the pass.
-    // The original handle will become invalid after this pass and only
-    // accessible under the new name
-
-    PassBuilder& write_buffer(const std::string& bufferName,
+    PassBuilder& write_buffer(const std::string& inName,
                               const std::string& outName,
                               VkAccessFlags2 access,
                               VkPipelineStageFlags2 stages,
@@ -104,12 +87,16 @@ class PassBuilder
                              VkPipelineStageFlags2 stages,
                              VkImageLayout layout);
 
-    PassBuilder& set_execute(const std::function<void(void*)>& execute);
+    PassBuilder& set_execute(
+        const std::function<void(VkCommandBuffer, void*)>& execute);
+
+    PassBuilder& set_queue(uint32_t _queue);
 
     RenderPass build();
 
   private:
     RenderPass pass;
+    uint32_t queue;
 
     friend class RenderGraph;
 };

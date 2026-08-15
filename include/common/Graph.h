@@ -1,5 +1,6 @@
 #pragma once
 #include "Handle.h"
+#include "core/Error.h"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -88,6 +89,17 @@ class Graph<Handle<KeyT>, Weight> : public Graph<Handle<KeyT>>
 
     Weight get_edge(Key from, Key to);
 
+    /**
+     * @brief Get the node that has an edge from "from" to itself, with a weight
+     * of weight
+     * Likely very fragile, assumes no two edges from the same node have the
+     * same weight
+     * @param from
+     * @param weight
+     * @return
+     */
+    Key get_destination_node(Key from, Weight weight);
+
     std::unordered_map<uint64_t, Weight> weights;
 
   private:
@@ -107,6 +119,22 @@ Weight
 Graph<Handle<KeyT>, Weight>::get_edge(Key from, Key to)
 {
     return weights[make_edge_key(from, to)];
+}
+
+template<typename KeyT, typename Weight>
+Graph<Handle<KeyT>, Weight>::Key
+Graph<Handle<KeyT>, Weight>::get_destination_node(Key from, Weight weight)
+{
+    // Interesting syntax :/
+    for (const auto& to : Graph<Key>::adjacencyList[from]) {
+        if (get_edge(from, to) == weight) {
+            return to;
+        }
+    }
+
+    throw_error("Could not find destination node in graph.");
+
+    return {};
 }
 
 template<typename KeyT, typename Weight>

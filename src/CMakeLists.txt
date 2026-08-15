@@ -12,8 +12,7 @@ find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 
-add_library(${PROJECT_NAME} STATIC
-        ../include/renderer/render-graph/AccessFlags.h)
+add_library(${PROJECT_NAME} STATIC)
 
 target_link_libraries(${PROJECT_NAME}
         PUBLIC
@@ -69,6 +68,9 @@ target_sources(${PROJECT_NAME}
         "renderer/render-graph/RenderGraph.cpp"
         "renderer/render-graph/PipelineBuilder.cpp"
         "renderer/render-graph/PassGraph.cpp"
+
+        "renderer/resource-management/ResourceTracker.cpp"
+        "renderer/resource-management/VulkanResourceManager.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -134,6 +136,10 @@ set(public_headers
         include/renderer/render-graph/RenderPass.h
         include/renderer/render-graph/AccessFlags.h
         include/renderer/render-graph/PassGraph.h
+        include/renderer/render-graph/ExecutionPlan.h
+
+        include/renderer/resource-management/ResourceTracker.h
+        include/renderer/resource-management/VulkanResourceManager.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

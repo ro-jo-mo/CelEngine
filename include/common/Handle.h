@@ -1,5 +1,6 @@
 #pragma once
-#include <cstdint>
+
+#include <vector>
 
 namespace Cel {
 
@@ -9,6 +10,8 @@ struct Handle
     uint32_t index;
 
     bool operator==(const Handle& other) const { return index == other.index; }
+
+    auto operator<=>(const Handle&) const = default;
 };
 
 }

@@ -1,5 +1,7 @@
 #include "renderer/render-graph/PassGraph.h"
 
+#include <algorithm>
+#include <numeric>
 #include <ranges>
 
 Cel::Renderer::PassGraph::PassGraph(std::vector<RenderPass>& passes)
@@ -48,35 +50,29 @@ Cel::Renderer::PassGraph::PassGraph(std::vector<RenderPass>& passes)
         // Add the previous pass as a dependency to this pass on write
         for (const auto& write : pass.bufferWrites) {
             const auto from = get_owner_pass(write.inName);
-            internal.add_edge(from, to, nameToResource[write.outName]);
+            internal.add_edge(from, to, nameToResource[write.inName]);
         }
         for (const auto& write : pass.imageWrites) {
             const auto from = get_owner_pass(write.inName);
-            internal.add_edge(from, to, nameToResource[write.outName]);
+            internal.add_edge(from, to, nameToResource[write.inName]);
         }
     }
 
-    auto writeSequences = internal.adjacencyList;
-
+    // Add dependency from pass that reads x to pass that writes to x
     for (const auto& [i, pass] : std::views::enumerate(passes)) {
         const Handle<RenderPass> from = { static_cast<uint32_t>(i) };
 
-        // Add this pass as a dependency when another pass wishes to write to a
-        // resource read by it
         for (const auto& read : pass.bufferReads) {
-            // Get first (and only value if graph is correct)
-            auto& edges = writeSequences[get_owner_pass(read.name)];
+            const auto id = nameToResource[read.name];
 
-            // Check there exists another pass that wants to write this resource
-            // If so we add an edge
-            if (edges.size() == 1) {
-                const auto to = *edges.begin();
-                internal.add_edge(from, to, { 1 });
-            } else {
-                // The only valid cases are that this is the last node in a
-                // sequence  or has exactly 1 edge
-                assert(edges.empty());
-            }
+            const auto to = internal.get_destination_node(from, id);
+            internal.add_edge(from, to, id);
+        }
+        for (const auto& read : pass.imageReads) {
+            const auto id = nameToResource[read.name];
+
+            const auto to = internal.get_destination_node(from, id);
+            internal.add_edge(from, to, id);
         }
     }
 }
@@ -87,10 +83,106 @@ Cel::Renderer::PassGraph::get_owner_pass(const std::string& name)
     return resourceToPass[nameToResource[name]];
 }
 
+Cel::Renderer::PassGraph::Iterator::Iterator(PassGraph& graph)
+    : graph(graph)
+{
+    criticalPaths.resize(graph.passes.size());
+
+    for (uint32_t i = 0; i <= graph.numOfRootNodes; i++) {
+        calculate_critical_path_lengths({ i });
+    }
+
+    for (uint32_t i = 0; i <= graph.numOfRootNodes; i++) {
+        readyNodes.emplace(criticalPaths[i], i);
+        add_dependents({ i });
+    }
+}
+
+Cel::Renderer::PassGraph::Iterator
+Cel::Renderer::PassGraph::iter()
+{
+    return Iterator(*this);
+}
+
+void
+Cel::Renderer::PassGraph::Iterator::mark_finished(Handle<RenderPass> pass)
+{
+    finished.insert(pass);
+
+    add_dependents(pass);
+}
+
+void
+Cel::Renderer::PassGraph::Iterator::add_dependents(Handle<RenderPass> pass)
+{
+    // queue up next nodes in graph
+    const auto& dependents = graph.internal.get_dependents(pass);
+
+    for (auto dependent : dependents) {
+        const auto& requirements = graph.internal.get_dependencies(dependent);
+
+        // if all requirements are met
+        if (std::ranges::all_of(requirements, [&](auto handle) {
+                return finished.contains(handle);
+            })) {
+
+            readyNodes.emplace(criticalPaths[dependent.index], dependent);
+            // Check if we can add any child nodes as well
+            add_dependents(dependent);
+        }
+    }
+}
+
+std::vector<Cel::Handle<Cel::Renderer::RenderPass>>&
+Cel::Renderer::PassGraph::Iterator::get_best_nodes()
+{
+    bestNodes.clear();
+    if (readyNodes.empty()) {
+        return bestNodes;
+    }
+
+    bestNodes.clear();
+    auto iter = readyNodes.rbegin();
+
+    const auto& [longestPath, firstPass] = *iter;
+
+    bestNodes.push_back(firstPass);
+
+    ++iter;
+
+    for (; iter != readyNodes.rend(); ++iter) {
+        const auto& [length, pass] = *iter;
+
+        if (longestPath == length) {
+            bestNodes.push_back(pass);
+            continue;
+        }
+
+        break;
+    }
+
+    return bestNodes;
+}
+
+std::set<std::pair<uint32_t, Cel::Handle<Cel::Renderer::RenderPass>>>&
+Cel::Renderer::PassGraph::Iterator::get_available_nodes()
+{
+    return readyNodes;
+}
+
+Cel::Renderer::PassGraph::Iterator
+Cel::Renderer::PassGraph::Iterator::branch_off()
+{
+
+    return { *this };
+}
+
 uint32_t
 Cel::Renderer::PassGraph::Iterator::calculate_critical_path_lengths(
     const Handle<RenderPass> pass)
 {
+    // TODO : Add some logic that culls nodes that don't reach our end point
+    // i.e. passes that have no effect on the final render
     if (criticalPaths[pass.index] != 0) {
         return criticalPaths[pass.index];
     }
@@ -108,4 +200,11 @@ Cel::Renderer::PassGraph::Iterator::calculate_critical_path_lengths(
     criticalPaths[pass.index] = greatestPath;
 
     return greatestPath;
+}
+
+void
+Cel::Renderer::PassGraph::Iterator::reset()
+{
+    bestNodes.clear();
+    readyNodes.clear();
 }

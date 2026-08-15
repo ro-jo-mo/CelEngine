@@ -1,5 +1,8 @@
 #pragma once
 
+#include "common/Handle.h"
+#include "renderer/VulkanTypes.h"
+
 #include <functional>
 #include <string>
 #include <vk_mem_alloc.h>
@@ -7,73 +10,95 @@
 
 namespace Cel::Renderer {
 
-struct BufferRequirements
+template<typename Name>
+struct BufferCreate
 {
-    std::string name;
-    size_t allocSize;
-    VkBufferUsageFlags usages;
-    VmaMemoryUsage memoryUsage;
+    Name name;
+    BufferRequirements requirements;
 };
 
-struct ImageRequirements
+template<typename Name>
+struct ImageCreate
 {
-    std::string name;
-    VkFormat format;
-    VkExtent3D extent;
-    VkImageUsageFlags usages;
-    VkImageAspectFlags aspects;
+    Name name;
+    ImageRequirements requirements;
 };
 
+struct BufferAccess
+{
+    VkAccessFlags2 access;
+    VkPipelineStageFlags2 stages;
+    VkDeviceSize offset;
+    VkDeviceSize size;
+    uint32_t queue;
+};
+
+struct ImageAccess
+{
+    VkAccessFlags2 access;
+    VkPipelineStageFlags2 stages;
+    VkImageLayout layout;
+    uint32_t queue;
+};
+
+template<typename Name>
 struct BufferRead
 {
-    std::string name;
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    VkDeviceSize offset;
-    VkDeviceSize size;
+    Name name;
+    BufferAccess access;
 };
 
+template<typename Name>
 struct BufferWrite
 {
-    std::string inName;
-    std::string outName;
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    VkDeviceSize offset;
-    VkDeviceSize size;
+    Name inName;
+    Name outName;
+    BufferAccess access;
 };
 
+template<typename Name>
 struct ImageRead
 {
-    std::string name;
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    VkImageLayout layout;
+    Name name;
+    ImageAccess access;
 };
 
+template<typename Name>
 struct ImageWrite
 {
-    std::string inName;
-    std::string outName;
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    VkImageLayout layout;
+    Name inName;
+    Name outName;
+    ImageAccess access;
 };
 
 struct RenderPass
 {
     std::string name;
 
-    std::function<void(void*)> execute;
+    std::function<void(VkCommandBuffer, void*)> execute;
 
-    std::vector<BufferRequirements> newBuffers;
-    std::vector<ImageRequirements> newImages;
+    std::vector<BufferCreate<std::string>> newBuffers;
+    std::vector<ImageCreate<std::string>> newImages;
 
-    std::vector<BufferRead> bufferReads;
-    std::vector<ImageRead> imageReads;
+    std::vector<BufferRead<std::string>> bufferReads;
+    std::vector<ImageRead<std::string>> imageReads;
 
-    std::vector<BufferWrite> bufferWrites;
-    std::vector<ImageWrite> imageWrites;
+    std::vector<BufferWrite<std::string>> bufferWrites;
+    std::vector<ImageWrite<std::string>> imageWrites;
+};
+
+struct RenderPassCompiled
+{
+    std::function<void(VkCommandBuffer, void*)> execute;
+
+    std::vector<BufferCreate<Handle<AllocatedBuffer>>> newBuffers;
+    std::vector<ImageCreate<Handle<AllocatedImage>>> newImages;
+
+    std::vector<BufferRead<Handle<AllocatedBuffer>>> bufferReads;
+    std::vector<ImageRead<Handle<AllocatedImage>>> imageReads;
+
+    std::vector<BufferWrite<Handle<AllocatedBuffer>>> bufferWrites;
+    std::vector<ImageWrite<Handle<AllocatedImage>>> imageWrites;
 };
 
 }

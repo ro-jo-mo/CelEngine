@@ -4,6 +4,8 @@
 #include "common/Graph.h"
 #include "renderer/VulkanTypes.h"
 
+#include <set>
+
 namespace Cel::Renderer {
 // Graph of render passes:
 // Each render pass has edges based on its writes
@@ -30,8 +32,6 @@ class PassGraph
 {
   public:
     explicit PassGraph(std::vector<RenderPass>& passes);
-
-    bool check_pass_requirements();
 
     struct Iterator;
 
@@ -68,8 +68,7 @@ class PassGraph
 };
 
 // Separate class for deciding pass order
-// First we create a priority queue of render passes based on their critical
-// paths
+// Simply returns available nodes, in the form of a priority queue
 // Them we generate an execution plan
 // We need to track the state of each resource, what is the current image
 // layout, queue family, access flags(?)
@@ -77,19 +76,37 @@ struct PassGraph::Iterator
 {
     using PassGroup = std::vector<std::reference_wrapper<Handle<RenderPass>>>;
 
-    explicit Iterator(PassGraph& graph)
-        : graph(graph)
-    {
-        criticalPaths.resize(graph.passes.size());
-    }
+    explicit Iterator(PassGraph& graph);
 
+    // Mark this pass as complete
+    void mark_finished(Handle<RenderPass> pass);
+
+    std::vector<Handle<RenderPass>>& get_best_nodes();
+
+    std::set<std::pair<uint32_t, Handle<RenderPass>>>& get_available_nodes();
+
+    // Create a copy of this iterator, to search another branch
+    Iterator branch_off();
+
+    void reset();
+
+  private:
     uint32_t calculate_critical_path_lengths(Handle<RenderPass> pass);
+
+    void add_dependents(Handle<RenderPass> pass);
 
     PassGraph& graph;
 
     // Of equal size to graph.passes
     // The longest path from this pass to an end node
     std::vector<uint32_t> criticalPaths;
+
+    // An ordered set of render passes, based on their critical path length
+    std::set<std::pair<uint32_t, Handle<RenderPass>>> readyNodes;
+    // Stored just so we can reuse the same memory
+    std::vector<Handle<RenderPass>> bestNodes;
+
+    std::unordered_set<Handle<RenderPass>> finished;
 };
 
 }

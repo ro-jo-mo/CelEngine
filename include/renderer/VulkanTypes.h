@@ -36,6 +36,7 @@ struct VulkanContext
     VkSurfaceKHR surface;
 };
 
+// Confusing name :(
 struct CurrentFrameData
 {
     VkCommandPool commandPool;
@@ -53,6 +54,7 @@ struct ImmediateSubmit
     VkFence fence;
 };
 
+// Confusing name :(
 struct FrameData
 {
     std::vector<CurrentFrameData> frames;
@@ -110,6 +112,21 @@ struct AllocatedMeshBuffer
     AllocatedBuffer vertexBuffer;
     VkDeviceAddress vertexBufferAddress;
     uint32_t indexCount;
+};
+
+struct BufferRequirements
+{
+    size_t allocSize;
+    VkBufferUsageFlags usages;
+    VmaMemoryUsage memoryUsage;
+};
+
+struct ImageRequirements
+{
+    VkFormat format;
+    VkExtent3D extent;
+    VkImageUsageFlags usages;
+    VkImageAspectFlags aspects;
 };
 
 struct Pipeline
