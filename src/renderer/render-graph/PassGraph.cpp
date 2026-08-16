@@ -26,20 +26,20 @@ Cel::Renderer::PassGraph::PassGraph(std::vector<RenderPass>& passes)
         internal.add_node(passId);
 
         for (const auto& create : pass.newBuffers) {
-            init(create.name, passId);
+            init(create.id, passId);
         }
         for (const auto& create : pass.newImages) {
-            init(create.name, passId);
+            init(create.id, passId);
         }
 
         // Mark how many of our nodes are root
         numOfRootNodes = resourceHandle;
 
         for (const auto& write : pass.bufferWrites) {
-            init(write.outName, passId);
+            init(write.outId, passId);
         }
         for (const auto& write : pass.imageWrites) {
-            init(write.outName, passId);
+            init(write.outId, passId);
         }
     }
 
@@ -49,12 +49,12 @@ Cel::Renderer::PassGraph::PassGraph(std::vector<RenderPass>& passes)
 
         // Add the previous pass as a dependency to this pass on write
         for (const auto& write : pass.bufferWrites) {
-            const auto from = get_owner_pass(write.inName);
-            internal.add_edge(from, to, nameToResource[write.inName]);
+            const auto from = get_owner_pass(write.inId);
+            internal.add_edge(from, to, nameToResource[write.inId]);
         }
         for (const auto& write : pass.imageWrites) {
-            const auto from = get_owner_pass(write.inName);
-            internal.add_edge(from, to, nameToResource[write.inName]);
+            const auto from = get_owner_pass(write.inId);
+            internal.add_edge(from, to, nameToResource[write.inId]);
         }
     }
 
@@ -63,13 +63,13 @@ Cel::Renderer::PassGraph::PassGraph(std::vector<RenderPass>& passes)
         const Handle<RenderPass> from = { static_cast<uint32_t>(i) };
 
         for (const auto& read : pass.bufferReads) {
-            const auto id = nameToResource[read.name];
+            const auto id = nameToResource[read.id];
 
             const auto to = internal.get_destination_node(from, id);
             internal.add_edge(from, to, id);
         }
         for (const auto& read : pass.imageReads) {
-            const auto id = nameToResource[read.name];
+            const auto id = nameToResource[read.id];
 
             const auto to = internal.get_destination_node(from, id);
             internal.add_edge(from, to, id);

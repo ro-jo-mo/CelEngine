@@ -1,39 +1,39 @@
 #include "renderer/resource-management/ResourceTracker.h"
 
 Cel::Renderer::BufferAccess
-Cel::Renderer::Resources::ResourceTracker::get_buffer_state(
+Cel::Renderer::Resources::ResourceTracker::get_state(
     Handle<AllocatedBuffer> buffer)
 {
     return buffers[buffer];
 }
 
 Cel::Renderer::ImageAccess
-Cel::Renderer::Resources::ResourceTracker::get_image_state(
+Cel::Renderer::Resources::ResourceTracker::get_state(
     Handle<AllocatedImage> image)
 {
     return images[image];
 }
 
 Cel::Renderer::BufferAccess
-Cel::Renderer::Resources::BranchingResourceTracker::get_buffer_state(
+Cel::Renderer::Resources::BranchingResourceTracker::get_state(
     Handle<AllocatedBuffer> buffer)
 {
     if (buffers.contains(buffer)) {
         return buffers[buffer];
     }
 
-    return original->get_buffer_state(buffer);
+    return original->get_state(buffer);
 }
 
 Cel::Renderer::ImageAccess
-Cel::Renderer::Resources::BranchingResourceTracker::get_image_state(
+Cel::Renderer::Resources::BranchingResourceTracker::get_state(
     Handle<AllocatedImage> image)
 {
     if (images.contains(image)) {
         return images[image];
     }
 
-    return original->get_image_state(image);
+    return original->get_state(image);
 }
 
 Cel::Renderer::Resources::BranchingResourceTracker

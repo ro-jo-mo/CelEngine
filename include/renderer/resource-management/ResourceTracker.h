@@ -14,9 +14,9 @@ class ResourceTracker
   public:
     virtual ~ResourceTracker() = default;
 
-    virtual BufferAccess get_buffer_state(Handle<AllocatedBuffer> buffer);
+    virtual BufferAccess get_state(Handle<AllocatedBuffer> buffer);
 
-    virtual ImageAccess get_image_state(Handle<AllocatedImage> image);
+    virtual ImageAccess get_state(Handle<AllocatedImage> image);
 
   protected:
     // Track the current state of images and buffers
@@ -32,9 +32,9 @@ class ResourceTracker
 class BranchingResourceTracker final : public ResourceTracker
 {
   public:
-    BufferAccess get_buffer_state(Handle<AllocatedBuffer> buffer) override;
+    BufferAccess get_state(Handle<AllocatedBuffer> buffer) override;
 
-    ImageAccess get_image_state(Handle<AllocatedImage> image) override;
+    ImageAccess get_state(Handle<AllocatedImage> image) override;
 
     // Create a new resource tracker representing a separate branch
     BranchingResourceTracker branch_off();
@@ -65,7 +65,8 @@ class BranchingResourceTracker final : public ResourceTracker
         Branch* original = nullptr;
     };
 
-    // Mark a resource as finished with, and ready to be reused, unmark once reused
+    // Mark a resource as finished with, and ready to be reused, unmark once
+    // reused
     Branch reusable;
 
     // Mark a resource as being written to, unmark once a barrier is inserted

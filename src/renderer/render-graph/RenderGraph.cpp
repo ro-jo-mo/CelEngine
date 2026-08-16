@@ -52,7 +52,7 @@ RenderGraph::compile_passes(PassGraph::Iterator& iter)
             auto handle = resourceManager.get_handle_from_requirements(
                 create.requirements);
 
-            map[create.name] = handle;
+            map[create.id] = handle;
 
             addTo.emplace_back(handle, create.requirements);
         }
@@ -60,9 +60,9 @@ RenderGraph::compile_passes(PassGraph::Iterator& iter)
 
     auto write_helper = [](auto& addTo, const auto& writes, auto& map) {
         for (const auto& write : writes) {
-            auto handle = map[write.inName];
+            auto handle = map[write.inId];
 
-            map[write.outName] = handle;
+            map[write.outId] = handle;
             // Silly duplicate here :(
             addTo.emplace_back(handle, handle, write.access);
         }
@@ -70,7 +70,7 @@ RenderGraph::compile_passes(PassGraph::Iterator& iter)
 
     auto read_helper = [](auto& addTo, const auto& reads, auto& map) {
         for (const auto& read : reads) {
-            addTo.emplace_back(map[read.name], read.access);
+            addTo.emplace_back(map[read.id], read.access);
         }
     };
 
@@ -157,21 +157,26 @@ RenderGraph::add_pass(Handle<RenderPass> handle,
     auto& pass = compiledPasses[handle.index];
 
     // for each read / write, is it on right queue?
-    // is it dirty?
+
+    for (const auto& read : pass.bufferReads) {
+        tracker.read.mark(read.id);
+
+        if (is_barrier_needed(read, tracker)) {
+        }
+    }
 }
 
 bool
-RenderGraph::is_barrier_needed(const Handle<AllocatedBuffer> handle,
-                               const BufferAccess& access,
+RenderGraph::is_barrier_needed(const BufferReadC& access,
                                Resources::BranchingResourceTracker& tracker)
 {
-    if (tracker.is_dirty(handle)) {
+    if (tracker.dirty.is_marked(access.id)) {
         return true;
     }
 
-    auto state = tracker.get_buffer_state(handle);
+    const auto state = tracker.get_state(access.id);
 
-    if (state.queue != access.queue) {
+    if (state.queue != access.access.queue) {
         return true;
     }
 
@@ -179,20 +184,62 @@ RenderGraph::is_barrier_needed(const Handle<AllocatedBuffer> handle,
 }
 
 bool
-RenderGraph::is_barrier_needed(const Handle<AllocatedImage> handle,
-                               const ImageAccess& access,
+RenderGraph::is_barrier_needed(const ImageReadC& access,
                                Resources::BranchingResourceTracker& tracker)
 {
-    if (tracker.is_dirty(handle)) {
+    if (tracker.dirty.is_marked(access.id)) {
         return true;
     }
 
-    auto state = tracker.get_image_state(handle);
+    const auto state = tracker.get_state(access.id);
 
-    if (state.queue != access.queue) {
+    if (state.queue != access.access.queue) {
         return true;
     }
-    if (state.layout != access.layout) {
+    if (state.layout != access.access.layout) {
+        return true;
+    }
+
+    return false;
+}
+
+bool
+RenderGraph::is_barrier_needed(const BufferWriteC& access,
+                               Resources::BranchingResourceTracker& tracker)
+{
+    if (tracker.dirty.is_marked(access.inId)) {
+        return true;
+    }
+    if (tracker.read.is_marked(access.inId)) {
+        return true;
+    }
+
+    const auto state = tracker.get_state(access.inId);
+
+    if (state.queue != access.access.queue) {
+        return true;
+    }
+
+    return false;
+}
+
+bool
+RenderGraph::is_barrier_needed(const ImageWriteC& access,
+                               Resources::BranchingResourceTracker& tracker)
+{
+    if (tracker.dirty.is_marked(access.inId)) {
+        return true;
+    }
+    if (tracker.read.is_marked(access.inId)) {
+        return true;
+    }
+
+    const auto state = tracker.get_state(access.inId);
+
+    if (state.queue != access.access.queue) {
+        return true;
+    }
+    if (state.layout != access.access.layout) {
         return true;
     }
 

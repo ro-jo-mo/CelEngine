@@ -38,17 +38,14 @@ class RenderGraph
                   PassGraph::Iterator& iter,
                   Resources::BranchingResourceTracker& tracker);
 
-    bool is_barrier_needed(Handle<AllocatedBuffer> handle,
-                           const BufferAccess& access,
+    bool is_barrier_needed(const BufferReadC& access,
                            Resources::BranchingResourceTracker& tracker);
-
-    bool is_barrier_needed(Handle<AllocatedImage> handle,
-                           const ImageAccess& access,
+    bool is_barrier_needed(const ImageReadC& access,
                            Resources::BranchingResourceTracker& tracker);
-
-    bool is_state_compatible(BufferAccess wanted, BufferAccess current);
-
-    bool is_state_compatible(ImageAccess wanted, ImageAccess current);
+    bool is_barrier_needed(const BufferWriteC& access,
+                           Resources::BranchingResourceTracker& tracker);
+    bool is_barrier_needed(const ImageWriteC& access,
+                           Resources::BranchingResourceTracker& tracker);
 
     Handle<AllocatedBuffer> get_buffer_handle_from_name(std::string name);
     Handle<AllocatedImage> get_image_handle_from_name(std::string name);

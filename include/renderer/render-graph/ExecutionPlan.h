@@ -7,6 +7,8 @@
 
 namespace Cel::Renderer {
 
+struct RenderPass;
+
 class ExecutionPlan
 {
     // Add barriers to list
@@ -20,6 +22,18 @@ class ExecutionPlan
     struct PipelineBarrierCmd
     {};
 
+    struct SemaphoreCmd
+    {};
+
+    struct TransferCmd
+    {};
+
+    struct ReleaseCmd
+    {};
+
+    struct SetQueueCmd
+    {};
+
     struct PassExecuteCmd
     {
         Handle<RenderPass> pass;
@@ -30,7 +44,7 @@ class ExecutionPlan
 
     ExecutionPlan branch_off();
 
-    ExecutionPlan* original;
+    ExecutionPlan* original = nullptr;
 
     std::vector<Command> plan;
 };

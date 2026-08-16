@@ -10,20 +10,6 @@
 
 namespace Cel::Renderer {
 
-template<typename Name>
-struct BufferCreate
-{
-    Name name;
-    BufferRequirements requirements;
-};
-
-template<typename Name>
-struct ImageCreate
-{
-    Name name;
-    ImageRequirements requirements;
-};
-
 struct BufferAccess
 {
     VkAccessFlags2 access;
@@ -42,32 +28,46 @@ struct ImageAccess
 };
 
 template<typename Name>
+struct BufferCreate
+{
+    Name id;
+    BufferRequirements requirements;
+};
+
+template<typename Name>
+struct ImageCreate
+{
+    Name id;
+    ImageRequirements requirements;
+};
+
+template<typename Name>
 struct BufferRead
 {
-    Name name;
+    Name id;
     BufferAccess access;
 };
 
 template<typename Name>
 struct BufferWrite
 {
-    Name inName;
-    Name outName;
+    Name inId;
+    Name outId;
     BufferAccess access;
 };
 
 template<typename Name>
 struct ImageRead
 {
-    Name name;
+    Name id;
     ImageAccess access;
 };
 
 template<typename Name>
 struct ImageWrite
 {
-    Name inName;
-    Name outName;
+    Name inId;
+    Name outId;
     ImageAccess access;
 };
 
@@ -87,6 +87,11 @@ struct RenderPass
     std::vector<ImageWrite<std::string>> imageWrites;
 };
 
+using BufferReadC = BufferRead<Handle<AllocatedBuffer>>;
+using BufferWriteC = BufferWrite<Handle<AllocatedBuffer>>;
+using ImageReadC = ImageRead<Handle<AllocatedImage>>;
+using ImageWriteC = ImageWrite<Handle<AllocatedImage>>;
+
 struct RenderPassCompiled
 {
     std::function<void(VkCommandBuffer, void*)> execute;
@@ -94,11 +99,11 @@ struct RenderPassCompiled
     std::vector<BufferCreate<Handle<AllocatedBuffer>>> newBuffers;
     std::vector<ImageCreate<Handle<AllocatedImage>>> newImages;
 
-    std::vector<BufferRead<Handle<AllocatedBuffer>>> bufferReads;
-    std::vector<ImageRead<Handle<AllocatedImage>>> imageReads;
+    std::vector<BufferReadC> bufferReads;
+    std::vector<ImageReadC> imageReads;
 
-    std::vector<BufferWrite<Handle<AllocatedBuffer>>> bufferWrites;
-    std::vector<ImageWrite<Handle<AllocatedImage>>> imageWrites;
+    std::vector<BufferWriteC> bufferWrites;
+    std::vector<ImageWriteC> imageWrites;
 };
 
 }
