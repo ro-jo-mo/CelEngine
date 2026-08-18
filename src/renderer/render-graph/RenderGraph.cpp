@@ -41,13 +41,30 @@ RenderGraph::compile()
 void
 RenderGraph::compile_passes()
 {
-
-    for (auto& pass : passes | std::views::values) {
-        for (auto& create : pass.newBuffers) {
-            bufferHandleToMapped[create.id] =
-                resourceManager.get_handle_from_requirements(
-                    create.requirements);
+    auto create_helper = [&](auto& creates, auto& addTo) {
+        for (auto& create : creates) {
+            addTo[create.id] = resourceManager.get_handle_from_requirements(
+                create.requirements);
         }
+    };
+
+    // We firstly need to create the actual mapping from handle to mapped handle
+    for (auto& pass : passes | std::views::values) {
+        create_helper(pass.newBuffers, bufferHandleToMapped);
+        create_helper(pass.newImages, imageHandleToMapped);
+    }
+
+    auto to_mapped = [&](auto& iter, auto& map) {
+        for (auto& it : iter) {
+            it.id = map[it.id];
+        }
+    };
+    // Then we can update the reads / writes to use the mapped handles
+    for (auto& pass : passes | std::views::values) {
+        to_mapped(pass.bufferReads, bufferHandleToMapped);
+        to_mapped(pass.imageReads, imageHandleToMapped);
+        to_mapped(pass.bufferWrites, bufferHandleToMapped);
+        to_mapped(pass.imageWrites, imageHandleToMapped);
     }
 }
 
