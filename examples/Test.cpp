@@ -78,11 +78,9 @@ CameraController(
     if (input->key_held(SDL_SCANCODE_A)) {
         translation.x -= 1;
     }
-
     if (input->key_held(SDL_SCANCODE_D)) {
         translation.x += 1;
     }
-
     if (input->key_held(SDL_SCANCODE_W)) {
         translation.z += 1;
     }
@@ -120,7 +118,8 @@ CameraController(
 class MyPlugin : public Plugin
 {
   public:
-    void build(Scheduler scheduler, ResourceManager& resourceManager) override
+    void build(SystemScheduler scheduler,
+               ResourceManager& resourceManager) override
     {
         scheduler.add_system(Startup::Start, SpawnCamera);
         scheduler.add_system(Startup::Start, SpawnAsset);

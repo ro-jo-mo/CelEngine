@@ -8,10 +8,12 @@
 
 using namespace Cel::Renderer;
 
-void
+Cel::Common::RelativeScheduler<Cel::Handle<RenderPass>,
+                               Cel::Common::Scheduler<Cel::Handle<RenderPass>>>
 RenderGraph::add_pass(const RenderPass& pass)
 {
-    passes.push_back(pass);
+    passes.insert({ pass.id, pass });
+    return add_system(pass.id);
 }
 
 void
@@ -28,13 +30,7 @@ RenderGraph::compile()
 
     // Someone needs to check when a resource is last used, so it can be reused
 
-    PassGraph passGraph{ passes };
-
-    auto iter = passGraph.iter();
-
-    compile_passes(iter);
-
-    iter.reset();
+    compile_passes();
 
     Resources::BranchingResourceTracker tracker =
         resourceManager.branch_tracker();
@@ -43,65 +39,14 @@ RenderGraph::compile()
 }
 
 void
-RenderGraph::compile_passes(PassGraph::Iterator& iter)
+RenderGraph::compile_passes()
 {
-    compiledPasses.resize(passes.size());
 
-    auto create_helper = [this](auto& addTo, const auto& creates, auto& map) {
-        for (const auto& create : creates) {
-            auto handle = resourceManager.get_handle_from_requirements(
-                create.requirements);
-
-            map[create.id] = handle;
-
-            addTo.emplace_back(handle, create.requirements);
-        }
-    };
-
-    auto write_helper = [](auto& addTo, const auto& writes, auto& map) {
-        for (const auto& write : writes) {
-            auto handle = map[write.inId];
-
-            map[write.outId] = handle;
-            // Silly duplicate here :(
-            addTo.emplace_back(handle, handle, write.access);
-        }
-    };
-
-    auto read_helper = [](auto& addTo, const auto& reads, auto& map) {
-        for (const auto& read : reads) {
-            addTo.emplace_back(map[read.id], read.access);
-        }
-    };
-
-    for (const auto& nodes = iter.get_available_nodes(); !nodes.empty();) {
-
-        for (const auto handle : nodes | std::views::values) {
-            iter.mark_finished(handle);
-
-            auto& pass = passes[handle.index];
-
-            RenderPassCompiled comp;
-
-            comp.bufferReads.resize(pass.bufferReads.size());
-            comp.bufferWrites.resize(pass.bufferWrites.size());
-            comp.imageWrites.resize(pass.imageWrites.size());
-            comp.imageReads.resize(pass.imageReads.size());
-            comp.newBuffers.resize(pass.newBuffers.size());
-            comp.newImages.resize(pass.newImages.size());
-            comp.execute = pass.execute;
-
-            create_helper(comp.newBuffers, pass.newBuffers, bufferNameToHandle);
-            create_helper(comp.newImages, pass.newImages, imageNameToHandle);
-
-            write_helper(
-                comp.bufferWrites, pass.bufferWrites, bufferNameToHandle);
-            write_helper(comp.imageWrites, pass.imageWrites, imageNameToHandle);
-
-            read_helper(comp.bufferReads, pass.bufferReads, bufferNameToHandle);
-            read_helper(comp.imageReads, pass.imageReads, imageNameToHandle);
-
-            compiledPasses[handle.index] = comp;
+    for (auto& pass : passes | std::views::values) {
+        for (auto& create : pass.newBuffers) {
+            bufferHandleToMapped[create.id] =
+                resourceManager.get_handle_from_requirements(
+                    create.requirements);
         }
     }
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ecs/ResourceManager.h"
-#include "ecs/Scheduler.h"
+#include "ecs/SystemScheduler.h"
 
 namespace Cel {
 /**
@@ -16,7 +16,7 @@ class Plugin
      * @param scheduler Use to schedule game systems
      * @param resourceManager Use to initialise resources
      */
-    virtual void build(Scheduler scheduler,
+    virtual void build(SystemScheduler scheduler,
                        ResourceManager& resourceManager) = 0;
 
     virtual ~Plugin() = default;

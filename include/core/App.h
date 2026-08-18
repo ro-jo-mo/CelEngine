@@ -9,7 +9,7 @@
 #include "ecs/QueryManager.h"
 #include "ecs/ResourceManager.h"
 #include "ecs/ScheduleGraph.h"
-#include "ecs/Scheduler.h"
+#include "ecs/SystemScheduler.h"
 
 #include <concepts>
 #include <map>
@@ -28,7 +28,8 @@ class App
         , systemAllocator(resourceManager, queryManager)
     {
         resourceManager.insert_resource<Time>();
-        resourceManager.insert_resource<World>(componentsManager, entityManager);
+        resourceManager.insert_resource<World>(componentsManager,
+                                               entityManager);
         resourceManager.insert_resource<Running>();
     }
 

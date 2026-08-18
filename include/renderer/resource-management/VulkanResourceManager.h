@@ -26,9 +26,9 @@ class VulkanResourceManager
 
     AllocatedImage& get_resource_from_handle(Handle<AllocatedImage> handle);
 
-    BufferState get_buffer_state(Handle<AllocatedBuffer> buffer);
+    BufferAccess get_buffer_state(Handle<AllocatedBuffer> buffer);
 
-    ImageState get_image_state(Handle<AllocatedImage> image);
+    ImageAccess get_image_state(Handle<AllocatedImage> image);
 
     /**
      * This resource is no longer in use and can be safely deleted

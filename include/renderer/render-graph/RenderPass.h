@@ -27,83 +27,54 @@ struct ImageAccess
     uint32_t queue;
 };
 
-template<typename Name>
 struct BufferCreate
 {
-    Name id;
+    Handle<AllocatedBuffer> id;
     BufferRequirements requirements;
 };
 
-template<typename Name>
 struct ImageCreate
 {
-    Name id;
+    Handle<AllocatedImage> id;
     ImageRequirements requirements;
 };
 
-template<typename Name>
 struct BufferRead
 {
-    Name id;
+    Handle<AllocatedBuffer> id;
     BufferAccess access;
 };
 
-template<typename Name>
 struct BufferWrite
 {
-    Name inId;
-    Name outId;
+    Handle<AllocatedBuffer> id;
     BufferAccess access;
 };
 
-template<typename Name>
 struct ImageRead
 {
-    Name id;
+    Handle<AllocatedImage> id;
     ImageAccess access;
 };
 
-template<typename Name>
 struct ImageWrite
 {
-    Name inId;
-    Name outId;
+    Handle<AllocatedImage> id;
     ImageAccess access;
 };
 
 struct RenderPass
 {
-    std::string name;
+    Handle<RenderPass> id;
 
-    std::function<void(VkCommandBuffer, void*)> execute;
+    std::vector<BufferCreate> newBuffers;
+    std::vector<ImageCreate> newImages;
 
-    std::vector<BufferCreate<std::string>> newBuffers;
-    std::vector<ImageCreate<std::string>> newImages;
+    std::vector<BufferRead> bufferReads;
+    std::vector<ImageRead> imageReads;
 
-    std::vector<BufferRead<std::string>> bufferReads;
-    std::vector<ImageRead<std::string>> imageReads;
-
-    std::vector<BufferWrite<std::string>> bufferWrites;
-    std::vector<ImageWrite<std::string>> imageWrites;
-};
-
-using BufferReadC = BufferRead<Handle<AllocatedBuffer>>;
-using BufferWriteC = BufferWrite<Handle<AllocatedBuffer>>;
-using ImageReadC = ImageRead<Handle<AllocatedImage>>;
-using ImageWriteC = ImageWrite<Handle<AllocatedImage>>;
-
-struct RenderPassCompiled
-{
-    std::function<void(VkCommandBuffer, void*)> execute;
-
-    std::vector<BufferCreate<Handle<AllocatedBuffer>>> newBuffers;
-    std::vector<ImageCreate<Handle<AllocatedImage>>> newImages;
-
-    std::vector<BufferReadC> bufferReads;
-    std::vector<ImageReadC> imageReads;
-
-    std::vector<BufferWriteC> bufferWrites;
-    std::vector<ImageWriteC> imageWrites;
+    std::vector<BufferWrite> bufferWrites;
+    std::vector<ImageWrite> imageWrites;
 };
 
 }

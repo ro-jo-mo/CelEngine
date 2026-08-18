@@ -25,7 +25,7 @@ struct RenderPass;
 class PassBuilder
 {
   public:
-    explicit PassBuilder(std::string name) { pass.name = std::move(name); }
+    explicit PassBuilder(const Handle<RenderPass> id) { pass.id = id; }
 
     // Creating resources should simply create a list of requirements for the
     // buffer / image
@@ -33,17 +33,18 @@ class PassBuilder
     // share the same requirements (or a superset) can then be reused
     /**
      * @brief Creates a per frame buffer
+     * @param buffer
      * @param name
      * @param allocSize
      * @param usages
      * @param memoryUsage
      */
-    PassBuilder& create_buffer(const std::string& name,
+    PassBuilder& create_buffer(Handle<AllocatedBuffer> buffer,
                                size_t allocSize,
                                VkBufferUsageFlags usages,
                                VmaMemoryUsage memoryUsage);
 
-    PassBuilder& create_image(const std::string& name,
+    PassBuilder& create_image(Handle<AllocatedImage> image,
                               VkFormat format,
                               VkExtent3D extent,
                               VkImageUsageFlags usages,
@@ -58,6 +59,7 @@ class PassBuilder
 
     /**
      *
+     * @param buffer
      * @param bufferName
      * @param access
      * @param stages
@@ -65,30 +67,25 @@ class PassBuilder
      * @param size Size of the buffer region your reading. Default 0 represents
      * a read of the entire buffer.
      */
-    PassBuilder& read_buffer(const std::string& bufferName,
+    PassBuilder& read_buffer(Handle<AllocatedBuffer> buffer,
                              VkPipelineStageFlags2 stages,
                              VkDeviceSize offset = 0,
                              VkDeviceSize size = 0);
 
-    PassBuilder& read_image(const std::string& imageName,
+    PassBuilder& read_image(Handle<AllocatedImage> image,
                             VkPipelineStageFlags2 stages,
                             VkImageLayout layout);
 
-    PassBuilder& write_buffer(const std::string& inName,
-                              const std::string& outName,
+    PassBuilder& write_buffer(Handle<AllocatedBuffer> buffer,
                               VkAccessFlags2 access,
                               VkPipelineStageFlags2 stages,
                               VkDeviceSize offset = 0,
                               VkDeviceSize size = 0);
 
-    PassBuilder& write_image(const std::string& imageName,
-                             const std::string& outName,
+    PassBuilder& write_image(Handle<AllocatedImage> image,
                              VkAccessFlags2 access,
                              VkPipelineStageFlags2 stages,
                              VkImageLayout layout);
-
-    PassBuilder& set_execute(
-        const std::function<void(VkCommandBuffer, void*)>& execute);
 
     PassBuilder& set_queue(uint32_t _queue);
 

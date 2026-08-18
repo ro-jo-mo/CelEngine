@@ -8,7 +8,7 @@
 using namespace Cel;
 
 void
-Renderer::RenderPlugin::build(Scheduler scheduler,
+Renderer::RenderPlugin::build(SystemScheduler scheduler,
                               ResourceManager& resourceManager)
 {
     VulkanInitialiser::initialise(resourceManager);
@@ -17,5 +17,6 @@ Renderer::RenderPlugin::build(Scheduler scheduler,
 
     scheduler.add_system(Render::PostUpdate, draw);
 
-    scheduler.add_chain(TearDown::Middle, cleanup_asset_server, cleanup_renderer);
+    scheduler.add_chain(
+        TearDown::Middle, cleanup_asset_server, cleanup_renderer);
 }

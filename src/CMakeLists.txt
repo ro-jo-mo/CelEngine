@@ -41,7 +41,6 @@ target_sources(${PROJECT_NAME}
         "ecs/EntityManager.cpp"
         "ecs/ComponentsManager.cpp"
         "ecs/ScheduleGraph.cpp"
-        "ecs/Scheduler.cpp"
         "ecs/QueryManager.cpp"
 
         "core/World.cpp"
@@ -68,6 +67,7 @@ target_sources(${PROJECT_NAME}
         "renderer/render-graph/RenderGraph.cpp"
         "renderer/render-graph/PipelineBuilder.cpp"
         "renderer/render-graph/PassGraph.cpp"
+        "renderer/render-graph/HandleAllocator.cpp"
 
         "renderer/resource-management/ResourceTracker.cpp"
         "renderer/resource-management/VulkanResourceManager.cpp"
@@ -95,7 +95,7 @@ set(public_headers
         include/ecs/ResourceManager.h
         include/ecs/Schedule.h
         include/ecs/ScheduleGraph.h
-        include/ecs/Scheduler.h
+        include/ecs/SystemScheduler.h
         include/ecs/System.h
         include/ecs/QueryManager.h
         include/ecs/Types.h
@@ -113,6 +113,7 @@ set(public_headers
         include/common/GrowVector.h
         include/common/Graph.h
         include/common/Handle.h
+        include/common/Scheduler.h
 
         include/input/Input.h
 
@@ -137,6 +138,7 @@ set(public_headers
         include/renderer/render-graph/AccessFlags.h
         include/renderer/render-graph/PassGraph.h
         include/renderer/render-graph/ExecutionPlan.h
+        include/renderer/render-graph/HandleAllocator.h
 
         include/renderer/resource-management/ResourceTracker.h
         include/renderer/resource-management/VulkanResourceManager.h
