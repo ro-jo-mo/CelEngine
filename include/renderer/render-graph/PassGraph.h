@@ -74,8 +74,6 @@ class PassGraph
 // layout, queue family, access flags(?)
 struct PassGraph::Iterator
 {
-    using PassGroup = std::vector<std::reference_wrapper<Handle<RenderPass>>>;
-
     explicit Iterator(PassGraph& graph);
 
     // Mark this pass as complete

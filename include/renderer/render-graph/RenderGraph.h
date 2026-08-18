@@ -12,7 +12,6 @@
 #include <unordered_map>
 
 namespace Cel::Renderer {
-
 class RenderGraph : Common::Scheduler<Handle<RenderPass>>
 {
   public:
@@ -41,10 +40,10 @@ class RenderGraph : Common::Scheduler<Handle<RenderPass>>
     void search_branch(PassGraph::Iterator iter,
                        Resources::BranchingResourceTracker& tracker);
 
-    void add_pass(Handle<RenderPass> handle,
-                  ExecutionPlan& plan,
-                  PassGraph::Iterator& iter,
-                  Resources::BranchingResourceTracker& tracker);
+    void _add_pass(Handle<RenderPass> handle,
+                   ExecutionPlan& plan,
+                   PassGraph::Iterator& iter,
+                   Resources::BranchingResourceTracker& tracker);
 
     bool is_barrier_needed(const BufferRead& access,
                            Resources::BranchingResourceTracker& tracker);
@@ -54,9 +53,6 @@ class RenderGraph : Common::Scheduler<Handle<RenderPass>>
                            Resources::BranchingResourceTracker& tracker);
     bool is_barrier_needed(const ImageWrite& access,
                            Resources::BranchingResourceTracker& tracker);
-
-    Handle<AllocatedBuffer> get_buffer_handle_from_name(std::string name);
-    Handle<AllocatedImage> get_image_handle_from_name(std::string name);
 
     // A mapping of pass id's to the actual pass data
     std::unordered_map<Handle<RenderPass>, RenderPass> passes;
@@ -84,5 +80,4 @@ RenderGraph::add_chain(Passes... pass)
 
     return add_chain(pass.id...);
 }
-
 }
