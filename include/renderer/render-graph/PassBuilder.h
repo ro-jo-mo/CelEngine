@@ -93,7 +93,6 @@ class PassBuilder
 
   private:
     RenderPass pass;
-    uint32_t queue;
 
     friend class RenderGraph;
 };

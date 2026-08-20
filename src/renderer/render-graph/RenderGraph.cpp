@@ -9,7 +9,7 @@
 using namespace Cel::Renderer;
 
 Cel::Common::RelativeScheduler<Cel::Handle<RenderPass>,
-                               Cel::Common::Scheduler<Cel::Handle<RenderPass>>>
+                               Cel::Common::Graph<Cel::Handle<RenderPass>>>
 RenderGraph::add_pass(const RenderPass& pass)
 {
     passes.insert({ pass.id, pass });
@@ -34,6 +34,8 @@ RenderGraph::compile()
 
     Resources::BranchingResourceTracker tracker =
         resourceManager.branch_tracker();
+
+    auto iter = graph.iter();
 
     search_branch(iter, tracker);
 }
@@ -69,11 +71,23 @@ RenderGraph::compile_passes()
 }
 
 void
-RenderGraph::search_branch(PassGraph::Iterator iter,
+RenderGraph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator iter,
                            Resources::BranchingResourceTracker& tracker)
 {
     while (true) {
-        const auto& nodes = iter.get_best_nodes();
+
+        // Make a list of the passes we're selecting from
+        std::vector<Handle<RenderPass>> nodes;
+
+        const auto currentLength = iter.begin()->first;
+
+        for (auto [length, pass] : iter) {
+            if (length == currentLength) {
+                nodes.push_back(pass);
+            } else {
+                break;
+            }
+        }
 
         // Have we finished?
         if (nodes.empty()) {
@@ -103,107 +117,208 @@ RenderGraph::search_branch(PassGraph::Iterator iter,
 
         // Ideally we would merge many barriers into the pipeline barrier
         // cmd
-
-        search_branch();
     }
 }
 
 void
-RenderGraph::add_pass(Handle<RenderPass> handle,
-                      ExecutionPlan& plan,
-                      PassGraph::Iterator& iter,
-                      Resources::BranchingResourceTracker& tracker)
+RenderGraph::add_pass_to_plan(Handle<RenderPass> handle,
+                              ExecutionPlan& plan,
+                              PassGraph::Iterator& iter,
+                              Resources::BranchingResourceTracker& tracker)
 {
     iter.mark_finished(handle);
 
-    auto& pass = compiledPasses[handle.index];
+    const auto& pass = passes[handle];
 
-    // for each read / write, is it on right queue?
+    ExecutionPlan::ExecutePass execution;
 
-    for (const auto& read : pass.bufferReads) {
-        tracker.read.mark(read.id);
+    // If write: mustn't be dirty or being read
+    // If read: mustn't be dirty
+    // Either way state must be compatible
+    // If queue is different we always need a transition
 
-        if (is_barrier_needed(read, tracker)) {
+    // We can merge two barriers if and only if we're merging several reads, the
+    // image layout is the same and on the same queue
+
+    auto read_helper = [&](auto& reads,
+                           auto& transfers,
+                           auto& barriers,
+                           auto& merges) {
+        for (const auto& read : reads) {
+
+            // Do not edit this reference
+            const auto& state = tracker.state.get(read.id);
+
+            // Do we need to transition the resource to this queue?
+            if (state.queue != pass.queue) {
+                // Add queue transition
+                transfers.push_back(create_transition(read, state, tracker));
+
+                tracker.state.set(read.id, read.access);
+            }
+            // Do we need to flush data and / or transition layout
+            else if (!is_state_compatible(
+                         read.id, read.access, state, tracker)) {
+                barriers.push_back(create_barrier(read.id, read.access, state));
+
+                tracker.state.set(read.id, read.access);
+            }
+            // Do we need to merge our read flags with a prior passes barrier?
+            else if (is_merge_needed(read.access, state)) {
+                merges.emplace_back(
+                    read.id, read.access.access, read.access.stages);
+
+                auto copy = state;
+                copy.stages |= read.access.stages;
+                copy.access |= read.access.access;
+
+                tracker.state.set(read.id, copy);
+            }
+
+            tracker.dirty.set(read.id, false);
+            tracker.lastPassToAccessResource.set(read.id, pass.id);
         }
+    };
+
+    read_helper(pass.bufferReads,
+                execution.bufferTransfers,
+                execution.bufferBarriers,
+                execution.bufferMerges);
+    read_helper(pass.imageReads,
+                execution.imageTransfers,
+                execution.imageBarriers,
+                execution.imageMerges);
+
+    for (const auto& write : pass.bufferWrites) {
+        auto state = tracker.state.get(write.id);
+
+        // A write actually always needs a barrier prior to starting, with the
+        // only exception if it is the first pass to write
+        // This is marked the UINT32_MAX handle
+        // As such we only care about this and queue transitions
+
+        if (pass.queue != state.queue) {
+        }
+
+        tracker.dirty.set(write.id, true);
+        tracker.lastPassToAccessResource.set(write.id, pass.id);
     }
+
+    // UPDATE THE STATET AETATEATSTST
+
+    plan.push(execution);
 }
 
 bool
-RenderGraph::is_barrier_needed(const BufferReadC& access,
-                               Resources::BranchingResourceTracker& tracker)
+RenderGraph::is_state_compatible(Handle<AllocatedBuffer> handle,
+                                 const BufferAccess& access,
+                                 const BufferAccess& state,
+                                 Resources::BranchingResourceTracker& tracker)
 {
-    if (tracker.dirty.is_marked(access.id)) {
-        return true;
-    }
-
-    const auto state = tracker.get_state(access.id);
-
-    if (state.queue != access.access.queue) {
-        return true;
-    }
-
-    return false;
+    return !tracker.dirty.get(handle);
 }
 
 bool
-RenderGraph::is_barrier_needed(const ImageReadC& access,
-                               Resources::BranchingResourceTracker& tracker)
+RenderGraph::is_state_compatible(Handle<AllocatedImage> handle,
+                                 const ImageAccess& access,
+                                 const ImageAccess& state,
+                                 Resources::BranchingResourceTracker& tracker)
 {
-    if (tracker.dirty.is_marked(access.id)) {
-        return true;
+    if (tracker.dirty.get(handle)) {
+        return false;
+    }
+    if (access.layout != state.layout) {
+        return false;
     }
 
-    const auto state = tracker.get_state(access.id);
-
-    if (state.queue != access.access.queue) {
-        return true;
-    }
-    if (state.layout != access.access.layout) {
-        return true;
-    }
-
-    return false;
+    return true;
 }
 
 bool
-RenderGraph::is_barrier_needed(const BufferWriteC& access,
-                               Resources::BranchingResourceTracker& tracker)
+RenderGraph::is_merge_needed(const BufferAccess& access,
+                             const BufferAccess& state)
 {
-    if (tracker.dirty.is_marked(access.inId)) {
-        return true;
+    // check if our flags are a subset of the existing state
+    if ((access.access & state.access) == access.access) {
+        return false;
     }
-    if (tracker.read.is_marked(access.inId)) {
-        return true;
+    if ((access.stages & state.stages) == access.stages) {
+        return false;
     }
-
-    const auto state = tracker.get_state(access.inId);
-
-    if (state.queue != access.access.queue) {
-        return true;
-    }
-
-    return false;
+    return true;
 }
 
 bool
-RenderGraph::is_barrier_needed(const ImageWriteC& access,
+RenderGraph::is_merge_needed(const ImageAccess& access,
+                             const ImageAccess& state)
+{
+    // check if our flags are a subset of the existing state
+    if ((access.access & state.access) == access.access) {
+        return true;
+    }
+    if ((access.stages & state.stages) == access.stages) {
+        return true;
+    }
+    return false;
+}
+
+BufferTransfer
+RenderGraph::create_transition(const BufferRead& read,
+                               const BufferAccess& state,
                                Resources::BranchingResourceTracker& tracker)
 {
-    if (tracker.dirty.is_marked(access.inId)) {
-        return true;
-    }
-    if (tracker.read.is_marked(access.inId)) {
-        return true;
-    }
 
-    const auto state = tracker.get_state(access.inId);
+    return { .semaphore = tracker.lastPassToAccessResource.get(read.id),
+             .barrier = { .srcStageMask = state.stages,
+                          .srcAccessMask = state.access,
+                          .dstStageMask = read.access.stages,
+                          .dstAccessMask = read.access.access,
+                          .srcQueueFamilyIndex = state.queue,
+                          .dstQueueFamilyIndex = read.access.queue,
+                          .buffer = read.id } };
+}
 
-    if (state.queue != access.access.queue) {
-        return true;
-    }
-    if (state.layout != access.access.layout) {
-        return true;
-    }
+ImageTransfer
+RenderGraph::create_transition(const ImageRead& read,
+                               const ImageAccess& state,
+                               Resources::BranchingResourceTracker& tracker)
+{
+    return { .semaphore = tracker.lastPassToAccessResource.get(read.id),
+             .barrier = { .srcStageMask = state.stages,
+                          .srcAccessMask = state.access,
+                          .dstStageMask = read.access.stages,
+                          .dstAccessMask = read.access.access,
+                          .oldLayout = state.layout,
+                          .newLayout = read.access.layout,
+                          .srcQueueFamilyIndex = state.queue,
+                          .dstQueueFamilyIndex = read.access.queue,
+                          .image = read.id } };
+}
 
-    return false;
+BufferBarrier
+RenderGraph::create_barrier(const Handle<AllocatedBuffer> handle,
+                            const BufferAccess& access,
+                            const BufferAccess& state)
+{
+    return { .srcStageMask = state.stages,
+             .srcAccessMask = state.access,
+             .dstStageMask = access.stages,
+             .dstAccessMask = access.access,
+             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+             .buffer = handle };
+}
+
+ImageBarrier
+RenderGraph::create_barrier(const Handle<AllocatedImage> handle,
+                            const ImageAccess& access,
+                            const ImageAccess& state)
+{
+    return { .srcStageMask = state.stages,
+             .srcAccessMask = state.access,
+             .dstStageMask = access.stages,
+             .dstAccessMask = access.access,
+             .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+             .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+             .image = handle };
 }

@@ -68,6 +68,7 @@ target_sources(${PROJECT_NAME}
         "renderer/render-graph/PipelineBuilder.cpp"
         "renderer/render-graph/PassGraph.cpp"
         "renderer/render-graph/HandleAllocator.cpp"
+        "renderer/render-graph/ExecutionPlan.cpp"
 
         "renderer/resource-management/ResourceTracker.cpp"
         "renderer/resource-management/VulkanResourceManager.cpp"

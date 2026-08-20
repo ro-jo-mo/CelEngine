@@ -80,7 +80,7 @@ PassBuilder::write_image(const Handle<AllocatedImage> image,
 PassBuilder&
 PassBuilder::set_queue(const uint32_t _queue)
 {
-    queue = _queue;
+    pass.queue = queue;
 
     return *this;
 }

@@ -29,61 +29,138 @@ class ResourceTracker
 // It is key to note if we want thread safe use, when presented with a branch
 // splitting two ways, we must branch off twice, so the original tracker is
 // untouched
-class BranchingResourceTracker final : public ResourceTracker
+class BranchingResourceTracker final : ResourceTracker
 {
   public:
-    BufferAccess get_state(Handle<AllocatedBuffer> buffer) override;
-
-    ImageAccess get_state(Handle<AllocatedImage> image) override;
-
     // Create a new resource tracker representing a separate branch
     BranchingResourceTracker branch_off();
 
-    // Due to the branching nature of the tracker, a buffer may be marked
-    // as reusable in the original, but then actually reused in this
-    // branch. We cannot edit the original, so we must be able to mark a
-    // resource as both reusable AND reused
+    // Stores a branch of state data
+    // To avoid altering the state of previous branches in the tree we store
+    // pointers to the original, but only edit this copy
+    template<typename BufValue, typename ImgValue>
     struct Branch
     {
         explicit Branch(Branch* original);
 
-        void mark(Handle<AllocatedBuffer> handle);
-        void mark(Handle<AllocatedImage> handle);
+        // Initial values are used in the case when the value does not exist yet
+        explicit Branch(BufValue initialBuf, ImgValue initialImg);
 
-        void unmark(Handle<AllocatedBuffer> handle);
-        void unmark(Handle<AllocatedImage> handle);
+        // Special case where we inherit from our resource manager. Makes the
+        // assumption that all resources are initialised
+        explicit Branch(
+            const std::unordered_map<Handle<AllocatedBuffer>, BufValue>&
+                buffers,
+            const std::unordered_map<Handle<AllocatedImage>, ImgValue>& images);
 
-        [[nodiscard]] bool is_marked(Handle<AllocatedBuffer> handle) const;
-        [[nodiscard]] bool is_marked(Handle<AllocatedImage> handle) const;
+        void set(Handle<AllocatedBuffer> handle, BufValue value);
+        void set(Handle<AllocatedImage> handle, ImgValue value);
 
-        std::unordered_set<Handle<AllocatedBuffer>> buffers;
-        std::unordered_set<Handle<AllocatedImage>> images;
-
-        std::unordered_set<Handle<AllocatedBuffer>> antiBuffers;
-        std::unordered_set<Handle<AllocatedImage>> antiImages;
+        [[nodiscard]] const BufValue& get(Handle<AllocatedBuffer> handle);
+        [[nodiscard]] const ImgValue& get(Handle<AllocatedImage> handle);
 
         Branch* original = nullptr;
+
+        std::unordered_map<Handle<AllocatedBuffer>, BufValue> buffers;
+        std::unordered_map<Handle<AllocatedImage>, ImgValue> images;
+
+        BufValue initialBuf;
+        ImgValue initialImg;
     };
 
-    // Mark a resource as finished with, and ready to be reused, unmark once
-    // reused
-    Branch reusable;
+    // Stores whether a resource is ready to be reused
+    Branch<bool, bool> reusable{ false, false };
 
-    // Mark a resource as being written to, unmark once a barrier is inserted
-    Branch dirty;
+    // Stores whether a resource has been written to, and needs flushing
+    Branch<bool, bool> dirty{ false, false };
 
-    // Mark a resource as having been read, unmark once a write is added
-    Branch read;
+    // The current state of this resource
+    Branch<BufferAccess, ImageAccess> state;
+
+    // The last pass to read or write this resource
+    // We use the max int value as a flag that it is unused so far
+    Branch<Handle<RenderPass>, Handle<RenderPass>> lastPassToAccessResource{
+        { UINT32_MAX },
+        { UINT32_MAX }
+    };
 
   private:
     explicit BranchingResourceTracker(ResourceTracker* tracker);
     explicit BranchingResourceTracker(BranchingResourceTracker* tracker);
-
-    // Store reference to the original
-    // When checking the current state of a resource, if state does not exist
-    // yet in self, check original
-    // This creates a pointer chain, ending with the non branching tracker
-    ResourceTracker* original;
 };
+
+template<typename BufValue, typename ImgValue>
+BranchingResourceTracker::Branch<BufValue, ImgValue>::Branch(Branch* original)
+    : original(original)
+{
+}
+
+template<typename BufValue, typename ImgValue>
+BranchingResourceTracker::Branch<BufValue, ImgValue>::Branch(
+    BufValue initialBuf,
+    ImgValue initialImg)
+    : original(nullptr)
+    , initialBuf(initialBuf)
+    , initialImg(initialImg)
+{
+}
+
+template<typename BufValue, typename ImgValue>
+BranchingResourceTracker::Branch<BufValue, ImgValue>::Branch(
+    const std::unordered_map<Handle<AllocatedBuffer>, BufValue>& buffers,
+    const std::unordered_map<Handle<AllocatedImage>, ImgValue>& images)
+    : original(nullptr)
+    , buffers(buffers)
+    , images(images)
+{
+}
+
+template<typename BufValue, typename ImgValue>
+void
+BranchingResourceTracker::Branch<BufValue, ImgValue>::set(
+    Handle<AllocatedBuffer> handle,
+    BufValue value)
+{
+    buffers[handle] = value;
+}
+
+template<typename BufValue, typename ImgValue>
+void
+BranchingResourceTracker::Branch<BufValue, ImgValue>::set(
+    Handle<AllocatedImage> handle,
+    ImgValue value)
+{
+    images[handle] = value;
+}
+
+template<typename BufValue, typename ImgValue>
+const BufValue&
+BranchingResourceTracker::Branch<BufValue, ImgValue>::get(
+    Handle<AllocatedBuffer> handle)
+{
+    if (buffers.contains(handle)) {
+        return buffers[handle];
+    }
+    if (original != nullptr) {
+        return original->get(handle);
+    }
+
+    return initialBuf;
+}
+
+template<typename BufValue, typename ImgValue>
+const ImgValue&
+BranchingResourceTracker::Branch<BufValue, ImgValue>::get(
+    Handle<AllocatedImage> handle)
+{
+    if (images.contains(handle)) {
+        return images[handle];
+    }
+    if (original != nullptr) {
+        return original->get(handle);
+    }
+
+    return initialImg;
+}
 
 }

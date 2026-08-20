@@ -2,6 +2,7 @@
 #include "Handle.h"
 #include "core/Error.h"
 
+#include <algorithm>
 #include <ranges>
 #include <set>
 #include <unordered_map>
@@ -168,6 +169,10 @@ class Graph<Key>::Iterator
 
     void calculate_unused(Key endpoint);
 
+    auto begin();
+
+    auto end();
+
     Iterator branch_off();
 
   private:
@@ -214,32 +219,24 @@ Graph<Key>::Iterator::calculate_unused(Key endpoint)
 {
     std::unordered_set<Key> used;
 
-    auto recurse = [&](const Key key) {
+    auto recurse = [&](const Key key, auto&& recurse) {
         used.insert(key);
 
         auto& dependencies = graph.get_dependencies(key);
         for (const auto& dep : dependencies) {
-            recurse(dep);
+            recurse(dep, recurse);
         }
     };
 
-    recurse(endpoint);
+    recurse(endpoint, recurse);
 
     // I'd assume it is slightly cheaper to check a node is !unusued that is
     // used On the assumption unused will be far smaller than used
-
     for (const auto& key : graph.adjacencyList | std::views::keys) {
         if (!used.contains(key)) {
             unused.insert(key);
         }
     }
-}
-
-template<typename Key>
-Graph<Key>::Iterator
-Graph<Key>::Iterator::branch_off()
-{
-    return Iterator(this);
 }
 
 template<typename Key>
@@ -273,13 +270,33 @@ Graph<Key>::Iterator::add_dependents(Key key)
     for (const auto& dep : dependents) {
         const auto& requirements = graph.get_dependencies(dep);
 
-        if (const auto& requirements = graph.get_dependencies(dep);
-            std::all_of(requirements.begin(), requirements.end(), [&](auto x) {
+        if (std::all_of(requirements.begin(), requirements.end(), [&](auto x) {
                 return finished.count(x);
             })) {
             readyNodes.emplace({ criticalPaths[dep], key });
         }
     }
+}
+
+template<typename Key>
+Graph<Key>::Iterator
+Graph<Key>::Iterator::branch_off()
+{
+    return Iterator(*this);
+}
+
+template<typename Key>
+auto
+Graph<Key>::Iterator::begin()
+{
+    return readyNodes.rbegin();
+}
+
+template<typename Key>
+auto
+Graph<Key>::Iterator::end()
+{
+    return readyNodes.rend();
 }
 
 };

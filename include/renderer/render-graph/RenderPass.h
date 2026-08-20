@@ -14,8 +14,6 @@ struct BufferAccess
 {
     VkAccessFlags2 access;
     VkPipelineStageFlags2 stages;
-    VkDeviceSize offset;
-    VkDeviceSize size;
     uint32_t queue;
 };
 
@@ -63,9 +61,13 @@ struct ImageWrite
     ImageAccess access;
 };
 
+// I'm storing queue on both the access and pass
+// This is simply because
 struct RenderPass
 {
     Handle<RenderPass> id;
+
+    uint32_t queue;
 
     std::vector<BufferCreate> newBuffers;
     std::vector<ImageCreate> newImages;

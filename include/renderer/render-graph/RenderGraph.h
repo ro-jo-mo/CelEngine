@@ -15,8 +15,9 @@ namespace Cel::Renderer {
 class RenderGraph : Common::Scheduler<Handle<RenderPass>>
 {
   public:
-    Common::RelativeScheduler<Handle<RenderPass>, Scheduler> add_pass(
-        const RenderPass& pass);
+    Common::RelativeScheduler<Handle<RenderPass>,
+                              Common::Graph<Handle<RenderPass>>>
+    add_pass(const RenderPass& pass);
 
     template<typename... Passes>
     Common::RelativeScheduler<Handle<RenderPass>, Scheduler> add_chain(
@@ -37,22 +38,47 @@ class RenderGraph : Common::Scheduler<Handle<RenderPass>>
     // resources
     void compile_passes();
 
-    void search_branch(PassGraph::Iterator iter,
+    void search_branch(Common::Graph<Handle<RenderPass>>::Iterator iter,
                        Resources::BranchingResourceTracker& tracker);
 
-    void _add_pass(Handle<RenderPass> handle,
-                   ExecutionPlan& plan,
-                   PassGraph::Iterator& iter,
-                   Resources::BranchingResourceTracker& tracker);
+    void add_pass_to_plan(Handle<RenderPass> handle,
+                          ExecutionPlan& plan,
+                          PassGraph::Iterator& iter,
+                          Resources::BranchingResourceTracker& tracker);
 
-    bool is_barrier_needed(const BufferRead& access,
-                           Resources::BranchingResourceTracker& tracker);
-    bool is_barrier_needed(const ImageRead& access,
-                           Resources::BranchingResourceTracker& tracker);
-    bool is_barrier_needed(const BufferWrite& access,
-                           Resources::BranchingResourceTracker& tracker);
-    bool is_barrier_needed(const ImageWrite& access,
-                           Resources::BranchingResourceTracker& tracker);
+    static bool is_state_compatible(
+        Handle<AllocatedBuffer> handle,
+        const BufferAccess& access,
+        const BufferAccess& state,
+        Resources::BranchingResourceTracker& tracker);
+
+    static bool is_state_compatible(
+        Handle<AllocatedImage> handle,
+        const ImageAccess& access,
+        const ImageAccess& state,
+        Resources::BranchingResourceTracker& tracker);
+
+    static bool is_merge_needed(const BufferAccess& access,
+                                const BufferAccess& state);
+    static bool is_merge_needed(const ImageAccess& access,
+                                const ImageAccess& state);
+
+    static BufferTransfer create_transition(
+        const BufferRead& read,
+        const BufferAccess& state,
+        Resources::BranchingResourceTracker& tracker);
+
+    static ImageTransfer create_transition(
+        const ImageRead& read,
+        const ImageAccess& state,
+        Resources::BranchingResourceTracker& tracker);
+
+    static BufferBarrier create_barrier(Handle<AllocatedBuffer> handle,
+                                        const BufferAccess& access,
+                                        const BufferAccess& state);
+    static ImageBarrier create_barrier(Handle<AllocatedImage> handle,
+                                       const ImageAccess& access,
+                                       const ImageAccess& state);
 
     // A mapping of pass id's to the actual pass data
     std::unordered_map<Handle<RenderPass>, RenderPass> passes;
