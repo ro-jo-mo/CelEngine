@@ -64,12 +64,14 @@ class RenderGraph : Common::Scheduler<Handle<RenderPass>>
                                 const ImageAccess& state);
 
     static BufferTransfer create_transition(
-        const BufferRead& read,
+        Handle<AllocatedBuffer> handle,
+        const BufferAccess& access,
         const BufferAccess& state,
         Resources::BranchingResourceTracker& tracker);
 
     static ImageTransfer create_transition(
-        const ImageRead& read,
+        Handle<AllocatedImage> handle,
+        const ImageAccess& access,
         const ImageAccess& state,
         Resources::BranchingResourceTracker& tracker);
 

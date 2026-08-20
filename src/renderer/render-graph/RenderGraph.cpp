@@ -197,14 +197,23 @@ RenderGraph::add_pass_to_plan(Handle<RenderPass> handle,
         // This is marked the UINT32_MAX handle
         // As such we only care about this and queue transitions
 
-        if (pass.queue != state.queue) {
+        if (tracker.lastPassToAccessResource.get(write.id).index ==
+            UINT32_MAX) {
+            // If unaccessed, we just need to set state
+        }
+        // Insert transfer else just a barrier
+        else if (pass.queue != state.queue) {
+            execution.bufferTransfers.push_back(
+                create_transition(write.id, write.access, state, tracker));
+        } else {
+            execution.bufferBarriers.push_back(
+                create_barrier(write.id, write.access, state));
         }
 
+        tracker.state.set(write.id, write.access);
         tracker.dirty.set(write.id, true);
         tracker.lastPassToAccessResource.set(write.id, pass.id);
     }
-
-    // UPDATE THE STATET AETATEATSTST
 
     plan.push(execution);
 }
@@ -263,36 +272,38 @@ RenderGraph::is_merge_needed(const ImageAccess& access,
 }
 
 BufferTransfer
-RenderGraph::create_transition(const BufferRead& read,
+RenderGraph::create_transition(const Handle<AllocatedBuffer> handle,
+                               const BufferAccess& access,
                                const BufferAccess& state,
                                Resources::BranchingResourceTracker& tracker)
 {
 
-    return { .semaphore = tracker.lastPassToAccessResource.get(read.id),
+    return { .semaphore = tracker.lastPassToAccessResource.get(handle),
              .barrier = { .srcStageMask = state.stages,
                           .srcAccessMask = state.access,
-                          .dstStageMask = read.access.stages,
-                          .dstAccessMask = read.access.access,
+                          .dstStageMask = access.stages,
+                          .dstAccessMask = access.access,
                           .srcQueueFamilyIndex = state.queue,
-                          .dstQueueFamilyIndex = read.access.queue,
-                          .buffer = read.id } };
+                          .dstQueueFamilyIndex = access.queue,
+                          .buffer = handle } };
 }
 
 ImageTransfer
-RenderGraph::create_transition(const ImageRead& read,
+RenderGraph::create_transition(const Handle<AllocatedImage> handle,
+                               const ImageAccess& access,
                                const ImageAccess& state,
                                Resources::BranchingResourceTracker& tracker)
 {
-    return { .semaphore = tracker.lastPassToAccessResource.get(read.id),
+    return { .semaphore = tracker.lastPassToAccessResource.get(handle),
              .barrier = { .srcStageMask = state.stages,
                           .srcAccessMask = state.access,
-                          .dstStageMask = read.access.stages,
-                          .dstAccessMask = read.access.access,
+                          .dstStageMask = access.stages,
+                          .dstAccessMask = access.access,
                           .oldLayout = state.layout,
-                          .newLayout = read.access.layout,
+                          .newLayout = access.layout,
                           .srcQueueFamilyIndex = state.queue,
-                          .dstQueueFamilyIndex = read.access.queue,
-                          .image = read.id } };
+                          .dstQueueFamilyIndex = access.queue,
+                          .image = handle } };
 }
 
 BufferBarrier
