@@ -1,71 +1,20 @@
 #pragma once
 
+#include "../resource-management/MegaBuffer.h"
+#include "RenderGraphTypes.h"
 #include "common/Handle.h"
-#include "renderer/MegaBuffer.h"
 
 #include <vector>
 
-namespace Cel::Renderer {
+namespace Cel::Renderer::RenderGraph {
 
 struct RenderPass;
-
-// Replica of the actual vk struct
-// Main thing is that the buffer / image link is replaced with a handle
-struct BufferBarrier
-{
-    VkPipelineStageFlags2 srcStageMask;
-    VkAccessFlags2 srcAccessMask;
-    VkPipelineStageFlags2 dstStageMask;
-    VkAccessFlags2 dstAccessMask;
-    uint32_t srcQueueFamilyIndex;
-    uint32_t dstQueueFamilyIndex;
-    Handle<AllocatedBuffer> buffer;
-};
-struct ImageBarrier
-{
-    VkPipelineStageFlags2 srcStageMask;
-    VkAccessFlags2 srcAccessMask;
-    VkPipelineStageFlags2 dstStageMask;
-    VkAccessFlags2 dstAccessMask;
-    VkImageLayout oldLayout;
-    VkImageLayout newLayout;
-    uint32_t srcQueueFamilyIndex;
-    uint32_t dstQueueFamilyIndex;
-    Handle<AllocatedImage> image;
-};
-
-// Each pass has an implicit signal semaphore, represented by a
-// Handle<RenderPass>. If no pass waits on this semaphore, we can happily
-// discard it. Otherwise, it needs to be created and signalled
-// A barrier needs to be placed on both queues, but it can be derived from
-// justis th The full barrier data can be derived from this
-struct BufferTransfer
-{
-    Handle<RenderPass> semaphore;
-    BufferBarrier barrier;
-};
-struct ImageTransfer
-{
-    Handle<RenderPass> semaphore;
-    ImageBarrier barrier;
-};
-
-struct BufferMerge
-{
-    Handle<AllocatedBuffer> handle;
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-};
-struct ImageMerge
-{
-    Handle<AllocatedImage> handle;
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-};
 
 class ExecutionPlan
 {
   public:
+    ExecutionPlan() = default;
+
     struct ExecutePass
     {
         // Places where a semaphore needs insertion
@@ -83,8 +32,25 @@ class ExecutionPlan
 
     ExecutionPlan branch_off();
 
+    void push(const ExecutePass& exec);
+
+    [[nodiscard]] uint32_t cost() const;
+
+    std::vector<ExecutePass> compile();
+
   private:
+    explicit ExecutionPlan(ExecutionPlan* original)
+        : original(original)
+        , totalCost(original->totalCost)
+    {
+    }
+
+    static void add_execution_to_list(ExecutionPlan* plan,
+                                      std::vector<ExecutePass>& list);
+
     ExecutionPlan* original = nullptr;
+
+    uint32_t totalCost = 0;
 
     // An ordered representation of the plan
     std::vector<ExecutePass> execution;

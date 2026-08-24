@@ -33,19 +33,20 @@ DrawData::draw()
     vk_check(vkResetCommandBuffer(frame->commandBuffer, 0));
 
     cmd = frame->commandBuffer;
-    VkCommandBufferBeginInfo beginInfo = Initialisers::command_buffer_begin_info(
-        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo beginInfo =
+        Initialisers::command_buffer_begin_info(
+            VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     vkBeginCommandBuffer(cmd, &beginInfo);
 
     Utils::transition_image_layout(cmd,
-                                 drawImage->image,
-                                 VK_IMAGE_LAYOUT_UNDEFINED,
-                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+                                   drawImage->image,
+                                   VK_IMAGE_LAYOUT_UNDEFINED,
+                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     Utils::transition_image_layout(cmd,
-                                 depthImage->image,
-                                 VK_IMAGE_LAYOUT_UNDEFINED,
-                                 VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+                                   depthImage->image,
+                                   VK_IMAGE_LAYOUT_UNDEFINED,
+                                   VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
     // DRAW GEOMETRY HERE
     create_indirect_data();
 
@@ -57,24 +58,24 @@ DrawData::draw()
 
     // DRAWING FINISHED
     Utils::transition_image_layout(cmd,
-                                 drawImage->image,
-                                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+                                   drawImage->image,
+                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     Utils::transition_image_layout(cmd,
-                                 swapchain->images[swapchainIndex],
-                                 VK_IMAGE_LAYOUT_UNDEFINED,
-                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+                                   swapchain->images[swapchainIndex],
+                                   VK_IMAGE_LAYOUT_UNDEFINED,
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     Utils::copy_image_to_image(cmd,
-                            drawImage->image,
-                            swapchain->images[swapchainIndex],
-                            renderExtent->extent,
-                            swapchain->extent);
+                               drawImage->image,
+                               swapchain->images[swapchainIndex],
+                               renderExtent->extent,
+                               swapchain->extent);
 
     Utils::transition_image_layout(cmd,
-                                 swapchain->images[swapchainIndex],
-                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                 VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+                                   swapchain->images[swapchainIndex],
+                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     vk_check(vkEndCommandBuffer(cmd));
 
@@ -128,8 +129,8 @@ DrawData::draw_geometry()
     // Rendering info setup
     VkRenderingAttachmentInfo colourAttachment =
         Initialisers::attachment_info(drawImage->imageView,
-                                     nullptr,
-                                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+                                      nullptr,
+                                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     VkRenderingAttachmentInfo depthAttachment =
         Initialisers::depth_attachment_info(
@@ -142,10 +143,10 @@ DrawData::draw_geometry()
 
     // Scene setup
     auto sceneBuffer = Utils::create_buffer(sizeof(SceneData),
-                                           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                           VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                           "scene_buffer_alloc",
-                                           *allocator);
+                                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                            VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                            "scene_buffer_alloc",
+                                            *allocator);
     {
         VkBufferDeviceAddressInfo vertInfo{
             .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -193,10 +194,10 @@ DrawData::draw_geometry()
 
     DescriptorWriter writer;
     writer.write_buffer(0,
-                       sceneBuffer.buffer,
-                       sizeof(SceneData),
-                       0,
-                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+                        sceneBuffer.buffer,
+                        sizeof(SceneData),
+                        0,
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
     if (textureDescriptorCount > 0) {
         VkWriteDescriptorSet arraySet;
@@ -244,11 +245,11 @@ DrawData::create_indirect_data()
     // Create buffer for PerEntityGpuData and indirect calls
     entityBuffer =
         Utils::create_buffer(sizeof(PerEntityGpuData) * renderables.size(),
-                            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                                VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                            VMA_MEMORY_USAGE_GPU_ONLY,
-                            "per_entity_data_buffer_alloc",
-                            *allocator);
+                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                 VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                             VMA_MEMORY_USAGE_GPU_ONLY,
+                             "per_entity_data_buffer_alloc",
+                             *allocator);
     indirectBuffer = Utils::create_buffer(
         sizeof(VkDrawIndexedIndirectCommand) * renderables.size(),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
@@ -290,23 +291,23 @@ DrawData::create_indirect_data()
     // Alternatively an upload queue might be
     // beneficial as well
     Utils::upload_to_buffer(entityData.data(),
-                          sizeof(PerEntityGpuData) * entityData.size(),
-                          entityBuffer.buffer,
-                          0,
-                          *context,
-                          *allocator,
-                          *immediate,
-                          *graphicsQueue);
+                            sizeof(PerEntityGpuData) * entityData.size(),
+                            entityBuffer.buffer,
+                            0,
+                            *context,
+                            *allocator,
+                            *immediate,
+                            *graphicsQueue);
 
     Utils::upload_to_buffer(indirectCalls.data(),
-                          sizeof(VkDrawIndexedIndirectCommand) *
-                              indirectCalls.size(),
-                          indirectBuffer.buffer,
-                          0,
-                          *context,
-                          *allocator,
-                          *immediate,
-                          *graphicsQueue);
+                            sizeof(VkDrawIndexedIndirectCommand) *
+                                indirectCalls.size(),
+                            indirectBuffer.buffer,
+                            0,
+                            *context,
+                            *allocator,
+                            *immediate,
+                            *graphicsQueue);
 }
 
 void
@@ -322,10 +323,10 @@ DrawData::draw_skybox()
     // projection
     auto viewProjBuffer =
         Utils::create_buffer(sizeof(glm::mat4),
-                            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                            VMA_MEMORY_USAGE_CPU_TO_GPU,
-                            "skybox_viewproj_buffer_alloc",
-                            *allocator);
+                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                             VMA_MEMORY_USAGE_CPU_TO_GPU,
+                             "skybox_viewproj_buffer_alloc",
+                             *allocator);
     {
         auto sceneBufferData =
             static_cast<glm::mat4*>(viewProjBuffer.info.pMappedData);
@@ -341,19 +342,19 @@ DrawData::draw_skybox()
 
     // Write view buffer
     writer.write_buffer(0,
-                       viewProjBuffer.buffer,
-                       sizeof(glm::mat4),
-                       0,
-                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+                        viewProjBuffer.buffer,
+                        sizeof(glm::mat4),
+                        0,
+                        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
     // Combine texture image sampler
     auto skyTex =
         assetServer->textureCache.descriptors[assetServer->skyboxTextureIndex];
     writer.write_image(1,
-                      skyTex.imageView,
-                      skyTex.sampler,
-                      skyTex.imageLayout,
-                      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+                       skyTex.imageView,
+                       skyTex.sampler,
+                       skyTex.imageLayout,
+                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
     VkDescriptorSet skyboxDescriptor = frame->descriptorAllocator.allocate(
         globalDescriptors->skyboxLayout, nullptr);

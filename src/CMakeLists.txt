@@ -61,13 +61,12 @@ target_sources(${PROJECT_NAME}
         "renderer/AssetServer.cpp"
         "renderer/Descriptors.cpp"
         "renderer/Camera.cpp"
-        "renderer/MegaBuffer.cpp"
+        "renderer/resource-management/MegaBuffer.cpp"
 
         "renderer/render-graph/PassBuilder.cpp"
         "renderer/render-graph/RenderGraph.cpp"
-        "renderer/render-graph/PipelineBuilder.cpp"
-        "renderer/render-graph/PassGraph.cpp"
-        "renderer/render-graph/HandleAllocator.cpp"
+        "renderer/resource-management/PipelineBuilder.cpp"
+        "renderer/passes/HandleAllocator.cpp"
         "renderer/render-graph/ExecutionPlan.cpp"
 
         "renderer/resource-management/ResourceTracker.cpp"
@@ -109,6 +108,7 @@ set(public_headers
         include/core/Hierarchy.h
         include/core/CorePlugin.h
         include/core/Running.h
+        include/core/ThreadManager.h
 
         include/common/SlotMap.h
         include/common/GrowVector.h
@@ -137,7 +137,6 @@ set(public_headers
         include/renderer/render-graph/PipelineBuilder.h
         include/renderer/render-graph/RenderPass.h
         include/renderer/render-graph/AccessFlags.h
-        include/renderer/render-graph/PassGraph.h
         include/renderer/render-graph/ExecutionPlan.h
         include/renderer/render-graph/HandleAllocator.h
 

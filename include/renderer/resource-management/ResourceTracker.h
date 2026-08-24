@@ -2,11 +2,11 @@
 
 #include "common/Handle.h"
 #include "renderer/VulkanTypes.h"
-#include "renderer/render-graph/RenderPass.h"
+#include "renderer/render-graph/RenderGraphTypes.h"
 
 #include <unordered_set>
 
-namespace Cel::Renderer::Resources {
+namespace Cel::Renderer {
 
 // Tracks the current state of resources at a point in the graph
 class ResourceTracker

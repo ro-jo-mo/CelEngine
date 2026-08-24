@@ -1,7 +1,7 @@
 #pragma once
 
-#include "DeletionQueue.h"
 #include "Descriptors.h"
+#include "resource-management/DeletionQueue.h"
 
 #include <glm/glm.hpp>
 #include <vector>

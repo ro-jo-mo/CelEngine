@@ -7,17 +7,18 @@
 #include <ranges>
 
 using namespace Cel::Renderer;
+using namespace Cel::Renderer::RenderGraph;
 
 Cel::Common::RelativeScheduler<Cel::Handle<RenderPass>,
                                Cel::Common::Graph<Cel::Handle<RenderPass>>>
-RenderGraph::add_pass(const RenderPass& pass)
+Graph::add_pass(const RenderPass& pass)
 {
     passes.insert({ pass.id, pass });
     return add_system(pass.id);
 }
 
 void
-RenderGraph::compile()
+Graph::compile()
 {
     // What do I need to do?
     // When deciding between two passes, for now I will just brute force. Open
@@ -32,16 +33,17 @@ RenderGraph::compile()
 
     compile_passes();
 
-    Resources::BranchingResourceTracker tracker =
-        resourceManager.branch_tracker();
+    BranchingResourceTracker tracker = resourceManager.branch_tracker();
+
+    ExecutionPlan plan{};
 
     auto iter = graph.iter();
 
-    search_branch(iter, tracker);
+    search_branch(iter, tracker, plan);
 }
 
 void
-RenderGraph::compile_passes()
+Graph::compile_passes()
 {
     auto create_helper = [&](auto& creates, auto& addTo) {
         for (auto& create : creates) {
@@ -71,13 +73,23 @@ RenderGraph::compile_passes()
 }
 
 void
-RenderGraph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator iter,
-                           Resources::BranchingResourceTracker& tracker)
+Graph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
+                     BranchingResourceTracker& tracker,
+                     ExecutionPlan& plan)
 {
-    while (true) {
 
-        // Make a list of the passes we're selecting from
-        std::vector<Handle<RenderPass>> nodes;
+    // Make a list of the passes we're selecting from
+    std::vector<Handle<RenderPass>> nodes;
+    while (true) {
+        nodes.clear();
+
+        // If we've finished the plan, ...
+        if (iter.begin() == iter.end()) {
+            if (plan.cost() < bestCost) {
+                finalPlan = plan.compile();
+            }
+            return;
+        }
 
         const auto currentLength = iter.begin()->first;
 
@@ -89,42 +101,32 @@ RenderGraph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator iter,
             }
         }
 
-        // Have we finished?
-        if (nodes.empty()) {
-            break;
-        }
-
         // No need to branch if it's linear
         if (nodes.size() == 1) {
+            add_pass_to_plan(nodes[0], plan, iter, tracker);
+            continue;
         }
 
         // Create a new branch for each pass
         for (const auto& handle : nodes) {
             auto branchIter = iter.branch_off();
+            auto branchTracker = tracker.branch_off();
+            auto branchPlan = plan.branch_off();
+
+            add_pass_to_plan(handle, branchPlan, branchIter, branchTracker);
+            search_branch(branchIter, branchTracker, branchPlan);
         }
 
-        // Barriers? Create resources?
-        // Aliasing? Add to plan?
-        // Based on current resource tracker state, decide whether we need
-        // barrier? If so update tracker state
-        // Tracker likely also needs to
-        // tag resource as written (until barrier is inserted flushing it?)
-        // Perhaps its simplest, that after creating an execution plan, it
-        // is then compiled, and barriers are merged? To do this, the plan
-        // would need "false barriers" that mark a resource as needing to
-        // stay in its current state
-        // As well as something marking a resource as dirty?
-
-        // Ideally we would merge many barriers into the pipeline barrier
-        // cmd
+        // If we do branch, there's nothing more to do here, so just break
+        break;
     }
 }
 
 void
-RenderGraph::add_pass_to_plan(Handle<RenderPass> handle,
-                              ExecutionPlan& plan,
-                              PassGraph::Iterator& iter,
-                              Resources::BranchingResourceTracker& tracker)
+Graph::add_pass_to_plan(const Handle<RenderPass> handle,
+                        ExecutionPlan& plan,
+                        Common::Graph<Handle<RenderPass>>::Iterator& iter,
+                        BranchingResourceTracker& tracker)
 {
     iter.mark_finished(handle);
 
@@ -152,7 +154,8 @@ RenderGraph::add_pass_to_plan(Handle<RenderPass> handle,
             // Do we need to transition the resource to this queue?
             if (state.queue != pass.queue) {
                 // Add queue transition
-                transfers.push_back(create_transition(read, state, tracker));
+                transfers.push_back(
+                    create_transition(read.id, read.access, state, tracker));
 
                 tracker.state.set(read.id, read.access);
             }
@@ -189,49 +192,56 @@ RenderGraph::add_pass_to_plan(Handle<RenderPass> handle,
                 execution.imageBarriers,
                 execution.imageMerges);
 
-    for (const auto& write : pass.bufferWrites) {
-        auto state = tracker.state.get(write.id);
+    auto write_helper = [&](auto& writes, auto& transfers, auto& barriers) {
+        for (const auto& write : writes) {
+            auto state = tracker.state.get(write.id);
 
-        // A write actually always needs a barrier prior to starting, with the
-        // only exception if it is the first pass to write
-        // This is marked the UINT32_MAX handle
-        // As such we only care about this and queue transitions
+            // A write actually always needs a barrier prior to starting, with
+            // the only exception if it is the first pass to write This is
+            // marked the UINT32_MAX handle As such we only care about this and
+            // queue transitions
 
-        if (tracker.lastPassToAccessResource.get(write.id).index ==
-            UINT32_MAX) {
-            // If unaccessed, we just need to set state
+            if (tracker.lastPassToAccessResource.get(write.id).index ==
+                UINT32_MAX) {
+                // If unaccessed, we just need to set state
+            }
+            // Insert transfer else just a barrier
+            else if (pass.queue != state.queue) {
+                transfers.push_back(
+                    create_transition(write.id, write.access, state, tracker));
+            } else {
+                barriers.push_back(
+                    create_barrier(write.id, write.access, state));
+            }
+
+            tracker.state.set(write.id, write.access);
+            tracker.dirty.set(write.id, true);
+            tracker.lastPassToAccessResource.set(write.id, pass.id);
         }
-        // Insert transfer else just a barrier
-        else if (pass.queue != state.queue) {
-            execution.bufferTransfers.push_back(
-                create_transition(write.id, write.access, state, tracker));
-        } else {
-            execution.bufferBarriers.push_back(
-                create_barrier(write.id, write.access, state));
-        }
+    };
 
-        tracker.state.set(write.id, write.access);
-        tracker.dirty.set(write.id, true);
-        tracker.lastPassToAccessResource.set(write.id, pass.id);
-    }
+    write_helper(
+        pass.bufferWrites, execution.bufferTransfers, execution.bufferBarriers);
+    write_helper(
+        pass.imageWrites, execution.imageTransfers, execution.imageBarriers);
 
     plan.push(execution);
 }
 
 bool
-RenderGraph::is_state_compatible(Handle<AllocatedBuffer> handle,
-                                 const BufferAccess& access,
-                                 const BufferAccess& state,
-                                 Resources::BranchingResourceTracker& tracker)
+Graph::is_state_compatible(const Handle<AllocatedBuffer> handle,
+                           const BufferAccess& access,
+                           const BufferAccess& state,
+                           BranchingResourceTracker& tracker)
 {
     return !tracker.dirty.get(handle);
 }
 
 bool
-RenderGraph::is_state_compatible(Handle<AllocatedImage> handle,
-                                 const ImageAccess& access,
-                                 const ImageAccess& state,
-                                 Resources::BranchingResourceTracker& tracker)
+Graph::is_state_compatible(const Handle<AllocatedImage> handle,
+                           const ImageAccess& access,
+                           const ImageAccess& state,
+                           BranchingResourceTracker& tracker)
 {
     if (tracker.dirty.get(handle)) {
         return false;
@@ -244,8 +254,7 @@ RenderGraph::is_state_compatible(Handle<AllocatedImage> handle,
 }
 
 bool
-RenderGraph::is_merge_needed(const BufferAccess& access,
-                             const BufferAccess& state)
+Graph::is_merge_needed(const BufferAccess& access, const BufferAccess& state)
 {
     // check if our flags are a subset of the existing state
     if ((access.access & state.access) == access.access) {
@@ -258,8 +267,7 @@ RenderGraph::is_merge_needed(const BufferAccess& access,
 }
 
 bool
-RenderGraph::is_merge_needed(const ImageAccess& access,
-                             const ImageAccess& state)
+Graph::is_merge_needed(const ImageAccess& access, const ImageAccess& state)
 {
     // check if our flags are a subset of the existing state
     if ((access.access & state.access) == access.access) {
@@ -272,10 +280,10 @@ RenderGraph::is_merge_needed(const ImageAccess& access,
 }
 
 BufferTransfer
-RenderGraph::create_transition(const Handle<AllocatedBuffer> handle,
-                               const BufferAccess& access,
-                               const BufferAccess& state,
-                               Resources::BranchingResourceTracker& tracker)
+Graph::create_transition(const Handle<AllocatedBuffer> handle,
+                         const BufferAccess& access,
+                         const BufferAccess& state,
+                         BranchingResourceTracker& tracker)
 {
 
     return { .semaphore = tracker.lastPassToAccessResource.get(handle),
@@ -289,10 +297,10 @@ RenderGraph::create_transition(const Handle<AllocatedBuffer> handle,
 }
 
 ImageTransfer
-RenderGraph::create_transition(const Handle<AllocatedImage> handle,
-                               const ImageAccess& access,
-                               const ImageAccess& state,
-                               Resources::BranchingResourceTracker& tracker)
+Graph::create_transition(const Handle<AllocatedImage> handle,
+                         const ImageAccess& access,
+                         const ImageAccess& state,
+                         BranchingResourceTracker& tracker)
 {
     return { .semaphore = tracker.lastPassToAccessResource.get(handle),
              .barrier = { .srcStageMask = state.stages,
@@ -307,9 +315,9 @@ RenderGraph::create_transition(const Handle<AllocatedImage> handle,
 }
 
 BufferBarrier
-RenderGraph::create_barrier(const Handle<AllocatedBuffer> handle,
-                            const BufferAccess& access,
-                            const BufferAccess& state)
+Graph::create_barrier(const Handle<AllocatedBuffer> handle,
+                      const BufferAccess& access,
+                      const BufferAccess& state)
 {
     return { .srcStageMask = state.stages,
              .srcAccessMask = state.access,
@@ -321,9 +329,9 @@ RenderGraph::create_barrier(const Handle<AllocatedBuffer> handle,
 }
 
 ImageBarrier
-RenderGraph::create_barrier(const Handle<AllocatedImage> handle,
-                            const ImageAccess& access,
-                            const ImageAccess& state)
+Graph::create_barrier(const Handle<AllocatedImage> handle,
+                      const ImageAccess& access,
+                      const ImageAccess& state)
 {
     return { .srcStageMask = state.stages,
              .srcAccessMask = state.access,

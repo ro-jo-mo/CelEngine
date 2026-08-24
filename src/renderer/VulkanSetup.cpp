@@ -1,14 +1,14 @@
 #include "renderer/VulkanSetup.h"
 
+#include "../../include/renderer/resource-management/DeletionQueue.h"
+#include "../../include/renderer/resource-management/PipelineBuilder.h"
 #include "core/Error.h"
 #include "renderer/AssetServer.h"
-#include "renderer/DeletionQueue.h"
 #include "renderer/Descriptors.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanTypes.h"
 #include "renderer/VulkanUtils.h"
 #include "renderer/Window.h"
-#include "renderer/render-graph/PipelineBuilder.h"
 
 #include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>

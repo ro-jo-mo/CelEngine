@@ -1,8 +1,8 @@
 #pragma once
 #include "AssetServer.h"
-#include "DeletionQueue.h"
 #include "VulkanTypes.h"
 #include "ecs/System.h"
+#include "resource-management/DeletionQueue.h"
 
 namespace Cel::Renderer {
 

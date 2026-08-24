@@ -2,11 +2,11 @@
 
 #include "../core/World.h"
 #include "Descriptors.h"
-#include "MegaBuffer.h"
 #include "VulkanTypes.h"
 #include "common/Handle.h"
 #include "ecs/Types.h"
 #include "renderer/AssetTypes.h"
+#include "resource-management/MegaBuffer.h"
 
 namespace Cel::Renderer {
 

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "RenderPass.h"
+#include "RenderGraphTypes.h"
 #include "renderer/VulkanTypes.h"
 #include "renderer/VulkanUtils.h"
 
 #include <string>
 #include <utility>
 
-namespace Cel::Renderer {
+namespace Cel::Renderer::RenderGraph {
 
 struct RenderPass;
 
@@ -68,9 +68,7 @@ class PassBuilder
      * a read of the entire buffer.
      */
     PassBuilder& read_buffer(Handle<AllocatedBuffer> buffer,
-                             VkPipelineStageFlags2 stages,
-                             VkDeviceSize offset = 0,
-                             VkDeviceSize size = 0);
+                             VkPipelineStageFlags2 stages);
 
     PassBuilder& read_image(Handle<AllocatedImage> image,
                             VkPipelineStageFlags2 stages,
@@ -78,16 +76,14 @@ class PassBuilder
 
     PassBuilder& write_buffer(Handle<AllocatedBuffer> buffer,
                               VkAccessFlags2 access,
-                              VkPipelineStageFlags2 stages,
-                              VkDeviceSize offset = 0,
-                              VkDeviceSize size = 0);
+                              VkPipelineStageFlags2 stages);
 
     PassBuilder& write_image(Handle<AllocatedImage> image,
                              VkAccessFlags2 access,
                              VkPipelineStageFlags2 stages,
                              VkImageLayout layout);
 
-    PassBuilder& set_queue(uint32_t _queue);
+    PassBuilder& set_queue(uint32_t queue);
 
     RenderPass build();
 

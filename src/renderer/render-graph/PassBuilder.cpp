@@ -4,6 +4,7 @@
 #include "renderer/VulkanHelpers.h"
 
 using namespace Cel::Renderer;
+using namespace Cel::Renderer::RenderGraph;
 
 PassBuilder&
 PassBuilder::create_buffer(const Handle<AllocatedBuffer> buffer,
@@ -32,13 +33,10 @@ PassBuilder::create_image(const Handle<AllocatedImage> image,
 
 PassBuilder&
 PassBuilder::read_buffer(const Handle<AllocatedBuffer> buffer,
-                         VkPipelineStageFlags2 stages,
-                         VkDeviceSize offset,
-                         VkDeviceSize size)
+                         VkPipelineStageFlags2 stages)
 {
     pass.bufferReads.emplace_back(
-        buffer,
-        BufferAccess{ VK_ACCESS_2_SHADER_READ_BIT, stages, offset, size });
+        buffer, BufferAccess{ VK_ACCESS_2_SHADER_READ_BIT, stages });
 
     return *this;
 }
@@ -56,12 +54,13 @@ PassBuilder::read_image(Handle<AllocatedImage> image,
 PassBuilder&
 PassBuilder::write_buffer(Handle<AllocatedBuffer> buffer,
                           VkAccessFlags2 access,
-                          VkPipelineStageFlags2 stages,
-                          VkDeviceSize offset,
-                          VkDeviceSize size)
+                          VkPipelineStageFlags2 stages)
 {
-    pass.bufferWrites.emplace_back(
-        buffer, BufferAccess{ access, stages, offset, size });
+    pass.bufferWrites.emplace_back(buffer,
+                                   BufferAccess{
+                                       access,
+                                       stages,
+                                   });
 
     return *this;
 }
@@ -78,7 +77,7 @@ PassBuilder::write_image(const Handle<AllocatedImage> image,
 }
 
 PassBuilder&
-PassBuilder::set_queue(const uint32_t _queue)
+PassBuilder::set_queue(const uint32_t queue)
 {
     pass.queue = queue;
 
@@ -96,7 +95,7 @@ PassBuilder::build()
 
     auto set_queues = [this](auto& data) {
         for (auto& value : data) {
-            value.access.queue = queue;
+            value.access.queue = pass.queue;
         }
     };
 

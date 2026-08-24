@@ -3,7 +3,7 @@
 #include "ResourceTracker.h"
 #include "common/Handle.h"
 
-namespace Cel::Renderer::Resources {
+namespace Cel::Renderer {
 
 // Almighty tracker of all(?) allocated resources
 // I suppose I should probably move resource ownership out of the asset server

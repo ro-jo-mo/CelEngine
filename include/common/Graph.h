@@ -273,7 +273,7 @@ Graph<Key>::Iterator::add_dependents(Key key)
         if (std::all_of(requirements.begin(), requirements.end(), [&](auto x) {
                 return finished.count(x);
             })) {
-            readyNodes.emplace({ criticalPaths[dep], key });
+            readyNodes.emplace(criticalPaths[dep], key);
         }
     }
 }

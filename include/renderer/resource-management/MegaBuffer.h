@@ -1,6 +1,6 @@
 #pragma once
-#include "VulkanTypes.h"
-#include "VulkanUtils.h"
+#include "../VulkanTypes.h"
+#include "../VulkanUtils.h"
 
 namespace Cel::Renderer {
 
