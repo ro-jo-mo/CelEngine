@@ -123,6 +123,7 @@ class MyPlugin : public Plugin
     {
         scheduler.add_system(Startup::Start, SpawnCamera);
         scheduler.add_system(Startup::Start, SpawnAsset);
+
         scheduler.add_system(MainUpdate::Update, SpinIt);
         scheduler.add_system(MainUpdate::Last, CameraController);
     }

@@ -2,6 +2,7 @@
 
 #include "Types.h"
 #include <array>
+#include <core/Config.h>
 #include <unordered_map>
 
 namespace Cel {

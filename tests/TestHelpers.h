@@ -61,7 +61,7 @@ template<auto Schedule, auto funcPtr>
 class SingleSystemPlugin : public Cel::Plugin
 {
   public:
-    void build(Cel::Scheduler scheduler,
+    void build(Cel::SystemScheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
         scheduler.add_system(Schedule, funcPtr);
@@ -78,7 +78,7 @@ template<auto Schedule>
 class StopAfterOneFramePlugin : public Cel::Plugin
 {
   public:
-    void build(Cel::Scheduler scheduler, Cel::ResourceManager&) override
+    void build(Cel::SystemScheduler scheduler, Cel::ResourceManager&) override
     {
         scheduler.add_system(Schedule, StopRunning);
     }
@@ -88,7 +88,7 @@ template<auto Schedule, auto... Systems>
 class ChainPlugin : public Cel::Plugin
 {
   public:
-    void build(Cel::Scheduler scheduler,
+    void build(Cel::SystemScheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
         scheduler.add_chain(Schedule, Systems...);
@@ -99,7 +99,7 @@ template<auto Schedule, auto... Systems>
 class GroupPlugin : public Cel::Plugin
 {
   public:
-    void build(Cel::Scheduler scheduler,
+    void build(Cel::SystemScheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
         scheduler.add_group(Schedule, Systems...);
@@ -110,7 +110,7 @@ template<auto Schedule, auto First, auto Second>
 class BeforePlugin : public Cel::Plugin
 {
   public:
-    void build(Cel::Scheduler scheduler,
+    void build(Cel::SystemScheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
         scheduler.add_system(Schedule, First).before(Second);
@@ -121,7 +121,7 @@ template<auto Schedule, auto First, auto Second>
 class AfterPlugin : public Cel::Plugin
 {
   public:
-    void build(Cel::Scheduler scheduler,
+    void build(Cel::SystemScheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
         scheduler.add_system(Schedule, Second).after(First);
@@ -132,7 +132,7 @@ template<typename ResType, auto... Args>
 class ResourcePlugin : public Cel::Plugin
 {
   public:
-    void build(Cel::Scheduler scheduler,
+    void build(Cel::SystemScheduler scheduler,
                Cel::ResourceManager& resourceManager) override
     {
         resourceManager.insert_resource(ResType{ Args... });

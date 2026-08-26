@@ -31,11 +31,16 @@ Graph::compile()
 
     // Someone needs to check when a resource is last used, so it can be reused
 
-    compile_passes();
+    auto tracker = resourceManager.branch_tracker();
 
-    BranchingResourceTracker tracker = resourceManager.branch_tracker();
+    compile_passes(tracker);
 
     ExecutionPlan plan{};
+
+    // Insert the base plan
+    // This is used to insert any barriers needed for across frame resources,
+    // like the vertex buffer
+    plan.push({ .pass = Passes::basePass });
 
     auto iter = graph.iter();
 
@@ -43,12 +48,16 @@ Graph::compile()
 }
 
 void
-Graph::compile_passes()
+Graph::compile_passes(BranchingResourceTracker& tracker)
 {
+    // We mark the state as coming from a null pass, meaning it has no existing
+    // state and thus needs no synchronisation
     auto create_helper = [&](auto& creates, auto& addTo) {
         for (auto& create : creates) {
-            addTo[create.id] = resourceManager.get_handle_from_requirements(
+            auto handle = resourceManager.get_handle_from_requirements(
                 create.requirements);
+            addTo[create.id] = handle;
+            tracker.lastPassToAccessResource.set(handle, Passes::nullPass);
         }
     };
 
@@ -132,7 +141,7 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
 
     const auto& pass = passes[handle];
 
-    ExecutionPlan::ExecutePass execution;
+    ExecutionPlan::ExecutePass execution{ .pass = handle };
 
     // If write: mustn't be dirty or being read
     // If read: mustn't be dirty
@@ -197,8 +206,9 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
             auto state = tracker.state.get(write.id);
 
             // A write actually always needs a barrier prior to starting, with
-            // the only exception if it is the first pass to write This is
-            // marked the UINT32_MAX handle As such we only care about this and
+            // the only exception if it is the first pass to write
+            // This is
+            // marked the null pass handle. As such we only care about this and
             // queue transitions
 
             if (tracker.lastPassToAccessResource.get(write.id).index ==

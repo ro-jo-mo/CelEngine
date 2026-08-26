@@ -10,7 +10,8 @@
 
 namespace Cel::Renderer {
 
-constexpr unsigned int FRAME_OVERLAP = 2;
+constexpr unsigned int FRAMES_IN_FLIGHT = 2;
+constexpr unsigned int QUEUE_COUNT = 3;
 
 struct Swapchain
 {
@@ -127,6 +128,21 @@ struct ImageRequirements
     VkExtent3D extent;
     VkImageUsageFlags usages;
     VkImageAspectFlags aspects;
+};
+
+struct BufferAccess
+{
+    VkAccessFlags2 access;
+    VkPipelineStageFlags2 stages;
+    uint32_t queue;
+};
+
+struct ImageAccess
+{
+    VkAccessFlags2 access;
+    VkPipelineStageFlags2 stages;
+    VkImageLayout layout;
+    uint32_t queue;
 };
 
 struct Pipeline

@@ -124,7 +124,7 @@ SystemAllocator::register_t()
         return queryManager.get_query<T>();
     } else if constexpr (IsResource<T>::value) {
         registeredResources.push_back(std::type_index(typeid(T)));
-        return resourceManager.GetResource<typename T::inner>();
+        return resourceManager.get_resource<typename T::inner>();
     } else {
         static_assert(alwaysFalse<T>,
                       "A system can only request resources and queries!");

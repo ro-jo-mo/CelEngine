@@ -38,12 +38,12 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     // Finally execute the render passes
     void execute();
 
-    void reset();
+    void reset(uint32_t frame);
 
   private:
     // Resolve the buffer and image handles to handles to actual vulkan
     // resources
-    void compile_passes();
+    void compile_passes(BranchingResourceTracker& tracker);
 
     void search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
                        BranchingResourceTracker& tracker,
@@ -96,10 +96,10 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     std::unordered_map<Handle<AllocatedImage>, Handle<AllocatedImage>>
         imageHandleToMapped;
 
-    std::unordered_map<Handle<RenderPass>, VkCommandBuffer> commandBuffers;
-
     std::vector<ExecutionPlan::ExecutePass> finalPlan;
     uint32_t bestCost = UINT32_MAX;
+
+    uint32_t currentFrame;
 
     VkDevice device;
     VmaAllocator allocator;

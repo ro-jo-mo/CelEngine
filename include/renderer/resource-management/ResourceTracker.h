@@ -2,6 +2,7 @@
 
 #include "common/Handle.h"
 #include "renderer/VulkanTypes.h"
+#include "renderer/passes/Passes.h"
 #include "renderer/render-graph/RenderGraphTypes.h"
 
 #include <unordered_set>
@@ -22,6 +23,8 @@ class ResourceTracker
     // Track the current state of images and buffers
     std::unordered_map<Handle<AllocatedBuffer>, BufferAccess> buffers;
     std::unordered_map<Handle<AllocatedImage>, ImageAccess> images;
+
+    friend class BranchingResourceTracker;
 };
 
 // A branching version of the resource tracker that allows us to keep track of
@@ -29,9 +32,11 @@ class ResourceTracker
 // It is key to note if we want thread safe use, when presented with a branch
 // splitting two ways, we must branch off twice, so the original tracker is
 // untouched
-class BranchingResourceTracker final : ResourceTracker
+class BranchingResourceTracker
 {
   public:
+    explicit BranchingResourceTracker(const ResourceTracker& tracker);
+
     // Create a new resource tracker representing a separate branch
     BranchingResourceTracker branch_off();
 
@@ -78,15 +83,12 @@ class BranchingResourceTracker final : ResourceTracker
     Branch<BufferAccess, ImageAccess> state;
 
     // The last pass to read or write this resource
-    // We use the max int value as a flag that it is unused so far
-    Branch<Handle<RenderPass>, Handle<RenderPass>> lastPassToAccessResource{
-        { UINT32_MAX },
-        { UINT32_MAX }
-    };
+    // If a resource is not here, we assume it's state is from a prior frame
+    Branch<Handle<RenderGraph::RenderPass>, Handle<RenderGraph::RenderPass>>
+        lastPassToAccessResource{ Passes::basePass, Passes::basePass };
 
   private:
-    explicit BranchingResourceTracker(ResourceTracker* tracker);
-    explicit BranchingResourceTracker(BranchingResourceTracker* tracker);
+    explicit BranchingResourceTracker(const BranchingResourceTracker& tracker);
 };
 
 template<typename BufValue, typename ImgValue>

@@ -92,16 +92,16 @@ template<ScheduleEnum Schedule, typename System>
 Common::RelativeScheduler<void*, ScheduleGraph>
 SystemScheduler::add_system(Schedule schedule, System system)
 {
-    get_graph(schedule).add_node(system);
-    return add_system_impl(get_graph(schedule),
-                           reinterpret_cast<void*>(system));
+    auto& graph = get_graph(schedule);
+    graph.add_node(system);
+    return add_system_impl(graph, reinterpret_cast<void*>(system));
 }
 
 template<ScheduleEnum Schedule, typename... Systems>
 Common::RelativeScheduler<void*, ScheduleGraph>
 SystemScheduler::add_group(Schedule schedule, Systems... systems)
 {
-    auto graph = get_graph(schedule);
+    auto& graph = get_graph(schedule);
     (void(graph.add_node(systems)), ...);
     return add_group_impl(graph, reinterpret_cast<void*>(systems)...);
 }
@@ -110,10 +110,9 @@ template<ScheduleEnum Schedule, typename... Systems>
 Common::RelativeScheduler<void*, ScheduleGraph>
 SystemScheduler::add_chain(Schedule schedule, Systems... systems)
 {
-    auto graph = get_graph(schedule);
+    auto& graph = get_graph(schedule);
     (void(graph.add_node(systems)), ...);
-    return add_chain_impl(get_graph(schedule),
-                          reinterpret_cast<void*>(systems)...);
+    return add_chain_impl(graph, reinterpret_cast<void*>(systems)...);
 }
 
 }

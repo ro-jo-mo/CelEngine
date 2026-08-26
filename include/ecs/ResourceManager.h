@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Resource.h"
+#include "core/Error.h"
+
 #include <any>
 #include <cassert>
 #include <fmt/base.h>
@@ -30,61 +32,126 @@ class ResourceManager
     template<typename T>
     Resource<T>& insert_resource(T resource);
 
+    template<typename T, typename... Args>
+    ParallelResource<T>& insert_parallel_resource(Args&&... args);
+
+    template<typename T>
+    ParallelResource<T>& insert_parallel_resource(T resource);
+
     /**
      * @brief Return resource
      * @tparam T Resource type
      * @return The resource
      */
     template<typename T>
-    Resource<T>& GetResource();
+    Resource<T>& get_resource();
+
+    template<typename T>
+    ParallelResource<T>& get_parallel_resource();
 
   private:
     std::unordered_map<std::type_index, std::unique_ptr<IResource>> resources;
+    std::unordered_map<std::type_index, std::unique_ptr<IResource>>
+        parallelResources;
 };
 
 template<typename T, typename... Args>
 Resource<T>&
 ResourceManager::insert_resource(Args&&... args)
 {
-    if (resources.contains(typeid(Resource<std::remove_const_t<T>>))) {
-        fmt::println(stderr,
-                     "Requested resource already exists {}",
-                     typeid(Resource<std::remove_const_t<T>>).name());
-        abort();
+    using Type = Resource<std::remove_const_t<T>>;
+    const std::type_index id = typeid(Type);
+
+    if (resources.contains(id)) {
+        throw_error("inserted resource already exists", typeid(T).name());
     }
-    resources[typeid(Resource<T>)] =
-        std::make_unique<Resource<T>>(std::forward<Args>(args)...);
-    return GetResource<T>();
+
+    resources[id] = std::make_unique<Type>(std::forward<Args>(args)...);
+
+    return get_resource<T>();
 }
 
 template<typename T>
 Resource<T>&
 ResourceManager::insert_resource(T resource)
 {
-    if (resources.contains(typeid(Resource<std::remove_const_t<T>>))) {
-        fmt::println(stderr,
-                     "Inserted resource already exists {}",
-                     typeid(Resource<std::remove_const_t<T>>).name());
-        abort();
-    }
-    resources[typeid(Resource<T>)] = std::make_unique<Resource<T>>(resource);
+    using Type = Resource<std::remove_const_t<T>>;
+    const std::type_index id = typeid(Type);
 
-    return GetResource<T>();
+    if (resources.contains(id)) {
+        throw_error("inserted resource already exists", typeid(T).name());
+    }
+    resources[id] = std::make_unique<Type>(resource);
+
+    return get_resource<T>();
+}
+
+template<typename T, typename... Args>
+ParallelResource<T>&
+ResourceManager::insert_parallel_resource(Args&&... args)
+{
+    using Type = ParallelResource<std::remove_const_t<T>>;
+    const std::type_index id = typeid(Type);
+
+    if (parallelResources.contains(id)) {
+        throw_error("inserted parallel resource already exists",
+                    typeid(T).name());
+    }
+
+    parallelResources[typeid(ParallelResource<T>)] =
+        std::make_unique<Type>(std::forward<Args>(args)...);
+
+    return get_resource<T>();
+}
+
+template<typename T>
+ParallelResource<T>&
+ResourceManager::insert_parallel_resource(T resource)
+{
+    using Type = ParallelResource<std::remove_const_t<T>>;
+    const std::type_index id = typeid(Type);
+
+    if (parallelResources.contains(id)) {
+        throw_error("inserted parallel resource already exists",
+                    typeid(T).name());
+    }
+    parallelResources[id] = std::make_unique<Type>(resource);
+
+    return get_resource<T>();
 }
 
 template<typename T>
 Resource<T>&
-ResourceManager::GetResource()
+ResourceManager::get_resource()
 {
+    using Type = Resource<std::remove_const_t<T>>;
+    std::type_index id = typeid(Type);
 
-    if (!resources.contains(typeid(Resource<std::remove_const_t<T>>))) {
-        fmt::println(stderr,
-                     "Requested resource does not exist yet {}",
-                     typeid(Resource<std::remove_const_t<T>>).name());
-        abort();
+    if (!resources.contains(id)) {
+        throw_error("requested resource does not exist yet {}",
+                    typeid(Type).name());
     }
 
-    const auto& ptr = resources.at(typeid(Resource<std::remove_const_t<T>>));
-    return *static_cast<Resource<T>*>(ptr.get());
+    const auto& ptr = resources.at(id);
+
+    return *static_cast<Type*>(ptr.get());
 }
+
+template<typename T>
+ParallelResource<T>&
+ResourceManager::get_parallel_resource()
+{
+    using Type = ParallelResource<std::remove_const_t<T>>;
+    const std::type_index id = typeid(Type);
+
+    if (!resources.contains(id)) {
+        throw_error("requested parallel resource does not exist yet {}",
+                    typeid(Type).name());
+    }
+
+    const auto& ptr = parallelResources.at(id);
+
+    return *static_cast<Type*>(ptr.get());
+}
+
 }

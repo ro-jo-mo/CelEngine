@@ -119,7 +119,7 @@ App::start(bool multithread)
 {
     (void(execute_schedule<ScheduleEnums>()), ...);
 
-    resourceManager.GetResource<World>()->flush();
+    resourceManager.get_resource<World>()->flush();
     queryManager.update_queries();
 
     return *this;
@@ -130,8 +130,8 @@ template<typename... Schedules>
 App&
 App::loop()
 {
-    auto& time = resourceManager.GetResource<Time>();
-    auto& running = resourceManager.GetResource<Running>();
+    auto& time = resourceManager.get_resource<Time>();
+    auto& running = resourceManager.get_resource<Running>();
 
     (void(time->register_schedule<Schedules>()), ...);
 
@@ -154,7 +154,7 @@ App::end(bool multithread)
 {
     (void(execute_schedule<ScheduleEnums>()), ...);
 
-    resourceManager.GetResource<World>()->flush();
+    resourceManager.get_resource<World>()->flush();
     queryManager.update_queries();
 
     return *this;
@@ -165,14 +165,14 @@ template<typename T>
 App&
 App::add_plugin()
 {
-    T().build(Scheduler(schedules, systemAllocator), resourceManager);
+    T().build(SystemScheduler(schedules, systemAllocator), resourceManager);
     return *this;
 }
 
 inline void
 App::flush()
 {
-    resourceManager.GetResource<World>()->flush();
+    resourceManager.get_resource<World>()->flush();
     queryManager.update_queries();
 }
 

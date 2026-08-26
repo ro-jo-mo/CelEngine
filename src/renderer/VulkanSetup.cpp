@@ -99,7 +99,7 @@ init_vulkan(ResourceManager& resourceManager)
 
     resourceManager.insert_resource(allocator);
 
-    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
+    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
 
     cleanup->push([=, &window]() {
         vmaDestroyAllocator(allocator);
@@ -117,7 +117,7 @@ init_vulkan(ResourceManager& resourceManager)
 void
 init_swapchain(ResourceManager& resourceManager)
 {
-    auto& context = resourceManager.GetResource<VulkanContext>();
+    auto& context = resourceManager.get_resource<VulkanContext>();
 
     vkb::SwapchainBuilder builder{ context->gpu,
                                    context->device,
@@ -157,7 +157,7 @@ init_swapchain(ResourceManager& resourceManager)
 
     resourceManager.insert_resource(swapchain);
 
-    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
+    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
 
     cleanup->push([=, &context]() {
         vkDestroySwapchainKHR(context->device, swapchain.swapchain, nullptr);
@@ -173,9 +173,9 @@ init_swapchain(ResourceManager& resourceManager)
 void
 init_draw_images(ResourceManager& resourceManager)
 {
-    auto& swapchain = resourceManager.GetResource<Swapchain>();
-    auto& allocator = resourceManager.GetResource<VmaAllocator>();
-    auto& context = resourceManager.GetResource<VulkanContext>();
+    auto& swapchain = resourceManager.get_resource<Swapchain>();
+    auto& allocator = resourceManager.get_resource<VmaAllocator>();
+    auto& context = resourceManager.get_resource<VulkanContext>();
 
     const VkExtent3D drawExtent{ .width = swapchain->extent.width,
                                  .height = swapchain->extent.height,
@@ -239,7 +239,7 @@ init_draw_images(ResourceManager& resourceManager)
 
     resourceManager.insert_resource(depth);
 
-    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
+    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
 
     cleanup->push([=, &context, &allocator]() {
         vkDestroyImageView(context->device, drawImage.imageView, nullptr);
@@ -252,11 +252,11 @@ init_draw_images(ResourceManager& resourceManager)
 void
 init_frame_data(ResourceManager& resourceManager)
 {
-    auto& queue = resourceManager.GetResource<GraphicsQueue>();
-    auto& context = resourceManager.GetResource<VulkanContext>();
-    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
+    auto& queue = resourceManager.get_resource<GraphicsQueue>();
+    auto& context = resourceManager.get_resource<VulkanContext>();
+    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
 
-    FrameData frameData{ .totalFrames = FRAME_OVERLAP };
+    FrameData frameData{ .totalFrames = FRAMES_IN_FLIGHT };
 
     VkCommandPoolCreateInfo commandPoolCreateInfo =
         Initialisers::command_pool_create_info(
@@ -268,7 +268,7 @@ init_frame_data(ResourceManager& resourceManager)
         Initialisers::semaphore_create_info();
 
     // Create per frame resources
-    for (int i = 0; i < FRAME_OVERLAP; i++) {
+    for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
         CurrentFrameData frame{};
 
         // Firstly create command pool / buffer
@@ -331,8 +331,8 @@ init_frame_data(ResourceManager& resourceManager)
 void
 init_descriptor_data(ResourceManager& resourceManager)
 {
-    auto& context = resourceManager.GetResource<VulkanContext>();
-    auto& frameData = resourceManager.GetResource<FrameData>();
+    auto& context = resourceManager.get_resource<VulkanContext>();
+    auto& frameData = resourceManager.get_resource<FrameData>();
 
     GlobalDescriptorData global{};
 
@@ -345,9 +345,9 @@ init_descriptor_data(ResourceManager& resourceManager)
     global.allocator.init(context->device, 10, sizes);
 
     auto& frames = frameData->frames;
-    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
+    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
 
-    for (int i = 0; i < FRAME_OVERLAP; i++) {
+    for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
         // create a descriptor pool
         std::vector<DescriptorAllocator::PoolSizeRatio> frameSizes = {
             { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
@@ -376,11 +376,11 @@ init_descriptor_data(ResourceManager& resourceManager)
 void
 init_asset_server(ResourceManager& resourceManager)
 {
-    auto& context = resourceManager.GetResource<VulkanContext>();
-    auto& queue = resourceManager.GetResource<GraphicsQueue>();
-    auto& allocator = resourceManager.GetResource<VmaAllocator>();
-    auto& immediate = resourceManager.GetResource<ImmediateSubmit>();
-    auto& global = resourceManager.GetResource<GlobalDescriptorData>();
+    auto& context = resourceManager.get_resource<VulkanContext>();
+    auto& queue = resourceManager.get_resource<GraphicsQueue>();
+    auto& allocator = resourceManager.get_resource<VmaAllocator>();
+    auto& immediate = resourceManager.get_resource<ImmediateSubmit>();
+    auto& global = resourceManager.get_resource<GlobalDescriptorData>();
 
     resourceManager.insert_resource<AssetServer>(
         context, allocator, immediate, queue, global);
@@ -389,8 +389,8 @@ init_asset_server(ResourceManager& resourceManager)
 void
 init_pipeline(ResourceManager& resourceManager)
 {
-    auto& context = resourceManager.GetResource<VulkanContext>();
-    auto& global = resourceManager.GetResource<GlobalDescriptorData>();
+    auto& context = resourceManager.get_resource<VulkanContext>();
+    auto& global = resourceManager.get_resource<GlobalDescriptorData>();
 
     Pipeline meshPipe = PipelineBuilder(context->device)
                             .add_shader_module("../../shaders/mesh.vert.spv",
@@ -420,7 +420,7 @@ init_pipeline(ResourceManager& resourceManager)
 
     // clean structures
 
-    auto& cleanup = resourceManager.GetResource<FinalCleanup>();
+    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
 
     cleanup->push([=, &context]() {
         vkDestroyPipelineLayout(

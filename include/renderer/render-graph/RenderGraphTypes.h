@@ -3,25 +3,9 @@
 #include "common/Handle.h"
 #include "renderer/VulkanTypes.h"
 
-
 #include <vulkan/vulkan_core.h>
 
 namespace Cel::Renderer::RenderGraph {
-
-struct BufferAccess
-{
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    uint32_t queue;
-};
-
-struct ImageAccess
-{
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    VkImageLayout layout;
-    uint32_t queue;
-};
 
 struct BufferCreate
 {

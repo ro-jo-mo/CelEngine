@@ -17,6 +17,7 @@ class ExecutionPlan
 
     struct ExecutePass
     {
+        Handle<RenderPass> pass;
         // Places where a semaphore needs insertion
         std::vector<BufferTransfer> bufferTransfers;
         std::vector<ImageTransfer> imageTransfers;

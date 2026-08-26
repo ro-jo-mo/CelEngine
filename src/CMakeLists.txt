@@ -1,5 +1,16 @@
 set(namespace "CelEngine")
 
+set(MAX_ENTITIES 2048 CACHE STRING "Max number of entities that can exist at once")
+set(CMD_BUFFERS_PER_POOL 30 CACHE STRING "Total number of cmd buffers created per pool for render passes")
+
+
+configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include/core/Config.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/generated/include/core/Config.h
+        @ONLY
+)
+
+
 find_package(Vulkan REQUIRED)
 find_package(SDL3 CONFIG REQUIRED)
 find_package(glm REQUIRED)
@@ -61,21 +72,24 @@ target_sources(${PROJECT_NAME}
         "renderer/AssetServer.cpp"
         "renderer/Descriptors.cpp"
         "renderer/Camera.cpp"
-        "renderer/resource-management/MegaBuffer.cpp"
 
         "renderer/render-graph/PassBuilder.cpp"
         "renderer/render-graph/RenderGraph.cpp"
-        "renderer/resource-management/PipelineBuilder.cpp"
-        "renderer/passes/HandleAllocator.cpp"
         "renderer/render-graph/ExecutionPlan.cpp"
+        "renderer/render-graph/PassServer.cpp"
+
+        "renderer/passes/HandleAllocator.cpp"
 
         "renderer/resource-management/ResourceTracker.cpp"
         "renderer/resource-management/VulkanResourceManager.cpp"
+        "renderer/resource-management/PipelineBuilder.cpp"
+        "renderer/resource-management/MegaBuffer.cpp"
 )
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -119,7 +133,6 @@ set(public_headers
         include/input/Input.h
 
         include/renderer/AssetServer.h
-        include/renderer/DeletionQueue.h
         include/renderer/RenderPlugin.h
         include/renderer/VulkanSetup.h
         include/renderer/Window.h
@@ -134,14 +147,17 @@ set(public_headers
 
         include/renderer/render-graph/RenderGraph.h
         include/renderer/render-graph/PassBuilder.h
-        include/renderer/render-graph/PipelineBuilder.h
         include/renderer/render-graph/RenderPass.h
         include/renderer/render-graph/AccessFlags.h
         include/renderer/render-graph/ExecutionPlan.h
-        include/renderer/render-graph/HandleAllocator.h
+
+        include/renderer/passes/HandleAllocator.h
+        include/renderer/passes/Passes.h
 
         include/renderer/resource-management/ResourceTracker.h
         include/renderer/resource-management/VulkanResourceManager.h
+        include/renderer/resource-management/PipelineBuilder.h
+        include/renderer/resource-management/DeletionQueue.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")
@@ -152,6 +168,10 @@ install(TARGETS ${PROJECT_NAME}
         EXPORT "${PROJECT_NAME}Targets"
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/include/core/Config.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/core
 )
 
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

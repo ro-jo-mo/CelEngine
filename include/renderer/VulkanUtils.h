@@ -71,11 +71,19 @@ create_image(VkExtent3D size,
              VmaAllocator& allocator);
 
 [[nodiscard]] AllocatedImage
-create_image(VkImageCreateInfo imageCreateInfo,
+create_image(const VkImageCreateInfo& imageCreateInfo,
              VkImageViewCreateInfo imageViewCreateInfo,
 
              const char* allocName,
              VulkanContext& context,
+             VmaAllocator& allocator);
+
+[[nodiscard]] AllocatedImage
+create_image(const VkImageCreateInfo& imageCreateInfo,
+             VkImageViewCreateInfo imageViewCreateInfo,
+
+             const char* allocName,
+             VkDevice device,
              VmaAllocator& allocator);
 
 [[nodiscard]] AllocatedImage

@@ -24,6 +24,7 @@ ScheduleGraph::execute()
             execute_system(id, executed);
         }
     }
+
     assert(executed.size() == adjacencyList.size() &&
            "Cycles found in dependencies, not all systems executed");
 }
@@ -49,7 +50,7 @@ ScheduleGraph::check_requirements(void* id, std::unordered_set<void*>& executed)
 
 void
 ScheduleGraph::recursively_execute(void* parentId,
-                                  std::unordered_set<void*>& executed)
+                                   std::unordered_set<void*>& executed)
 {
     for (auto& id : adjacencyList[parentId]) {
         if (check_requirements(id, executed)) {

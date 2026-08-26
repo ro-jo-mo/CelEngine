@@ -20,4 +20,13 @@ allocate_image(std::string name);
 Handle<RenderGraph::RenderPass>
 allocate_pass(std::string name);
 
+std::string
+get_name(Handle<AllocatedBuffer> handle);
+
+std::string
+get_name(Handle<AllocatedImage> handle);
+
+std::string
+get_name(Handle<RenderGraph::RenderPass> handle);
+
 }

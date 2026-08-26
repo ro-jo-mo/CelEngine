@@ -96,7 +96,6 @@ Cel::Renderer::Utils::transition_image_layout(VkCommandBuffer cmd,
         Initialisers::image_subresource_range(aspectMask);
     imageBarrier.image = image;
 
-
     VkDependencyInfo depInfo{};
     depInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
     depInfo.pNext = nullptr;
@@ -322,7 +321,7 @@ Cel::Renderer::Utils::create_image(VkExtent3D size,
 }
 
 Cel::Renderer::AllocatedImage
-Cel::Renderer::Utils::create_image(VkImageCreateInfo imageCreateInfo,
+Cel::Renderer::Utils::create_image(const VkImageCreateInfo& imageCreateInfo,
                                    VkImageViewCreateInfo imageViewCreateInfo,
 
                                    const char* allocName,
@@ -358,6 +357,41 @@ Cel::Renderer::Utils::create_image(VkImageCreateInfo imageCreateInfo,
 
     vk_check(vkCreateImageView(
         context.device, &imageViewCreateInfo, nullptr, &newImage.imageView));
+
+    vmaSetAllocationName(allocator, newImage.allocation, allocName);
+
+    return newImage;
+}
+
+Cel::Renderer::AllocatedImage
+Cel::Renderer::Utils::create_image(const VkImageCreateInfo& imageCreateInfo,
+                                   VkImageViewCreateInfo imageViewCreateInfo,
+                                   const char* allocName,
+                                   VkDevice device,
+                                   VmaAllocator& allocator)
+{
+    AllocatedImage newImage;
+    newImage.imageFormat = imageCreateInfo.format;
+    newImage.imageExtent = imageCreateInfo.extent;
+
+    // always allocate images on dedicated GPU memory
+    VmaAllocationCreateInfo allocInfo = {};
+    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    allocInfo.requiredFlags =
+        static_cast<VkMemoryPropertyFlags>(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    // allocate and create the image
+    vk_check(vmaCreateImage(allocator,
+                            &imageCreateInfo,
+                            &allocInfo,
+                            &newImage.image,
+                            &newImage.allocation,
+                            nullptr));
+
+    imageViewCreateInfo.image = newImage.image;
+
+    vk_check(vkCreateImageView(
+        device, &imageViewCreateInfo, nullptr, &newImage.imageView));
 
     vmaSetAllocationName(allocator, newImage.allocation, allocName);
 

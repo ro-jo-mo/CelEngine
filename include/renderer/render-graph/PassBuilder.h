@@ -27,14 +27,9 @@ class PassBuilder
   public:
     explicit PassBuilder(const Handle<RenderPass> id) { pass.id = id; }
 
-    // Creating resources should simply create a list of requirements for the
-    // buffer / image
-    // Resources from previous passes that are not used by any future passes and
-    // share the same requirements (or a superset) can then be reused
     /**
-     * @brief Creates a per frame buffer
+     * @brief Creates a *per frame* buffer
      * @param buffer
-     * @param name
      * @param allocSize
      * @param usages
      * @param memoryUsage
@@ -44,6 +39,15 @@ class PassBuilder
                                VkBufferUsageFlags usages,
                                VmaMemoryUsage memoryUsage);
 
+    /**
+     * @brief Creates a *per frame* image
+     * Likely less used than create_buffer, as per frame images are rarely
+     * needed
+     * @param buffer
+     * @param allocSize
+     * @param usages
+     * @param memoryUsage
+     */
     PassBuilder& create_image(Handle<AllocatedImage> image,
                               VkFormat format,
                               VkExtent3D extent,
