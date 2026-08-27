@@ -7,8 +7,17 @@
 #include "ecs/Types.h"
 #include "renderer/AssetTypes.h"
 #include "resource-management/MegaBuffer.h"
+#include "resource-management/VulkanResourceManager.h"
 
 namespace Cel::Renderer {
+namespace Assets {
+class AssetServer;
+}
+struct DrawData;
+void
+cleanup_asset_server(Resource<Assets::AssetServer>& assetServer);
+}
+namespace Cel::Renderer::Assets {
 
 // Comments:
 // If an object is made up of a hierarchy of models, like a scene might be I
@@ -39,42 +48,7 @@ namespace Cel::Renderer {
 class AssetServer
 {
   public:
-    AssetServer(Resource<VulkanContext>& context,
-                Resource<VmaAllocator>& allocator,
-                Resource<ImmediateSubmit>& immediate,
-                Resource<GraphicsQueue>& graphicsQueue,
-                Resource<GlobalDescriptorData>& globalDescriptorData)
-        : verticeBuffer(2 << 16,
-                        VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                        VMA_MEMORY_USAGE_GPU_ONLY,
-                        "vertice_mega_buffer_alloc",
-                        *allocator)
-        , indiceBuffer(2 << 16,
-                       VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                       VMA_MEMORY_USAGE_GPU_ONLY,
-                       "indice_mega_buffer_alloc",
-                       *allocator)
-        , materialBuffer(2 << 16,
-                         VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                         VMA_MEMORY_USAGE_GPU_ONLY,
-                         "material_mega_buffer_alloc",
-                         *allocator)
-        , context(*context)
-        , allocator(*allocator)
-        , immediate(*immediate)
-        , graphicsQueue(*graphicsQueue)
-        , globalDescriptorData(*globalDescriptorData)
-    {
-        create_defaults();
-    }
+    AssetServer(VulkanResourceManager& manager);
 
     Handle<AssetNode> load_gltf_asset(const char* filepath);
 
@@ -88,7 +62,7 @@ class AssetServer
     [[nodiscard]] Material get_material(Handle<Material> material) const;
     [[nodiscard]] Mesh get_mesh(Handle<Mesh> mesh) const;
 
-    void create_defaults();
+    void create_defaults(VulkanResourceManager& manager);
 
     std::optional<AllocatedImage> load_image(fastgltf::Asset& asset,
                                              fastgltf::Image& gltfImage);
@@ -129,6 +103,16 @@ class AssetServer
     std::vector<Mesh> meshes;
     std::vector<Material> materials;
 
+    // Commands
+    struct CreateImgCmd
+    {
+        void* data;
+        VkExtent3D extent;
+    };
+    struct CreateMeshCmd
+    {};
+    std::vector<CreateImgCmd> cmdCreateImgs;
+
     MegaBuffer verticeBuffer;
     MegaBuffer indiceBuffer;
     MegaBuffer materialBuffer;
@@ -139,13 +123,10 @@ class AssetServer
     DescriptorWriter descriptorWriter;
     TextureCache textureCache;
 
-    VulkanContext& context;
-    VmaAllocator& allocator;
-    ImmediateSubmit& immediate;
-    GraphicsQueue& graphicsQueue;
-    GlobalDescriptorData& globalDescriptorData;
+    VkDevice device;
 
-    friend class DrawData;
-    friend void cleanup_asset_server(Resource<AssetServer>& assetServer);
+    friend class Cel::Renderer::DrawData;
+    friend void Cel::Renderer::cleanup_asset_server(
+        Resource<AssetServer>& assetServer);
 };
 }

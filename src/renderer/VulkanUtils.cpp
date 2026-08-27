@@ -218,11 +218,10 @@ Cel::Renderer::Utils::create_image(const void* data,
 
     submit_immediate(
         [&](VkCommandBuffer cmd) {
-            Utils::transition_image_layout(
-                cmd,
-                newImage.image,
-                VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            transition_image_layout(cmd,
+                                    newImage.image,
+                                    VK_IMAGE_LAYOUT_UNDEFINED,
+                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
             VkBufferImageCopy copyRegion = {};
             copyRegion.bufferOffset = 0;
@@ -244,13 +243,12 @@ Cel::Renderer::Utils::create_image(const void* data,
                                    &copyRegion);
 
             if (mipmapped) {
-                Utils::generate_mip_maps(
-                    cmd,
-                    newImage.image,
-                    VkExtent2D{ newImage.imageExtent.width,
-                                newImage.imageExtent.height });
+                generate_mip_maps(cmd,
+                                  newImage.image,
+                                  VkExtent2D{ newImage.imageExtent.width,
+                                              newImage.imageExtent.height });
             } else {
-                Utils::transition_image_layout(
+                transition_image_layout(
                     cmd,
                     newImage.image,
                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -260,6 +258,7 @@ Cel::Renderer::Utils::create_image(const void* data,
         context,
         immediate,
         graphicsQueue);
+
     destroy_buffer(uploadBuffer, allocator);
 
     return newImage;
@@ -322,50 +321,8 @@ Cel::Renderer::Utils::create_image(VkExtent3D size,
 
 Cel::Renderer::AllocatedImage
 Cel::Renderer::Utils::create_image(const VkImageCreateInfo& imageCreateInfo,
-                                   VkImageViewCreateInfo imageViewCreateInfo,
+                                   VkImageViewCreateInfo& imageViewCreateInfo,
 
-                                   const char* allocName,
-                                   VulkanContext& context,
-                                   VmaAllocator& allocator)
-{
-    AllocatedImage newImage;
-    newImage.imageFormat = imageCreateInfo.format;
-    newImage.imageExtent = imageCreateInfo.extent;
-
-    // always allocate images on dedicated GPU memory
-    VmaAllocationCreateInfo allocInfo = {};
-    allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    allocInfo.requiredFlags =
-        static_cast<VkMemoryPropertyFlags>(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    // allocate and create the image
-    vk_check(vmaCreateImage(allocator,
-                            &imageCreateInfo,
-                            &allocInfo,
-                            &newImage.image,
-                            &newImage.allocation,
-                            nullptr));
-
-    // if the format is a depth format, we will need to have it use the correct
-    // aspect flag
-    VkImageAspectFlags aspectFlag = VK_IMAGE_ASPECT_COLOR_BIT;
-    if (newImage.imageFormat == VK_FORMAT_D32_SFLOAT) {
-        aspectFlag = VK_IMAGE_ASPECT_DEPTH_BIT;
-    }
-
-    imageViewCreateInfo.image = newImage.image;
-
-    vk_check(vkCreateImageView(
-        context.device, &imageViewCreateInfo, nullptr, &newImage.imageView));
-
-    vmaSetAllocationName(allocator, newImage.allocation, allocName);
-
-    return newImage;
-}
-
-Cel::Renderer::AllocatedImage
-Cel::Renderer::Utils::create_image(const VkImageCreateInfo& imageCreateInfo,
-                                   VkImageViewCreateInfo imageViewCreateInfo,
                                    const char* allocName,
                                    VkDevice device,
                                    VmaAllocator& allocator)
@@ -446,8 +403,11 @@ Cel::Renderer::Utils::create_cube_map(ktxTexture* texture,
         VK_IMAGE_ASPECT_COLOR_BIT, 0, mipLevels, 0, 6
     };
 
-    AllocatedImage newImage = create_image(
-        imageCreateInfo, imageViewCreateInfo, allocName, context, allocator);
+    AllocatedImage newImage = create_image(imageCreateInfo,
+                                           imageViewCreateInfo,
+                                           allocName,
+                                           context.device,
+                                           allocator);
 
     // Move image data from buffer to gpu image
     submit_immediate(
@@ -682,13 +642,13 @@ Cel::Renderer::Utils::destroy_buffer(const AllocatedBuffer& buffer,
 
 Cel::Renderer::AllocatedMeshBuffer
 Cel::Renderer::Utils::upload_mesh(std::vector<uint32_t>& indices,
-                                  std::vector<Vertex>& vertices,
+                                  std::vector<Assets::Vertex>& vertices,
                                   VulkanContext& context,
                                   VmaAllocator& allocator,
                                   ImmediateSubmit& immediate,
                                   GraphicsQueue& queue)
 {
-    const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
+    const size_t vertexBufferSize = vertices.size() * sizeof(Assets::Vertex);
     const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
 
     AllocatedMeshBuffer newSurface;
@@ -879,4 +839,21 @@ Cel::Renderer::Utils::upload_to_buffer(const void* data,
         queue);
 
     destroy_buffer(staging, allocator);
+}
+void
+Cel::Renderer::Utils::upload_to_buffer(VkCommandBuffer cmd,
+                                       const void* data,
+                                       const uint32_t size,
+                                       const AllocatedBuffer& destination,
+                                       const uint32_t destinationOffset,
+                                       const AllocatedBuffer& staging)
+{
+    memcpy(staging.info.pMappedData, data, size);
+
+    VkBufferCopy copy{};
+    copy.dstOffset = destinationOffset;
+    copy.srcOffset = 0;
+    copy.size = size;
+
+    vkCmdCopyBuffer(cmd, staging.buffer, destination.buffer, 1, &copy);
 }

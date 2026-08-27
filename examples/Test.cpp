@@ -32,7 +32,8 @@ SpawnCamera(Resource<World>& world)
 }
 
 void
-SpawnAsset(Resource<World>& world, Resource<Renderer::AssetServer>& server)
+SpawnAsset(Resource<World>& world,
+           Resource<Renderer::Assets::AssetServer>& server)
 {
     auto handle = server->load_gltf_asset("../../examples/assets/horse.glb");
 

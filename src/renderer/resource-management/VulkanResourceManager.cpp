@@ -5,16 +5,25 @@
 
 Cel::Handle<Cel::Renderer::AllocatedBuffer>
 Cel::Renderer::VulkanResourceManager::get_handle_from_requirements(
-    const BufferRequirements requirements)
+    const BufferRequirements requirements,
+    const std::string& name)
 {
-    return bufferPool.create_handle(requirements);
+    const auto handle = bufferPool.create_handle(requirements);
+
+    handleToBufferName[handle] = name;
+    return handle;
 }
 
 Cel::Handle<Cel::Renderer::AllocatedImage>
 Cel::Renderer::VulkanResourceManager::get_handle_from_requirements(
-    const ImageRequirements& requirements)
+    const ImageRequirements& requirements,
+    const std::string& name)
 {
-    return imagePool.create_handle(requirements);
+    const auto handle = imagePool.create_handle(requirements);
+
+    handleToImageName[handle] = name;
+
+    return handle;
 }
 
 Cel::Renderer::AllocatedBuffer&
@@ -67,27 +76,30 @@ Cel::Renderer::VulkanResourceManager::branch_tracker() const
 
 Cel::Renderer::AllocatedBuffer
 Cel::Renderer::VulkanResourceManager::allocate(
-    const BufferRequirements& requirements) const
+    Handle<AllocatedBuffer> handle) const
 {
+    auto& requirements = bufferPool.requirements.at(handle);
+
     return Utils::create_buffer(requirements.allocSize,
                                 requirements.usages,
                                 requirements.memoryUsage,
-                                "buffer_alloc",
+                                handleToBufferName.at(handle).c_str(),
                                 allocator);
 }
 
 Cel::Renderer::AllocatedImage
-Cel::Renderer::VulkanResourceManager::allocate(
-    const ImageRequirements& requirements)
+Cel::Renderer::VulkanResourceManager::allocate(Handle<AllocatedImage> handle)
 {
+    auto& requirements = imagePool.requirements.at(handle);
 
     const VkImageCreateInfo img = Initialisers::image_create_info(
         requirements.format, requirements.usages, requirements.extent);
 
-    const VkImageViewCreateInfo view = Initialisers::image_view_create_info(
+    VkImageViewCreateInfo view = Initialisers::image_view_create_info(
         requirements.format, nullptr, requirements.aspects);
 
-    return Utils::create_image(img, view, "img_alloc", device, allocator);
+    return Utils::create_image(
+        img, view, handleToImageName.at(handle).c_str(), device, allocator);
 }
 
 void

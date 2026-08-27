@@ -29,6 +29,12 @@ struct GraphicsQueue
     uint32_t family;
 };
 
+struct Queue
+{
+    VkQueue queue;
+    uint32_t family;
+};
+
 struct VulkanContext
 {
     VkInstance instance;
@@ -37,8 +43,7 @@ struct VulkanContext
     VkSurfaceKHR surface;
 };
 
-// Confusing name :(
-struct CurrentFrameData
+struct FrameData
 {
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffer;
@@ -48,21 +53,20 @@ struct CurrentFrameData
     PerFrameCleanup toDelete;
 };
 
+struct FramesInFlight
+{
+    std::vector<FrameData> frames;
+    size_t currentFrame;
+    const size_t totalFrames;
+    [[nodiscard]] FrameData& Get() { return frames[currentFrame]; }
+    void Tick() { currentFrame = (currentFrame + 1) % totalFrames; }
+};
+
 struct ImmediateSubmit
 {
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffer;
     VkFence fence;
-};
-
-// Confusing name :(
-struct FrameData
-{
-    std::vector<CurrentFrameData> frames;
-    size_t currentFrame;
-    const size_t totalFrames;
-    [[nodiscard]] CurrentFrameData& Get() { return frames[currentFrame]; }
-    void Tick() { currentFrame = (currentFrame + 1) % totalFrames; }
 };
 
 struct RenderExtent

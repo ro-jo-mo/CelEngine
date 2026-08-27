@@ -12,7 +12,12 @@
 namespace Cel::Renderer::RenderGraph {
 
 // Overall flow:
-// Add passes to graph each frame
+// Render::First -> add passes to render graph
+// Render::PreUpdate -> compile graph
+// Render::Update -> record commands
+// Render::PostUpdate -> execute graph
+// Render::Final -> cleanup
+
 // Compile graph
 // Post compiling each pass can graph->get_cmd_buffer(pass) and record their
 // commands get_resource to access buffers and images

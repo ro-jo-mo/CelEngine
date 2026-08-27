@@ -13,16 +13,48 @@
 #include <ranges>
 #include <stb_image.h>
 
+using namespace Cel::Renderer::Assets;
 using namespace Cel::Renderer;
 using namespace Cel;
 
+AssetServer::AssetServer(VulkanResourceManager& manager)
+    : verticeBuffer({ .allocSize = 2 << 16,
+                      .usages = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                      .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
+                    "vertice_mega_buffer_alloc",
+                    manager)
+    , indiceBuffer({ .allocSize = 2 << 16,
+                     .usages = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                               VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                               VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                               VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                     .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
+                   "indice_mega_buffer_alloc",
+                   manager)
+    , materialBuffer({ .allocSize = 2 << 16,
+                       .usages = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                 VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                       .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
+                     "material_mega_buffer_alloc",
+                     manager)
+
+{
+    create_defaults(manager);
+}
+
 void
-AssetServer::create_defaults()
+AssetServer::create_defaults(VulkanResourceManager& manager)
 {
     // checkerboard image
     int32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
     int32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 1));
-    std::array<uint32_t, 16 * 16> pixels; // for 16x16 checkerboard texture
+
+    // for 16x16 checkerboard texture
+    auto pixels = static_cast<uint32_t*>(malloc(16 * 16 * sizeof(uint32_t)));
     for (int x = 0; x < 16; x++) {
         for (int y = 0; y < 16; y++) {
             pixels[y * 16 + x] = (x % 2) ^ (y % 2) ? magenta : black;
@@ -31,19 +63,7 @@ AssetServer::create_defaults()
 
     // For now, we'll default to a checkerboard when no texture is assigned
     // However, this is a little silly for normals roughness etc
-    AllocatedImage checkerboard =
-        Utils::create_image(pixels.data(),
-                           VkExtent3D{ 16, 16, 1 },
-                           VK_FORMAT_R8G8B8A8_UNORM,
-                           VK_IMAGE_USAGE_SAMPLED_BIT,
-                           false,
-                           "default_checkerboard_alloc",
-                           context,
-                           allocator,
-                           immediate,
-                           graphicsQueue);
-
-    images.push_back(checkerboard);
+    cmdCreateImgs.push_back({ pixels, { 16, 16, 1 } });
 
     VkSampler defaultSampler;
     VkSamplerCreateInfo samplerInfo = {
@@ -53,7 +73,7 @@ AssetServer::create_defaults()
     samplerInfo.magFilter = VK_FILTER_LINEAR;
     samplerInfo.minFilter = VK_FILTER_LINEAR;
 
-    vkCreateSampler(context.device, &samplerInfo, nullptr, &defaultSampler);
+    vkCreateSampler(device, &samplerInfo, nullptr, &defaultSampler);
     samplers.push_back(defaultSampler);
 
     // Skybox
@@ -67,12 +87,7 @@ AssetServer::create_defaults()
         4, 5, 7, 7, 6, 4, 0, 3, 7, 7, 5, 0, 1, 4, 2, 2, 4, 6
     };
 
-    skyboxCube = Utils::upload_mesh(skyboxIndices,
-                                   skyboxVertices,
-                                   context,
-                                   allocator,
-                                   immediate,
-                                   graphicsQueue);
+    skyboxCube = Utils::upload_mesh(skyboxIndices, skyboxVertices);
 
     set_skybox("../../assets/skybox.ktx2");
 }
@@ -163,23 +178,11 @@ AssetServer::load_models(fastgltf::Asset& asset, size_t materialOffset)
                 newModel.meshes.push_back(meshes.size());
 
                 Mesh newMesh{};
-                newMesh.firstIndex =
-                    indiceBuffer.upload_data(indices.data(),
-                                            indices.size() * sizeof(uint32_t),
-                                            1,
-                                            context,
-                                            allocator,
-                                            immediate,
-                                            graphicsQueue);
+                newMesh.firstIndex = indiceBuffer.allocate(
+                    indices.data(), indices.size() * sizeof(uint32_t));
                 newMesh.indexCount = indices.size();
-                newMesh.vertexOffset =
-                    verticeBuffer.upload_data(vertices.data(),
-                                             vertices.size() * sizeof(Vertex),
-                                             1,
-                                             context,
-                                             allocator,
-                                             immediate,
-                                             graphicsQueue);
+                newMesh.vertexOffset = verticeBuffer.allocate(
+                    vertices.data(), vertices.size() * sizeof(Vertex));
 
                 meshes.push_back(newMesh);
             }
@@ -198,7 +201,7 @@ AssetServer::load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
 
     auto ErrorMsg = [&](const char* ext) {
         (throw_error("Error loading gltf image. Attempted to use {}",
-                    std::move(ext)));
+                     std::move(ext)));
     };
 
     std::visit(
@@ -243,15 +246,11 @@ AssetServer::load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
     size.depth = 1;
 
     auto newImage = Utils::create_image(img,
-                                       size,
-                                       VK_FORMAT_R8G8B8A8_UNORM,
-                                       VK_IMAGE_USAGE_SAMPLED_BIT,
-                                       false,
-                                       "gltf_image_alloc",
-                                       context,
-                                       allocator,
-                                       immediate,
-                                       graphicsQueue);
+                                        size,
+                                        VK_FORMAT_R8G8B8A8_UNORM,
+                                        VK_IMAGE_USAGE_SAMPLED_BIT,
+                                        false,
+                                        "gltf_image_alloc");
 
     stbi_image_free(img);
 
@@ -327,7 +326,7 @@ AssetServer::load_samplers(const fastgltf::Asset& asset)
             gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
 
         VkSampler newSampler;
-        vkCreateSampler(context.device, &sampler, nullptr, &newSampler);
+        vkCreateSampler(device, &sampler, nullptr, &newSampler);
 
         samplers.push_back(newSampler);
     }
@@ -360,8 +359,8 @@ AssetServer::resolve_texture_sampler(
 
 void
 AssetServer::load_materials(fastgltf::Asset& asset,
-                           const size_t imageOffset,
-                           const size_t samplerOffset)
+                            const size_t imageOffset,
+                            const size_t samplerOffset)
 {
     std::vector<MaterialConstants> materialList;
 
@@ -399,25 +398,11 @@ AssetServer::load_materials(fastgltf::Asset& asset,
             imageOffset,
             samplerOffset);
 
-        // REWRITE:
-        // A single mega buffer
-        // Has handy function to upload data
-        // likely best to store as an array and upload whole thing at once?
-        // Padding / alignment is important
-
-        // Lastly create a descriptor for this material
-
         materialList.push_back(constants);
     }
 
-    const auto bufferOffset = materialBuffer.upload_data(
-        materialList.data(),
-        sizeof(MaterialConstants) * materialList.size(),
-        1,
-        context,
-        allocator,
-        immediate,
-        graphicsQueue);
+    const auto bufferOffset = materialBuffer.allocate(
+        materialList.data(), sizeof(MaterialConstants) * materialList.size());
 
     for (uint32_t i = 0; i < materialList.size(); i++) {
         materials.push_back(Material{ .bufferIndex = bufferOffset + i });
@@ -501,8 +486,8 @@ AssetServer::load_gltf_asset(const char* filepath)
 
     if (data.error() != fastgltf::Error::None) {
         throw_error("Failed to load asset {}\nError: {}",
-                   absolute(path).string(),
-                   getErrorMessage(data.error()));
+                    absolute(path).string(),
+                    getErrorMessage(data.error()));
     }
     constexpr auto options = fastgltf::Options::DecomposeNodeMatrices |
                              fastgltf::Options::LoadExternalBuffers |
@@ -532,7 +517,7 @@ AssetServer::load_gltf_asset(const char* filepath)
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1 }
     };
-    descriptorAllocator.init(context.device, 1024, sizes);
+    descriptorAllocator.init(device, 1024, sizes);
 
     load_images(asset);
     load_samplers(asset);
@@ -559,8 +544,8 @@ AssetServer::load_skybox_image(const char* filepath)
         auto temp =
             std::filesystem::absolute(std::filesystem::path(filepath)).string();
         throw_error("Failed to load skybox, KTX error: {}\nFilepath {}",
-                   ktxErrorString(err),
-                   std::move(temp));
+                    ktxErrorString(err),
+                    std::move(temp));
     }
 
     VkExtent3D extent;
@@ -568,13 +553,8 @@ AssetServer::load_skybox_image(const char* filepath)
     extent.height = texture->baseHeight;
     extent.depth = 1;
 
-    AllocatedImage skyboxImg = Utils::create_cube_map(texture,
-                                                    VK_FORMAT_R8G8B8A8_UNORM,
-                                                    "skybox_cubemap_alloc",
-                                                    context,
-                                                    allocator,
-                                                    immediate,
-                                                    graphicsQueue);
+    AllocatedImage skyboxImg = Utils::create_cube_map(
+        texture, VK_FORMAT_R8G8B8A8_UNORM, "skybox_cubemap_alloc");
     ktxTexture_Destroy(texture);
 
     return skyboxImg;
@@ -622,8 +602,8 @@ AddNodeHierarchyToEntity(const Entity entity,
 
 void
 AssetServer::add_asset_to_entity(const Entity entity,
-                              const Handle<AssetNode> assetHandle,
-                              Resource<World>& world) const
+                                 const Handle<AssetNode> assetHandle,
+                                 Resource<World>& world) const
 {
     const auto& node = assets[assetHandle.index];
 
@@ -644,9 +624,9 @@ AssetServer::get_mesh(const Handle<Mesh> mesh) const
 void
 AssetServer::cleanup()
 {
-    vkDeviceWaitIdle(context.device);
+    vkDeviceWaitIdle(device);
     for (auto& sampler : samplers) {
-        vkDestroySampler(context.device, sampler, nullptr);
+        vkDestroySampler(device, sampler, nullptr);
     }
     for (auto& image : images) {
         vmaDestroyImage(allocator, image.image, image.allocation);

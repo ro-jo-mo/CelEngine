@@ -12,4 +12,9 @@ inline auto basePass = HandleAllocator::allocate_pass("base_pass");
 // has no data
 inline auto nullPass = HandleAllocator::allocate_pass("null_pass");
 
+// Presents the frame to the swapchain
+inline auto presentPass = HandleAllocator::allocate_pass("present_pass");
+
+inline auto drawImage = HandleAllocator::allocate_image("draw_image");
+
 }

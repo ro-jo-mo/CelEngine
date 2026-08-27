@@ -19,10 +19,12 @@ class VulkanResourceManager
     // At this stage only a handle is returned. No resource is actually
     // allocated
     Handle<AllocatedBuffer> get_handle_from_requirements(
-        BufferRequirements requirements);
+        BufferRequirements requirements,
+        const std::string& name);
 
     Handle<AllocatedImage> get_handle_from_requirements(
-        const ImageRequirements& requirements);
+        const ImageRequirements& requirements,
+        const std::string& name);
 
     // It's at this stage that the resource is actually created
     AllocatedBuffer& get_resource_from_handle(Handle<AllocatedBuffer> handle);
@@ -48,8 +50,8 @@ class VulkanResourceManager
     static bool is_compatible(const ImageRequirements& actual,
                               const ImageRequirements& requested);
 
-    AllocatedBuffer allocate(const BufferRequirements& requirements) const;
-    AllocatedImage allocate(const ImageRequirements& requirements);
+    AllocatedBuffer allocate(Handle<AllocatedBuffer> handle) const;
+    AllocatedImage allocate(Handle<AllocatedImage> handle);
 
     void deallocate(const AllocatedBuffer& buffer) const;
 
@@ -84,10 +86,15 @@ class VulkanResourceManager
         std::unordered_map<Handle<Res>, Res> allocations;
 
         VulkanResourceManager& manager;
+
+        friend class VulkanResourceManager;
     };
 
     ResourcePool<AllocatedBuffer, BufferRequirements> bufferPool;
     ResourcePool<AllocatedImage, ImageRequirements> imagePool;
+
+    std::unordered_map<Handle<AllocatedBuffer>, std::string> handleToBufferName;
+    std::unordered_map<Handle<AllocatedImage>, std::string> handleToImageName;
 
     ResourceTracker tracker;
 
@@ -132,7 +139,7 @@ VulkanResourceManager::ResourcePool<Res, Req>::get_or_allocate(
     }
 
     // Else allocate new
-    allocations.emplace(handle, manager.allocate(requirements.at(handle)));
+    allocations.emplace(handle, manager.allocate(handle));
 
     return allocations.at(handle);
 }

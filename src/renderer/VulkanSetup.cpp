@@ -256,7 +256,7 @@ init_frame_data(ResourceManager& resourceManager)
     auto& context = resourceManager.get_resource<VulkanContext>();
     auto& cleanup = resourceManager.get_resource<FinalCleanup>();
 
-    FrameData frameData{ .totalFrames = FRAMES_IN_FLIGHT };
+    FramesInFlight frameData{ .totalFrames = FRAMES_IN_FLIGHT };
 
     VkCommandPoolCreateInfo commandPoolCreateInfo =
         Initialisers::command_pool_create_info(
@@ -269,7 +269,7 @@ init_frame_data(ResourceManager& resourceManager)
 
     // Create per frame resources
     for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-        CurrentFrameData frame{};
+        FrameData frame{};
 
         // Firstly create command pool / buffer
         vk_check(vkCreateCommandPool(context->device,
@@ -332,7 +332,7 @@ void
 init_descriptor_data(ResourceManager& resourceManager)
 {
     auto& context = resourceManager.get_resource<VulkanContext>();
-    auto& frameData = resourceManager.get_resource<FrameData>();
+    auto& frameData = resourceManager.get_resource<FramesInFlight>();
 
     GlobalDescriptorData global{};
 
@@ -382,7 +382,7 @@ init_asset_server(ResourceManager& resourceManager)
     auto& immediate = resourceManager.get_resource<ImmediateSubmit>();
     auto& global = resourceManager.get_resource<GlobalDescriptorData>();
 
-    resourceManager.insert_resource<AssetServer>(
+    resourceManager.insert_resource<Assets::AssetServer>(
         context, allocator, immediate, queue, global);
 }
 

@@ -14,7 +14,9 @@ namespace Cel::Renderer {
 // around
 struct DrawData
 {
-    Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables;
+    Query<
+        With<GlobalTransform, Handle<Assets::Mesh>, Handle<Assets::Material>>>&
+        renderables;
     Query<With<Camera>>& cameras;
     Resource<VulkanContext>& context;
     Resource<Swapchain>& swapchain;
@@ -24,14 +26,14 @@ struct DrawData
     Resource<MeshPipeline>& meshPipeline;
     Resource<SkyboxPipeline>& skyboxPipeline;
     Resource<RenderExtent>& renderExtent;
-    Resource<FrameData>& frameData;
-    Resource<AssetServer>& assetServer;
+    Resource<FramesInFlight>& frameData;
+    Resource<Assets::AssetServer>& assetServer;
     Resource<GlobalDescriptorData>& globalDescriptors;
     Resource<VmaAllocator>& allocator;
     Resource<ImmediateSubmit>& immediate;
 
     Camera& camera;
-    CurrentFrameData* frame;
+    FrameData* frame;
     VkCommandBuffer cmd;
 
     AllocatedBuffer indirectBuffer;
@@ -48,14 +50,12 @@ struct DrawData
     void draw_skybox();
 
     void bind_scene_data(VkDescriptorSet sceneDescriptor) const;
-
-    void draw_model(GlobalTransform& transform,
-                   Handle<Mesh> meshHandle,
-                   Handle<Material> matHandle) const;
 };
 
 void
-draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
+draw(Query<
+         With<GlobalTransform, Handle<Assets::Mesh>, Handle<Assets::Material>>>&
+         renderables,
      Query<With<Camera>>& cameras,
      Resource<VulkanContext>& context,
      Resource<Swapchain>& swapchain,
@@ -65,10 +65,9 @@ draw(Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
      Resource<MeshPipeline>& meshPipeline,
      Resource<SkyboxPipeline>& skyboxPipeline,
      Resource<RenderExtent>& renderExtent,
-     Resource<FrameData>& frameData,
-     Resource<AssetServer>& assetServer,
+     Resource<FramesInFlight>& frameData,
+     Resource<Assets::AssetServer>& assetServer,
      Resource<GlobalDescriptorData>& globalDescriptors,
      Resource<VmaAllocator>& allocator,
      Resource<ImmediateSubmit>& immediate);
-
 }

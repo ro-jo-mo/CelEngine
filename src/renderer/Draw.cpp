@@ -239,7 +239,6 @@ DrawData::draw_geometry()
 void
 DrawData::create_indirect_data()
 {
-    // NOTE: Really these buffers should be built once, and reused each frame
     // This might present problems with multiple frames in flight
 
     // Create buffer for PerEntityGpuData and indirect calls
@@ -277,8 +276,8 @@ DrawData::create_indirect_data()
         indirectCalls.push_back(call);
 
         PerEntityGpuData data{ .transform = transform.transform,
-                               .normalTransform =
-                                   glm::mat3(transform.transform),
+                               .normalTransform = glm::transpose(glm::inverse(
+                                   glm::mat3(transform.transform))),
                                .materialIndex = mat.bufferIndex };
 
         entityData.push_back(data);
@@ -418,7 +417,9 @@ DrawData::bind_scene_data(VkDescriptorSet sceneDescriptor) const
 
 void
 Renderer::draw(
-    Query<With<GlobalTransform, Handle<Mesh>, Handle<Material>>>& renderables,
+    Query<
+        With<GlobalTransform, Handle<Assets::Mesh>, Handle<Assets::Material>>>&
+        renderables,
     Query<With<Camera>>& cameras,
     Resource<VulkanContext>& context,
     Resource<Swapchain>& swapchain,
@@ -428,8 +429,8 @@ Renderer::draw(
     Resource<MeshPipeline>& meshPipeline,
     Resource<SkyboxPipeline>& skyboxPipeline,
     Resource<RenderExtent>& renderExtent,
-    Resource<FrameData>& frameData,
-    Resource<AssetServer>& assetServer,
+    Resource<FramesInFlight>& frameData,
+    Resource<Assets::AssetServer>& assetServer,
     Resource<GlobalDescriptorData>& globalDescriptors,
     Resource<VmaAllocator>& allocator,
     Resource<ImmediateSubmit>& immediate)

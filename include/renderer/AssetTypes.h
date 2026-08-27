@@ -6,7 +6,7 @@
 #include <glm/vec4.hpp>
 #include <vulkan/vulkan.h>
 
-namespace Cel::Renderer {
+namespace Cel::Renderer::Assets {
 
 struct Vertex
 {

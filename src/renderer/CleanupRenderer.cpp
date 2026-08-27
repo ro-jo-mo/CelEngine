@@ -3,8 +3,8 @@
 
 void
 Cel::Renderer::cleanup_renderer(Resource<FinalCleanup>& cleanup,
-                               Resource<FrameData>& frameData,
-                               Resource<VulkanContext>& context)
+                                Resource<FramesInFlight>& frameData,
+                                Resource<VulkanContext>& context)
 {
     vkDeviceWaitIdle(context->device);
 
@@ -15,7 +15,7 @@ Cel::Renderer::cleanup_renderer(Resource<FinalCleanup>& cleanup,
 }
 
 void
-Cel::Renderer::cleanup_asset_server(Resource<AssetServer>& assetServer)
+Cel::Renderer::cleanup_asset_server(Resource<Assets::AssetServer>& assetServer)
 {
     assetServer->cleanup();
 }

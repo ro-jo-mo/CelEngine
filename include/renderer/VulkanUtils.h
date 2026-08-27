@@ -70,17 +70,10 @@ create_image(VkExtent3D size,
              VulkanContext& context,
              VmaAllocator& allocator);
 
-[[nodiscard]] AllocatedImage
-create_image(const VkImageCreateInfo& imageCreateInfo,
-             VkImageViewCreateInfo imageViewCreateInfo,
-
-             const char* allocName,
-             VulkanContext& context,
-             VmaAllocator& allocator);
 
 [[nodiscard]] AllocatedImage
 create_image(const VkImageCreateInfo& imageCreateInfo,
-             VkImageViewCreateInfo imageViewCreateInfo,
+             VkImageViewCreateInfo& imageViewCreateInfo,
 
              const char* allocName,
              VkDevice device,
@@ -106,7 +99,7 @@ create_buffer(size_t allocSize,
 
 [[nodiscard]] AllocatedMeshBuffer
 upload_mesh(std::vector<uint32_t>& indices,
-            std::vector<Vertex>& vertices,
+            std::vector<Assets::Vertex>& vertices,
             VulkanContext& context,
             VmaAllocator& allocator,
             ImmediateSubmit& immediate,
@@ -149,4 +142,13 @@ upload_to_buffer(const void* data,
                  VmaAllocator& allocator,
                  ImmediateSubmit& immediate,
                  GraphicsQueue& queue);
+
+void
+upload_to_buffer(VkCommandBuffer cmd,
+                 const void* data,
+                 uint32_t size,
+                 const AllocatedBuffer& destination,
+                 uint32_t destinationOffset,
+                 const AllocatedBuffer& staging);
+
 };

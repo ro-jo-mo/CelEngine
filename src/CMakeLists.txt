@@ -154,6 +154,11 @@ set(public_headers
         include/renderer/passes/HandleAllocator.h
         include/renderer/passes/Passes.h
 
+        include/renderer/passes/DrawMeshes.h
+        include/renderer/passes/DrawSkybox.h
+        include/renderer/passes/UploadAssets.h
+
+
         include/renderer/resource-management/ResourceTracker.h
         include/renderer/resource-management/VulkanResourceManager.h
         include/renderer/resource-management/PipelineBuilder.h

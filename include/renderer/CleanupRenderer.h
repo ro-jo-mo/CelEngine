@@ -8,10 +8,10 @@ namespace Cel::Renderer {
 
 void
 cleanup_renderer(Resource<FinalCleanup>& cleanup,
-                Resource<FrameData>& frameData,
-                Resource<VulkanContext>& context);
+                 Resource<FramesInFlight>& frameData,
+                 Resource<VulkanContext>& context);
 
 void
-cleanup_asset_server(Resource<AssetServer>& assetServer);
+cleanup_asset_server(Resource<Assets::AssetServer>& assetServer);
 
 }
