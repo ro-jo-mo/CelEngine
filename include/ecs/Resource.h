@@ -1,7 +1,8 @@
 #pragma once
+
 #include "IResource.h"
 
-#include <mutex>
+#include <shared_mutex>
 #include <utility>
 
 namespace Cel {
@@ -49,8 +50,7 @@ Resource<T>::operator*()
 
 /**
  * @brief A version of resource allowing parallel read / write access
- * Allows two or more systems to access the same resource in parallel even if
- * they're writing to it
+ * Basic read / write locking system.
  * @tparam T
  */
 template<typename T>
@@ -69,44 +69,109 @@ class ParallelResource : IResource
 
     using inner = T;
 
-    class Guard
+    class WriteGuard
     {
       public:
+        WriteGuard(auto& mutex, auto& ref)
+            : guard(mutex)
+            , ref(ref)
+        {
+        }
+
         T* operator->();
 
         T& operator*();
 
       private:
-        std::lock_guard<std::mutex> guard;
+        std::unique_lock<std::shared_mutex> guard;
         T& ref;
     };
 
-    Guard lock();
+    class ReadGuard
+    {
+      public:
+        ReadGuard(auto& mutex, auto& ref)
+            : guard(mutex)
+            , ref(ref)
+        {
+        }
+
+        const T* operator->();
+
+        const T& operator*();
+
+      private:
+        std::shared_lock<std::shared_mutex> guard;
+        const T& ref;
+    };
+
+    WriteGuard write();
+
+    ReadGuard read();
+
+    /**
+     * In the case of PassServer in particular, the const access functionality
+     * could be an entirely separate resource. That is to say there is no read
+     * write conflicts, and using a read lock would simply be wasteful.
+     *
+     * This should obviously not be used unless you are already familiar with
+     * the resources inner workings, and have firm guarantees about the
+     * functionality
+     * @return
+     */
+    const T& illegal();
 
   protected:
-    std::mutex mutex;
+    std::shared_mutex mutex;
     T resource;
 };
 
 template<typename T>
 T*
-ParallelResource<T>::Guard::operator->()
+ParallelResource<T>::WriteGuard::operator->()
 {
     return &ref;
 }
 
 template<typename T>
 T&
-ParallelResource<T>::Guard::operator*()
+ParallelResource<T>::WriteGuard::operator*()
 {
     return ref;
 }
 
 template<typename T>
-ParallelResource<T>::Guard
-ParallelResource<T>::lock()
+const T*
+ParallelResource<T>::ReadGuard::operator->()
 {
-    return Guard{ mutex, resource };
+    return &ref;
 }
 
+template<typename T>
+const T&
+ParallelResource<T>::ReadGuard::operator*()
+{
+    return ref;
+}
+
+template<typename T>
+ParallelResource<T>::WriteGuard
+ParallelResource<T>::write()
+{
+    return { mutex, resource };
+}
+
+template<typename T>
+ParallelResource<T>::ReadGuard
+ParallelResource<T>::read()
+{
+    return { mutex, resource };
+}
+
+template<typename T>
+const T&
+ParallelResource<T>::illegal()
+{
+    return resource;
+}
 }

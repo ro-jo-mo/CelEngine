@@ -68,16 +68,31 @@ create_image(VkExtent3D size,
 
              const char* allocName,
              VulkanContext& context,
-             VmaAllocator& allocator);
-
+             const VmaAllocator& allocator);
 
 [[nodiscard]] AllocatedImage
-create_image(const VkImageCreateInfo& imageCreateInfo,
+create_image(Handle<AllocatedImage> handle,
+             const VkImageCreateInfo& imageCreateInfo,
              VkImageViewCreateInfo& imageViewCreateInfo,
 
              const char* allocName,
              VkDevice device,
-             VmaAllocator& allocator);
+             const VmaAllocator& allocator);
+
+void
+upload_image_asset(const void* data,
+                   VkCommandBuffer cmd,
+                   const AllocatedImage& image,
+                   const AllocatedBuffer& staging);
+
+void
+upload_image_asset(ktxTexture* texture,
+                   VkCommandBuffer cmd,
+                   const AllocatedImage& image,
+                   const AllocatedBuffer& staging);
+
+size_t
+calculate_image_size(VkExtent3D extent, VkFormat format);
 
 [[nodiscard]] AllocatedImage
 create_cube_map(ktxTexture* texture,
@@ -90,7 +105,8 @@ create_cube_map(ktxTexture* texture,
                 const GraphicsQueue& graphicsQueue);
 
 [[nodiscard]] AllocatedBuffer
-create_buffer(size_t allocSize,
+create_buffer(Handle<AllocatedBuffer> handle,
+              size_t allocSize,
               VkBufferUsageFlags usage,
               VmaMemoryUsage memoryUsage,
 

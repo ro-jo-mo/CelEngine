@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Descriptors.h"
+#include "common/Handle.h"
 #include "resource-management/DeletionQueue.h"
 
 #include <glm/glm.hpp>
@@ -83,15 +84,7 @@ struct PerEntityGpuData
     uint32_t materialIndex;
 };
 
-struct SceneData
-{
-    VkDeviceAddress verticesBufferAddress;
-    VkDeviceAddress materialBufferAddress;
-    VkDeviceAddress perEntityBufferAddress;
-    glm::mat4 viewMatrix;
-    glm::mat4 projectionMatrix;
-    glm::mat4 viewProjMatrix;
-};
+
 
 struct GlobalDescriptorData
 {
@@ -106,9 +99,20 @@ struct GlobalDescriptorData
 
 struct AllocatedBuffer
 {
+    Handle<AllocatedBuffer> handle;
     VkBuffer buffer;
     VmaAllocation allocation;
     VmaAllocationInfo info;
+};
+
+struct AllocatedImage
+{
+    Handle<AllocatedImage> handle;
+    VkImage image;
+    VkImageView imageView;
+    VmaAllocation allocation;
+    VkExtent3D imageExtent;
+    VkFormat imageFormat;
 };
 
 struct AllocatedMeshBuffer
@@ -136,17 +140,17 @@ struct ImageRequirements
 
 struct BufferAccess
 {
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    uint32_t queue;
+    VkAccessFlags2 access = VK_ACCESS_2_NONE;
+    VkPipelineStageFlags2 stages = VK_PIPELINE_STAGE_2_NONE;
+    uint32_t queue = VK_QUEUE_FAMILY_IGNORED;
 };
 
 struct ImageAccess
 {
-    VkAccessFlags2 access;
-    VkPipelineStageFlags2 stages;
-    VkImageLayout layout;
-    uint32_t queue;
+    VkAccessFlags2 access = VK_ACCESS_2_NONE;
+    VkPipelineStageFlags2 stages = VK_PIPELINE_STAGE_2_NONE;
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    uint32_t queue = VK_QUEUE_FAMILY_IGNORED;
 };
 
 struct Pipeline
@@ -156,40 +160,4 @@ struct Pipeline
     std::vector<VkDescriptorSetLayout> descriptorSets;
 };
 
-namespace Detail {
-
-template<typename T>
-struct AllocatedImage
-{
-    VkImage image;
-    VkImageView imageView;
-    VmaAllocation allocation;
-    VkExtent3D imageExtent;
-    VkFormat imageFormat;
-};
-
-template<typename T>
-struct Pipeline
-{
-    VkPipeline pipeline;
-    VkPipelineLayout layout;
-};
-
-struct GenericTag;
-struct DepthTag
-{};
-struct DrawTag
-{};
-struct SkyboxTag
-{};
-struct MeshTag
-{};
-
-}
-using DepthImage = Detail::AllocatedImage<Detail::DepthTag>;
-using DrawImage = Detail::AllocatedImage<Detail::DrawTag>;
-using AllocatedImage = Detail::AllocatedImage<Detail::GenericTag>;
-
-using SkyboxPipeline = Detail::Pipeline<Detail::SkyboxTag>;
-using MeshPipeline = Detail::Pipeline<Detail::MeshTag>;
 }

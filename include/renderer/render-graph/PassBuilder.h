@@ -35,6 +35,7 @@ class PassBuilder
      * @param memoryUsage
      */
     PassBuilder& create_buffer(Handle<AllocatedBuffer> buffer,
+                               bool perFrame,
                                size_t allocSize,
                                VkBufferUsageFlags usages,
                                VmaMemoryUsage memoryUsage);
@@ -49,6 +50,7 @@ class PassBuilder
      * @param memoryUsage
      */
     PassBuilder& create_image(Handle<AllocatedImage> image,
+                              bool perFrame,
                               VkFormat format,
                               VkExtent3D extent,
                               VkImageUsageFlags usages,
@@ -61,22 +63,15 @@ class PassBuilder
     // Images require desired image layout
     // We might be able to derive image aspect ?
 
-    /**
-     *
-     * @param buffer
-     * @param bufferName
-     * @param access
-     * @param stages
-     * @param offset Offset into buffer to read.
-     * @param size Size of the buffer region your reading. Default 0 represents
-     * a read of the entire buffer.
-     */
-    PassBuilder& read_buffer(Handle<AllocatedBuffer> buffer,
-                             VkPipelineStageFlags2 stages);
+    PassBuilder& read_buffer(
+        Handle<AllocatedBuffer> buffer,
+        VkPipelineStageFlags2 stages,
+        VkAccessFlags2 flags = VK_ACCESS_2_SHADER_READ_BIT);
 
     PassBuilder& read_image(Handle<AllocatedImage> image,
                             VkPipelineStageFlags2 stages,
-                            VkImageLayout layout);
+                            VkImageLayout layout,
+                            VkAccessFlags2 flags = VK_ACCESS_2_SHADER_READ_BIT);
 
     PassBuilder& write_buffer(Handle<AllocatedBuffer> buffer,
                               VkAccessFlags2 access,

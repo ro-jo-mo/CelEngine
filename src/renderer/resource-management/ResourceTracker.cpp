@@ -12,6 +12,20 @@ Cel::Renderer::ResourceTracker::get_state(Handle<AllocatedImage> image)
     return images[image];
 }
 
+void
+Cel::Renderer::ResourceTracker::set_state(Handle<AllocatedBuffer> handle,
+                                          const BufferAccess& access)
+{
+    buffers[handle] = access;
+}
+
+void
+Cel::Renderer::ResourceTracker::set_state(Handle<AllocatedImage> handle,
+                                          const ImageAccess& access)
+{
+    images[handle] = access;
+}
+
 Cel::Renderer::BranchingResourceTracker
 Cel::Renderer::BranchingResourceTracker::branch_off()
 {
@@ -29,10 +43,4 @@ Cel::Renderer::BranchingResourceTracker::BranchingResourceTracker(
 }
 
 Cel::Renderer::BranchingResourceTracker::BranchingResourceTracker(
-    const BranchingResourceTracker& tracker)
-    : reusable(tracker.reusable)
-    , dirty(tracker.dirty)
-    , state(tracker.state)
-    , lastPassToAccessResource(tracker.lastPassToAccessResource)
-{
-}
+    const BranchingResourceTracker& tracker) = default;

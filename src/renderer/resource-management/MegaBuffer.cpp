@@ -2,19 +2,14 @@
 
 #include "renderer/resource-management/VulkanResourceManager.h"
 
-Cel::Renderer::MegaBuffer::MegaBuffer(const BufferRequirements req,
-                                      const std::string& name,
-                                      VulkanResourceManager& manager,
-                                      const uint32_t alignment)
-    : handle(manager.get_handle_from_requirements(req, name))
-    , buffer(manager.get_resource_from_handle(handle))
-    , alignment(alignment)
+Cel::Renderer::PerFrameMegaBuffer::PerFrameMegaBuffer(const uint32_t alignment)
+    : alignment(alignment)
 {
 }
 
 uint32_t
-Cel::Renderer::MegaBuffer::allocate(const void* data,
-                                    const uint32_t size)
+Cel::Renderer::PerFrameMegaBuffer::allocate(const void* data,
+                                            const uint32_t size)
 {
     if (uploadOffset == UINT32_MAX) {
         uploadOffset = currentUsage;
@@ -30,7 +25,7 @@ Cel::Renderer::MegaBuffer::allocate(const void* data,
     dataToUpload.resize(start + newSize);
     // While we have resized the buffer to the aligned size, we only need to
     // copy the actual data
-    memcpy(dataToUpload.data() + start, buffer.buffer, size);
+    memcpy(dataToUpload.data() + start, data, size);
 
     const auto offset = currentUsage;
 
@@ -39,21 +34,16 @@ Cel::Renderer::MegaBuffer::allocate(const void* data,
     return offset;
 }
 
-void
-Cel::Renderer::MegaBuffer::cleanup(const VmaAllocator& allocator) const
-{
-    Utils::destroy_buffer(buffer, allocator);
-}
-
 uint32_t
-Cel::Renderer::MegaBuffer::upload_size() const
+Cel::Renderer::PerFrameMegaBuffer::current_upload_size() const
 {
     return dataToUpload.size();
 }
 
 void
-Cel::Renderer::MegaBuffer::upload(VkCommandBuffer cmd,
-                                  const AllocatedBuffer& staging)
+Cel::Renderer::PerFrameMegaBuffer::push_to_gpu(const AllocatedBuffer& buffer,
+                                               VkCommandBuffer cmd,
+                                               const AllocatedBuffer& staging)
 {
     Utils::upload_to_buffer(cmd,
                             dataToUpload.data(),
@@ -65,4 +55,21 @@ Cel::Renderer::MegaBuffer::upload(VkCommandBuffer cmd,
     // Reset
     uploadOffset = UINT32_MAX;
     dataToUpload.clear();
+}
+
+Cel::Renderer::MegaBuffer::MegaBuffer(const BufferRequirements req,
+                                      const std::string& name,
+                                      VulkanResourceManager& manager,
+                                      const uint32_t alignment)
+    : handle(manager.get_handle_from_requirements(req, name))
+    , buffer(manager.get_resource_from_handle(handle))
+    , alignment(alignment)
+{
+}
+
+void
+Cel::Renderer::MegaBuffer::push_to_gpu(VkCommandBuffer cmd,
+                                       const AllocatedBuffer& staging)
+{
+    PerFrameMegaBuffer::push_to_gpu(buffer, cmd, staging);
 }

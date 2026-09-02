@@ -7,8 +7,14 @@
 #include "ecs/Types.h"
 #include "renderer/AssetTypes.h"
 #include "resource-management/MegaBuffer.h"
-#include "resource-management/VulkanResourceManager.h"
 
+namespace Cel::Renderer::RenderGraph {
+class PassServer;
+class Graph;
+class PassBuilder;
+struct RenderPass;
+}
+// Pre declarations
 namespace Cel::Renderer {
 namespace Assets {
 class AssetServer;
@@ -17,12 +23,21 @@ struct DrawData;
 void
 cleanup_asset_server(Resource<Assets::AssetServer>& assetServer);
 }
+
+namespace Cel::Renderer::Passes {
+
+void
+register_asset_upload_pass(Resource<Assets::AssetServer>& server,
+                           Resource<VulkanResourceManager>& manager,
+                           Resource<RenderGraph::Graph>& graph);
+void
+upload_assets(Resource<Assets::AssetServer>& assetServer,
+              ParallelResource<RenderGraph::PassServer> passServer);
+}
+
 namespace Cel::Renderer::Assets {
 
 // Comments:
-// If an object is made up of a hierarchy of models, like a scene might be I
-// can't create this tree in the ECS. Existing in the ECS would implicitly mean
-// it exists in the world. Additionally it would be difficult to structure
 
 // Workflow:
 // Get asset handle from server
@@ -48,15 +63,36 @@ namespace Cel::Renderer::Assets {
 class AssetServer
 {
   public:
-    AssetServer(VulkanResourceManager& manager);
+    explicit AssetServer(VulkanResourceManager& manager);
 
     Handle<AssetNode> load_gltf_asset(const char* filepath);
 
-    void set_skybox(const char* filepath);
-
     void add_asset_to_entity(Entity entity,
-                             Handle<AssetNode> assetHandle,
+                             Handle<AssetNode> handle,
                              Resource<World>& world) const;
+
+    Handle<ImageAsset> load_ktx(const std::string& filepath);
+
+    AllocatedImage& get_image_from_handle(Handle<ImageAsset> handle);
+
+    /**
+     * Registers that this render pass accesses loaded assets.
+     * I make possibly problematic assumptions about the pipeline stages
+     *
+     * There is a big
+     * caveat here, that the pass be must registered *after* the
+     * "register_asset_upload_pass" system, as this is when the actual vulkan
+     * handles manifest.
+     *
+     * Once async asset loading is introduced I'll likely fix
+     * this.
+     * @param pass
+     */
+    void declare_scene_access(RenderGraph::PassBuilder& pass);
+
+    void declare_access_to_images(
+        RenderGraph::PassBuilder& pass,
+        const std::vector<Handle<ImageAsset>>& images);
 
   private:
     [[nodiscard]] Material get_material(Handle<Material> material) const;
@@ -64,10 +100,7 @@ class AssetServer
 
     void create_defaults(VulkanResourceManager& manager);
 
-    std::optional<AllocatedImage> load_image(fastgltf::Asset& asset,
-                                             fastgltf::Image& gltfImage);
-
-    AllocatedImage load_skybox_image(const char* filepath);
+    void load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage);
 
     void load_images(fastgltf::Asset& asset);
     void load_samplers(const fastgltf::Asset& asset);
@@ -87,6 +120,11 @@ class AssetServer
 
     void cleanup();
 
+    void register_pass(RenderGraph::PassBuilder& pass,
+                       Resource<VulkanResourceManager>& manager);
+
+    void flush(ParallelResource<RenderGraph::PassServer>& passServer);
+
     std::unordered_map<const char*, Handle<AssetNode>> pathToAssetMap;
 
     // Assets, buffers, descriptors are coupled
@@ -95,7 +133,9 @@ class AssetServer
     std::vector<DescriptorAllocator> allocators;
 
     // Colour, RoughnessMetallic, Normal textures
-    std::vector<AllocatedImage> images;
+    std::vector<AllocatedImage> gltfImages;
+    // General purpose images
+    std::vector<AllocatedImage> loadedImages;
     // Image samplers
     std::vector<VkSampler> samplers;
 
@@ -103,30 +143,45 @@ class AssetServer
     std::vector<Mesh> meshes;
     std::vector<Material> materials;
 
+    // Staging buffers are a per frame resource (cpu to gpu)
+    // As such we wish to leave lifetime entirely to the render graph
+    // We reserve a healthy number of handles at startup
+    std::vector<Handle<AllocatedBuffer>> reservedBufferHandles;
+
     // Commands
     struct CreateImgCmd
     {
         void* data;
         VkExtent3D extent;
+        bool ktx;
+        bool gltf;
     };
     struct CreateMeshCmd
     {};
     std::vector<CreateImgCmd> cmdCreateImgs;
+    // Store image allocations here until they're officially created with data
+    std::vector<AllocatedImage> uninitialisedImages;
 
-    MegaBuffer verticeBuffer;
+    MegaBuffer vertexBuffer;
     MegaBuffer indiceBuffer;
     MegaBuffer materialBuffer;
-
-    size_t skyboxTextureIndex;
-    AllocatedMeshBuffer skyboxCube;
 
     DescriptorWriter descriptorWriter;
     TextureCache textureCache;
 
     VkDevice device;
 
+    // Beloved lack of module level access permissions. What a fantastic
+    // language design!
     friend class Cel::Renderer::DrawData;
     friend void Cel::Renderer::cleanup_asset_server(
         Resource<AssetServer>& assetServer);
+    friend void Cel::Renderer::Passes::register_asset_upload_pass(
+        Resource<Assets::AssetServer>& server,
+        Resource<VulkanResourceManager>& manager,
+        Resource<RenderGraph::Graph>& graph);
+    friend void Cel::Renderer::Passes::upload_assets(
+        Resource<Assets::AssetServer>& assetServer,
+        ParallelResource<RenderGraph::PassServer> passServer);
 };
 }

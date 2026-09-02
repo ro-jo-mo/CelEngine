@@ -272,7 +272,7 @@ Cel::Renderer::Utils::create_image(VkExtent3D size,
 
                                    const char* allocName,
                                    VulkanContext& context,
-                                   VmaAllocator& allocator)
+                                   const VmaAllocator& allocator)
 {
     AllocatedImage newImage;
     newImage.imageFormat = format;
@@ -320,14 +320,16 @@ Cel::Renderer::Utils::create_image(VkExtent3D size,
 }
 
 Cel::Renderer::AllocatedImage
-Cel::Renderer::Utils::create_image(const VkImageCreateInfo& imageCreateInfo,
+Cel::Renderer::Utils::create_image(const Handle<AllocatedImage> handle,
+                                   const VkImageCreateInfo& imageCreateInfo,
                                    VkImageViewCreateInfo& imageViewCreateInfo,
 
                                    const char* allocName,
                                    VkDevice device,
-                                   VmaAllocator& allocator)
+                                   const VmaAllocator& allocator)
 {
     AllocatedImage newImage;
+    newImage.handle = handle;
     newImage.imageFormat = imageCreateInfo.format;
     newImage.imageExtent = imageCreateInfo.extent;
 
@@ -353,6 +355,112 @@ Cel::Renderer::Utils::create_image(const VkImageCreateInfo& imageCreateInfo,
     vmaSetAllocationName(allocator, newImage.allocation, allocName);
 
     return newImage;
+}
+
+void
+Cel::Renderer::Utils::upload_image_asset(const void* data,
+                                         VkCommandBuffer cmd,
+                                         const AllocatedImage& image,
+                                         const AllocatedBuffer& staging)
+{
+    const size_t dataSize = image.imageExtent.depth * image.imageExtent.width *
+                            image.imageExtent.height * 4;
+
+    memcpy(staging.info.pMappedData, data, dataSize);
+
+    VkBufferImageCopy copyRegion = {};
+    copyRegion.bufferOffset = 0;
+    copyRegion.bufferRowLength = 0;
+    copyRegion.bufferImageHeight = 0;
+
+    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.imageSubresource.mipLevel = 0;
+    copyRegion.imageSubresource.baseArrayLayer = 0;
+    copyRegion.imageSubresource.layerCount = 1;
+    copyRegion.imageExtent = image.imageExtent;
+
+    // copy the buffer into the image
+    vkCmdCopyBufferToImage(cmd,
+                           staging.buffer,
+                           image.image,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           1,
+                           &copyRegion);
+}
+
+void
+Cel::Renderer::Utils::upload_image_asset(ktxTexture* texture,
+                                         VkCommandBuffer cmd,
+                                         const AllocatedImage& image,
+                                         const AllocatedBuffer& staging)
+{ // Read basic image data from ktx file
+    VkExtent3D extent{ .width = texture->baseWidth,
+                       .height = texture->baseHeight,
+                       .depth = texture->baseDepth };
+    uint32_t mipLevels = texture->numLevels;
+    uint8_t* textureData = ktxTexture_GetData(texture);
+    size_t textureSize = ktxTexture_GetDataSize(texture);
+    uint32_t faces = texture->numFaces;
+
+    // Upload image into buffer
+    memcpy(staging.info.pMappedData, textureData, textureSize);
+
+    // Move image data from buffer to gpu image
+    std::vector<VkBufferImageCopy> copyRegions;
+    copyRegions.reserve(faces * mipLevels);
+
+    for (size_t face = 0; face < faces; face++) {
+        for (size_t mip = 0; mip < mipLevels; mip++) {
+            ktx_size_t offset;
+            auto err =
+                ktxTexture_GetImageOffset(texture, mip, 0, face, &offset);
+            assert(err == KTX_SUCCESS);
+
+            VkBufferImageCopy copy{};
+            copy.bufferOffset = offset;
+
+            copy.imageExtent.width = extent.width >> mip;
+            copy.imageExtent.height = extent.height >> mip;
+            copy.imageExtent.depth = extent.depth >> mip;
+
+            copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            copy.imageSubresource.mipLevel = mip;
+            copy.imageSubresource.baseArrayLayer = face;
+            copy.imageSubresource.layerCount = 1;
+
+            copyRegions.push_back(copy);
+        }
+    }
+
+    VkImageSubresourceRange subresourceRange = {};
+    subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subresourceRange.baseMipLevel = 0;
+    subresourceRange.levelCount = mipLevels;
+    subresourceRange.layerCount = 6;
+
+    // copy the buffer into the image
+    vkCmdCopyBufferToImage(cmd,
+                           staging.buffer,
+                           image.image,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           copyRegions.size(),
+                           copyRegions.data());
+}
+
+size_t
+Cel::Renderer::Utils::calculate_image_size(VkExtent3D extent, VkFormat format)
+{
+    // Honestly not sure if I'll need this
+    size_t formatSize;
+    switch (format) {
+        case VK_FORMAT_R8G8B8A8_SNORM:
+            formatSize = 4;
+            break;
+        default:
+            formatSize = 0;
+            throw_error("Unsupported image format");
+    }
+    return extent.depth * extent.width * extent.height * formatSize;
 }
 
 Cel::Renderer::AllocatedImage
@@ -474,7 +582,8 @@ Cel::Renderer::Utils::create_cube_map(ktxTexture* texture,
 }
 
 Cel::Renderer::AllocatedBuffer
-Cel::Renderer::Utils::create_buffer(const size_t allocSize,
+Cel::Renderer::Utils::create_buffer(const Handle<AllocatedBuffer> handle,
+                                    const size_t allocSize,
                                     const VkBufferUsageFlags usage,
                                     const VmaMemoryUsage memoryUsage,
                                     const char* allocName,
@@ -491,6 +600,7 @@ Cel::Renderer::Utils::create_buffer(const size_t allocSize,
     vmaAllocInfo.usage = memoryUsage;
     vmaAllocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
     AllocatedBuffer newBuffer{};
+    newBuffer.handle = handle;
 
     vk_check(vmaCreateBuffer(allocator,
                              &bufferInfo,

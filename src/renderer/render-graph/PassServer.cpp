@@ -104,9 +104,11 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     const uint32_t _currentFrame,
     const std::unordered_map<Handle<RenderPass>, uint32_t>& _validPasses,
     const std::unordered_map<Handle<AllocatedBuffer>, Handle<AllocatedBuffer>>&
-        mappedBufferHandles,
+        bufferMapping,
     const std::unordered_map<Handle<AllocatedImage>, Handle<AllocatedImage>>&
-        mappedImageHandles,
+        imageMapping,
+    const std::unordered_set<Handle<AllocatedBuffer>>& perFrameBuffers,
+    const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
     VulkanResourceManager& manager)
 {
     currentFrame = _currentFrame;
@@ -130,19 +132,29 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     }
 
     // Create a mapping from the pass handled to actual vk resources
-    for (const auto& [handle, mapped] : mappedBufferHandles) {
+    // Set to be freed either the next frame (if transient resource) or the next
+    // occurrence of this frame (if per frame)
+    const auto nextFrame = currentFrame % FRAMES_IN_FLIGHT;
+
+    for (const auto& [handle, mapped] : bufferMapping) {
+        const auto freeFrame =
+            perFrameBuffers.contains(handle) ? currentFrame : nextFrame;
+
+        buffersToFree[freeFrame].emplace_back(mapped);
         mappedBuffers.emplace(handle, manager.get_resource_from_handle(mapped));
-        buffersToFree[currentFrame].emplace_back(handle);
     }
-    for (const auto& [handle, mapped] : mappedImageHandles) {
+    for (const auto& [handle, mapped] : imageMapping) {
+        const auto freeFrame =
+            perFrameImages.contains(handle) ? currentFrame : nextFrame;
+
+        imagesToFree[freeFrame].emplace_back(mapped);
         mappedImages.emplace(handle, manager.get_resource_from_handle(mapped));
-        imagesToFree[currentFrame].emplace_back(handle);
     }
 }
 
 uint32_t
 Cel::Renderer::RenderGraph::PassServer::get_pool_index(
-    Handle<RenderPass> handle)
+    const Handle<RenderPass> handle)
 {
     const auto queue = queueToIndex[validPasses[handle]];
     const auto thread = ThreadManager::get_thread_id();

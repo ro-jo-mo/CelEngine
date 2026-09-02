@@ -13,11 +13,13 @@ namespace Cel::Renderer {
 class ResourceTracker
 {
   public:
-    virtual ~ResourceTracker() = default;
+    BufferAccess get_state(Handle<AllocatedBuffer> buffer);
 
-    virtual BufferAccess get_state(Handle<AllocatedBuffer> buffer);
+    ImageAccess get_state(Handle<AllocatedImage> image);
 
-    virtual ImageAccess get_state(Handle<AllocatedImage> image);
+    void set_state(Handle<AllocatedBuffer> handle, const BufferAccess& access);
+
+    void set_state(Handle<AllocatedImage> handle, const ImageAccess& access);
 
   protected:
     // Track the current state of images and buffers
@@ -88,7 +90,7 @@ class BranchingResourceTracker
         lastPassToAccessResource{ Passes::basePass, Passes::basePass };
 
   private:
-    explicit BranchingResourceTracker(const BranchingResourceTracker& tracker);
+    BranchingResourceTracker(const BranchingResourceTracker& tracker);
 };
 
 template<typename BufValue, typename ImgValue>

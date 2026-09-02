@@ -18,7 +18,7 @@ Graph::add_pass(const RenderPass& pass)
 }
 
 void
-Graph::compile()
+Graph::compile(VulkanResourceManager& manager)
 {
     // What do I need to do?
     // When deciding between two passes, for now I will just brute force. Open
@@ -31,9 +31,9 @@ Graph::compile()
 
     // Someone needs to check when a resource is last used, so it can be reused
 
-    auto tracker = resourceManager.branch_tracker();
+    auto tracker = manager.branch_tracker();
 
-    compile_passes(tracker);
+    compile_passes(manager, tracker);
 
     ExecutionPlan plan{};
 
@@ -48,14 +48,16 @@ Graph::compile()
 }
 
 void
-Graph::compile_passes(BranchingResourceTracker& tracker)
+Graph::compile_passes(VulkanResourceManager& manager,
+                      BranchingResourceTracker& tracker)
 {
     // We mark the state as coming from a null pass, meaning it has no existing
-    // state and thus needs no synchronisation
+    // state and thus needs no synchronisation (apart from layout transition)
     auto create_helper = [&](auto& creates, auto& addTo) {
         for (auto& create : creates) {
-            auto handle = resourceManager.get_handle_from_requirements(
-                create.requirements);
+            auto handle = manager.get_handle_from_requirements(
+                create.requirements,
+                Passes::HandleAllocator::get_name(create.id));
             addTo[create.id] = handle;
             tracker.lastPassToAccessResource.set(handle, Passes::nullPass);
         }
@@ -69,9 +71,12 @@ Graph::compile_passes(BranchingResourceTracker& tracker)
 
     auto to_mapped = [&](auto& iter, auto& map) {
         for (auto& it : iter) {
-            it.id = map[it.id];
+            if (map.contains(it.id)) {
+                it.id = map.at(it.id);
+            }
         }
     };
+
     // Then we can update the reads / writes to use the mapped handles
     for (auto& pass : passes | std::views::values) {
         to_mapped(pass.bufferReads, bufferHandleToMapped);
@@ -157,11 +162,10 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
                            auto& merges) {
         for (const auto& read : reads) {
 
-            // Do not edit this reference
             const auto& state = tracker.state.get(read.id);
 
             // Do we need to transition the resource to this queue?
-            if (state.queue != pass.queue) {
+            if (read.access.queue != state.queue) {
                 // Add queue transition
                 transfers.push_back(
                     create_transition(read.id, read.access, state, tracker));
@@ -205,18 +209,14 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
         for (const auto& write : writes) {
             auto state = tracker.state.get(write.id);
 
-            // A write actually always needs a barrier prior to starting, with
-            // the only exception if it is the first pass to write
-            // This is
-            // marked the null pass handle. As such we only care about this and
-            // queue transitions
-
-            if (tracker.lastPassToAccessResource.get(write.id).index ==
-                UINT32_MAX) {
+            // We always need a barrier before a write. The only exception is
+            // when this resource has no existing state, marked by nullPass.
+            // Even then images still need their layout transitioned
+            if (!is_write_barrier_needed(write.id, tracker)) {
                 // If unaccessed, we just need to set state
             }
             // Insert transfer else just a barrier
-            else if (pass.queue != state.queue) {
+            else if (write.access.queue != state.queue) {
                 transfers.push_back(
                     create_transition(write.id, write.access, state, tracker));
             } else {
@@ -287,6 +287,20 @@ Graph::is_merge_needed(const ImageAccess& access, const ImageAccess& state)
         return true;
     }
     return false;
+}
+
+bool
+Graph::is_write_barrier_needed(const Handle<AllocatedBuffer> handle,
+                               BranchingResourceTracker& tracker)
+{
+    return tracker.lastPassToAccessResource.get(handle) == Passes::nullPass;
+}
+
+bool
+Graph::is_write_barrier_needed(Handle<AllocatedImage> handle,
+                               BranchingResourceTracker& tracker)
+{
+    return true;
 }
 
 BufferTransfer

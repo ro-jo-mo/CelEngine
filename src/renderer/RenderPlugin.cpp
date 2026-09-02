@@ -1,4 +1,4 @@
-#include "renderer/RenderPlugin.h"
+#include "../../include/renderer/passes/RenderPlugin.h"
 
 #include "renderer/CleanupRenderer.h"
 #include "renderer/Draw.h"

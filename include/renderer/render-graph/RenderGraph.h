@@ -17,11 +17,6 @@ namespace Cel::Renderer::RenderGraph {
 // Render::Update -> record commands
 // Render::PostUpdate -> execute graph
 // Render::Final -> cleanup
-
-// Compile graph
-// Post compiling each pass can graph->get_cmd_buffer(pass) and record their
-// commands get_resource to access buffers and images
-// Execute finally submits the buffers
 class Graph : Common::Scheduler<Handle<RenderPass>>
 {
   public:
@@ -38,17 +33,16 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
      * The primary purpose is to decide on an optimal ordering of passes
      * Additionally when to insert synchronisation primitives
      */
-    void compile();
+    void compile(VulkanResourceManager& manager);
 
     // Finally execute the render passes
     void execute();
 
-    void reset(uint32_t frame);
-
   private:
     // Resolve the buffer and image handles to handles to actual vulkan
     // resources
-    void compile_passes(BranchingResourceTracker& tracker);
+    void compile_passes(VulkanResourceManager& manager,
+                        BranchingResourceTracker& tracker);
 
     void search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
                        BranchingResourceTracker& tracker,
@@ -74,11 +68,15 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     static bool is_merge_needed(const ImageAccess& access,
                                 const ImageAccess& state);
 
+    static bool is_write_barrier_needed(Handle<AllocatedBuffer> handle,
+                                        BranchingResourceTracker& tracker);
+    static bool is_write_barrier_needed(Handle<AllocatedImage> handle,
+                                        BranchingResourceTracker& tracker);
+
     static BufferTransfer create_transition(Handle<AllocatedBuffer> handle,
                                             const BufferAccess& access,
                                             const BufferAccess& state,
                                             BranchingResourceTracker& tracker);
-
     static ImageTransfer create_transition(Handle<AllocatedImage> handle,
                                            const ImageAccess& access,
                                            const ImageAccess& state,
@@ -103,12 +101,6 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
 
     std::vector<ExecutionPlan::ExecutePass> finalPlan;
     uint32_t bestCost = UINT32_MAX;
-
-    uint32_t currentFrame;
-
-    VkDevice device;
-    VmaAllocator allocator;
-    VulkanResourceManager& resourceManager;
 
     friend class PassBuilder;
 };

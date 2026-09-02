@@ -150,7 +150,7 @@ DrawData::draw_geometry()
     {
         VkBufferDeviceAddressInfo vertInfo{
             .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-            .buffer = assetServer->verticeBuffer.buffer.buffer
+            .buffer = assetServer->vertexBuffer.buffer.buffer
         };
         VkBufferDeviceAddressInfo matInfo{
             .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,

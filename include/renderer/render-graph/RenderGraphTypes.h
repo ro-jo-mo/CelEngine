@@ -10,12 +10,14 @@ namespace Cel::Renderer::RenderGraph {
 struct BufferCreate
 {
     Handle<AllocatedBuffer> id;
+    bool perFrame;
     BufferRequirements requirements;
 };
 
 struct ImageCreate
 {
     Handle<AllocatedImage> id;
+    bool perFrame;
     ImageRequirements requirements;
 };
 

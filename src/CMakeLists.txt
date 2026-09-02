@@ -1,8 +1,7 @@
 set(namespace "CelEngine")
 
 set(MAX_ENTITIES 2048 CACHE STRING "Max number of entities that can exist at once")
-set(CMD_BUFFERS_PER_POOL 30 CACHE STRING "Total number of cmd buffers created per pool for render passes")
-
+set(CMD_BUFFERS_PER_POOL 30 CACHE STRING "(Deprecated) Total number of cmd buffers created per pool for render passes")
 
 configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/../include/core/Config.h.in
@@ -75,6 +74,7 @@ target_sources(${PROJECT_NAME}
 
         "renderer/render-graph/PassBuilder.cpp"
         "renderer/render-graph/RenderGraph.cpp"
+        "renderer/render-graph/RenderGraphPlugin.cpp"
         "renderer/render-graph/ExecutionPlan.cpp"
         "renderer/render-graph/PassServer.cpp"
 
@@ -146,6 +146,7 @@ set(public_headers
         include/renderer/MegaBuffer.h
 
         include/renderer/render-graph/RenderGraph.h
+        include/renderer/render-graph/RenderGraphPlugin.h
         include/renderer/render-graph/PassBuilder.h
         include/renderer/render-graph/RenderPass.h
         include/renderer/render-graph/AccessFlags.h

@@ -1,8 +1,8 @@
+#include "../include/renderer/passes/RenderPlugin.h"
 #include "core/App.h"
 #include "core/CorePlugin.h"
 #include "renderer/AssetServer.h"
 #include "renderer/Camera.h"
-#include "renderer/RenderPlugin.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "input/Input.h"

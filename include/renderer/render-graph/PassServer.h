@@ -37,9 +37,11 @@ class PassServer
         uint32_t _currentFrame,
         const std::unordered_map<Handle<RenderPass>, uint32_t>& _validPasses,
         const std::unordered_map<Handle<AllocatedBuffer>,
-                                 Handle<AllocatedBuffer>>& mappedBufferHandles,
+                                 Handle<AllocatedBuffer>>& bufferMapping,
         const std::unordered_map<Handle<AllocatedImage>,
-                                 Handle<AllocatedImage>>& mappedImageHandles,
+                                 Handle<AllocatedImage>>& imageMapping,
+        const std::unordered_set<Handle<AllocatedBuffer>>& perFrameBuffers,
+        const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
         VulkanResourceManager& manager);
 
   private:

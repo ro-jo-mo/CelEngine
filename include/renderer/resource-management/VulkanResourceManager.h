@@ -26,14 +26,21 @@ class VulkanResourceManager
         const ImageRequirements& requirements,
         const std::string& name);
 
-    // It's at this stage that the resource is actually created
-    AllocatedBuffer& get_resource_from_handle(Handle<AllocatedBuffer> handle);
+    // It's at this stage that the resource is actually created, assuming it
+    // hasn't already
+    AllocatedBuffer& get_resource_from_handle(Handle<AllocatedBuffer> handle,
+                                              bool strictAliasing = false);
 
-    AllocatedImage& get_resource_from_handle(Handle<AllocatedImage> handle);
+    AllocatedImage& get_resource_from_handle(Handle<AllocatedImage> handle,
+                                             bool strictAliasing = false);
 
-    BufferAccess get_buffer_state(Handle<AllocatedBuffer> handle);
+    BufferAccess get_resource_state(Handle<AllocatedBuffer> handle);
 
-    ImageAccess get_image_state(Handle<AllocatedImage> handle);
+    ImageAccess get_resource_state(Handle<AllocatedImage> handle);
+
+    bool does_resource_exist(Handle<AllocatedBuffer> handle);
+
+    bool does_resource_exist(Handle<AllocatedImage> handle);
 
     /**
      * This resource is no longer in use and can be safely deleted
@@ -41,7 +48,7 @@ class VulkanResourceManager
     void free_resource(Handle<AllocatedBuffer> handle);
     void free_resource(Handle<AllocatedImage> handle);
 
-    BranchingResourceTracker branch_tracker() const;
+    [[nodiscard]] BranchingResourceTracker branch_tracker() const;
 
   private:
     static bool is_compatible(const BufferRequirements& actual,
@@ -50,8 +57,10 @@ class VulkanResourceManager
     static bool is_compatible(const ImageRequirements& actual,
                               const ImageRequirements& requested);
 
-    AllocatedBuffer allocate(Handle<AllocatedBuffer> handle) const;
-    AllocatedImage allocate(Handle<AllocatedImage> handle);
+    // Not happy with this naming. Not obvious that it takes zero ownership.
+    [[nodiscard]] AllocatedBuffer allocate(
+        Handle<AllocatedBuffer> handle) const;
+    [[nodiscard]] AllocatedImage allocate(Handle<AllocatedImage> handle) const;
 
     void deallocate(const AllocatedBuffer& buffer) const;
 
@@ -66,7 +75,7 @@ class VulkanResourceManager
         {
         }
 
-        Handle<Res> create_handle(Req req);
+        Handle<Res> create_handle(Req req, const std::string& name);
 
         Res& get_or_allocate(Handle<Res> handle);
 
@@ -81,7 +90,6 @@ class VulkanResourceManager
         std::vector<Handle<Res>> reusableHandles;
         // A handle is freed when the user marks it as free
         std::vector<Handle<Res>> freed;
-        uint32_t maxHandle = 0;
 
         std::unordered_map<Handle<Res>, Res> allocations;
 
@@ -93,9 +101,6 @@ class VulkanResourceManager
     ResourcePool<AllocatedBuffer, BufferRequirements> bufferPool;
     ResourcePool<AllocatedImage, ImageRequirements> imagePool;
 
-    std::unordered_map<Handle<AllocatedBuffer>, std::string> handleToBufferName;
-    std::unordered_map<Handle<AllocatedImage>, std::string> handleToImageName;
-
     ResourceTracker tracker;
 
     VkDevice device;
@@ -104,11 +109,13 @@ class VulkanResourceManager
 
 template<typename Res, typename Req>
 Handle<Res>
-VulkanResourceManager::ResourcePool<Res, Req>::create_handle(Req req)
+VulkanResourceManager::ResourcePool<Res, Req>::create_handle(
+    Req req,
+    const std::string& name)
 {
     Handle<Res> handle;
     if (reusableHandles.empty()) {
-        handle = { maxHandle++ };
+        handle = Passes::HandleAllocator::allocate_handle<Res>(name);
     } else {
         // pop back
         handle = reusableHandles.back();
@@ -140,6 +147,8 @@ VulkanResourceManager::ResourcePool<Res, Req>::get_or_allocate(
 
     // Else allocate new
     allocations.emplace(handle, manager.allocate(handle));
+    // Set state (if does not exist)
+    manager.tracker.set_state(handle, {});
 
     return allocations.at(handle);
 }

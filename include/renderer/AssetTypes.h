@@ -8,6 +8,12 @@
 
 namespace Cel::Renderer::Assets {
 
+struct ImageAsset
+{};
+
+struct MeshAsset
+{};
+
 struct Vertex
 {
     glm::vec3 position;
@@ -32,6 +38,7 @@ struct MaterialConstants
     uint32_t normalTextureIndex;
 };
 
+// Probably change this to handles later
 struct Model
 {
     std::vector<uint32_t> meshes;

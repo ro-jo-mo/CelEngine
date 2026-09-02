@@ -4,6 +4,11 @@
 
 #include "core/Error.h"
 #include "renderer/VulkanUtils.h"
+#include "renderer/passes/HandleAllocator.h"
+#include "renderer/passes/Passes.h"
+#include "renderer/render-graph/PassBuilder.h"
+#include "renderer/render-graph/PassServer.h"
+#include "renderer/resource-management/VulkanResourceManager.h"
 
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
@@ -17,15 +22,20 @@ using namespace Cel::Renderer::Assets;
 using namespace Cel::Renderer;
 using namespace Cel;
 
+// TEMP NOTES
+// We can use the gltf load mesh to just get the cubemap mesh
+// Uploads to the megabuffer like every other mesh
+//
+
 AssetServer::AssetServer(VulkanResourceManager& manager)
-    : verticeBuffer({ .allocSize = 2 << 16,
-                      .usages = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                                VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-                                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                      .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
-                    "vertice_mega_buffer_alloc",
-                    manager)
+    : vertexBuffer({ .allocSize = 2 << 16,
+                     .usages = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                               VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                               VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                               VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                     .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
+                   "vertice_mega_buffer_alloc",
+                   manager)
     , indiceBuffer({ .allocSize = 2 << 16,
                      .usages = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                                VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
@@ -49,6 +59,13 @@ AssetServer::AssetServer(VulkanResourceManager& manager)
 void
 AssetServer::create_defaults(VulkanResourceManager& manager)
 {
+    // Reserve handles
+    reservedBufferHandles.reserve(512);
+    for (uint32_t i = 0; i < 512; i++) {
+        reservedBufferHandles.emplace_back(
+            Passes::HandleAllocator::allocate_buffer("asset_server_reserved"));
+    }
+
     // checkerboard image
     int32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
     int32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 1));
@@ -63,7 +80,7 @@ AssetServer::create_defaults(VulkanResourceManager& manager)
 
     // For now, we'll default to a checkerboard when no texture is assigned
     // However, this is a little silly for normals roughness etc
-    cmdCreateImgs.push_back({ pixels, { 16, 16, 1 } });
+    cmdCreateImgs.push_back({ pixels, { 16, 16, 1 }, false, true });
 
     VkSampler defaultSampler;
     VkSamplerCreateInfo samplerInfo = {
@@ -75,21 +92,6 @@ AssetServer::create_defaults(VulkanResourceManager& manager)
 
     vkCreateSampler(device, &samplerInfo, nullptr, &defaultSampler);
     samplers.push_back(defaultSampler);
-
-    // Skybox
-    std::vector<float> skyboxVertices = { -1.0, 1.0,  -1.0, -1.0, -1.0, -1.0,
-                                          1.0,  -1.0, -1.0, 1.0,  1.0,  -1.0,
-                                          -1.0, -1.0, 1.0,  -1.0, 1.0,  1.0,
-                                          1.0,  -1.0, 1.0,  1.0,  1.0,  1.0 };
-
-    std::vector<uint32_t> skyboxIndices = {
-        0, 1, 2, 2, 3, 0, 4, 1, 0, 0, 5, 4, 2, 6, 7, 7, 3, 2,
-        4, 5, 7, 7, 6, 4, 0, 3, 7, 7, 5, 0, 1, 4, 2, 2, 4, 6
-    };
-
-    skyboxCube = Utils::upload_mesh(skyboxIndices, skyboxVertices);
-
-    set_skybox("../../assets/skybox.ktx2");
 }
 
 std::vector<Model>
@@ -181,7 +183,7 @@ AssetServer::load_models(fastgltf::Asset& asset, size_t materialOffset)
                 newMesh.firstIndex = indiceBuffer.allocate(
                     indices.data(), indices.size() * sizeof(uint32_t));
                 newMesh.indexCount = indices.size();
-                newMesh.vertexOffset = verticeBuffer.allocate(
+                newMesh.vertexOffset = vertexBuffer.allocate(
                     vertices.data(), vertices.size() * sizeof(Vertex));
 
                 meshes.push_back(newMesh);
@@ -193,7 +195,7 @@ AssetServer::load_models(fastgltf::Asset& asset, size_t materialOffset)
     return models;
 }
 
-std::optional<AllocatedImage>
+void
 AssetServer::load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
 {
 
@@ -227,7 +229,9 @@ AssetServer::load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
         gltfImage.data);
 
     if (imageData.empty()) {
-        return {};
+
+        throw_error("Failed to load an image ({}) in gltf asset",
+                    std::move(gltfImage.name));
     }
 
     int width, height, channels;
@@ -245,31 +249,14 @@ AssetServer::load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
     size.height = height;
     size.depth = 1;
 
-    auto newImage = Utils::create_image(img,
-                                        size,
-                                        VK_FORMAT_R8G8B8A8_UNORM,
-                                        VK_IMAGE_USAGE_SAMPLED_BIT,
-                                        false,
-                                        "gltf_image_alloc");
-
-    stbi_image_free(img);
-
-    return newImage;
+    cmdCreateImgs.emplace_back(img, size, false, true);
 }
 
 void
 AssetServer::load_images(fastgltf::Asset& asset)
 {
     for (auto& image : asset.images) {
-        auto img = load_image(asset, image);
-        if (img.has_value()) {
-            images.push_back(img.value());
-        } else {
-            fmt::println(stderr,
-                         "Failed to load an image ({}) in gltf asset",
-                         image.name);
-            images.push_back(images[0]);
-        }
+        load_image(asset, image);
     }
 }
 
@@ -343,7 +330,7 @@ AssetServer::resolve_texture_sampler(
     if (textureInfo.has_value()) {
         auto& texture = asset.textures[textureInfo.value().textureIndex];
         const auto view =
-            images[texture.imageIndex.value() + imageOffset].imageView;
+            gltfImages[texture.imageIndex.value() + imageOffset].imageView;
 
         VkSampler sampler;
         if (texture.samplerIndex.has_value()) {
@@ -354,7 +341,7 @@ AssetServer::resolve_texture_sampler(
 
         return textureCache.add_texture(view, sampler);
     }
-    return textureCache.add_texture(images[0].imageView, samplers[0]);
+    return textureCache.add_texture(gltfImages[0].imageView, samplers[0]);
 }
 
 void
@@ -508,7 +495,7 @@ AssetServer::load_gltf_asset(const char* filepath)
     // server
 
     size_t materialOffset = materials.size() * sizeof(MaterialConstants);
-    size_t imageOffset = images.size();
+    size_t imageOffset = gltfImages.size();
     size_t samplerOffset = samplers.size();
 
     DescriptorAllocator descriptorAllocator{};
@@ -532,54 +519,19 @@ AssetServer::load_gltf_asset(const char* filepath)
     return { .index = static_cast<uint32_t>(assets.size()) - 1 };
 }
 
-AllocatedImage
-AssetServer::load_skybox_image(const char* filepath)
-{
-    ktxTexture* texture;
-
-    const auto err = ktxTexture_CreateFromNamedFile(
-        filepath, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &texture);
-
-    if (err != KTX_SUCCESS) {
-        auto temp =
-            std::filesystem::absolute(std::filesystem::path(filepath)).string();
-        throw_error("Failed to load skybox, KTX error: {}\nFilepath {}",
-                    ktxErrorString(err),
-                    std::move(temp));
-    }
-
-    VkExtent3D extent;
-    extent.width = texture->baseWidth;
-    extent.height = texture->baseHeight;
-    extent.depth = 1;
-
-    AllocatedImage skyboxImg = Utils::create_cube_map(
-        texture, VK_FORMAT_R8G8B8A8_UNORM, "skybox_cubemap_alloc");
-    ktxTexture_Destroy(texture);
-
-    return skyboxImg;
-}
-
 void
-AssetServer::set_skybox(const char* filepath)
-{
-
-    images.push_back(load_skybox_image(filepath));
-    textureCache.add_texture(images[images.size() - 1].imageView, samplers[0]);
-    skyboxTextureIndex = textureCache.descriptors.size() - 1;
-}
-
-void
-AddNodeHierarchyToEntity(const Entity entity,
-                         const AssetNode& node,
-                         Resource<World>& world)
+add_node_hierarchy_to_entity(const Entity entity,
+                             const Handle<AssetNode> handle,
+                             const AssetNode& node,
+                             Resource<World>& world)
 {
     // reuse global transform functions for decomposition
     auto transform = GlobalTransform{ node.localTransform };
 
     auto child = world->spawn(Position{ transform.get_translation() },
                               Rotation{ transform.get_rotation() },
-                              Scale{ transform.get_scale() });
+                              Scale{ transform.get_scale() },
+                              Handle<AssetNode>{ handle });
 
     world->add_child(entity, child.get());
 
@@ -596,18 +548,18 @@ AddNodeHierarchyToEntity(const Entity entity,
     }
 
     for (auto& childNode : node.children) {
-        AddNodeHierarchyToEntity(child.get(), childNode, world);
+        add_node_hierarchy_to_entity(child.get(), handle, childNode, world);
     };
 }
 
 void
 AssetServer::add_asset_to_entity(const Entity entity,
-                                 const Handle<AssetNode> assetHandle,
+                                 const Handle<AssetNode> handle,
                                  Resource<World>& world) const
 {
-    const auto& node = assets[assetHandle.index];
+    const auto& node = assets[handle.index];
 
-    AddNodeHierarchyToEntity(entity, node, world);
+    add_node_hierarchy_to_entity(entity, handle, node, world);
 }
 Material
 AssetServer::get_material(const Handle<Material> material) const
@@ -628,25 +580,255 @@ AssetServer::cleanup()
     for (auto& sampler : samplers) {
         vkDestroySampler(device, sampler, nullptr);
     }
-    for (auto& image : images) {
-        vmaDestroyImage(allocator, image.image, image.allocation);
-        vkDestroyImageView(context.device, image.imageView, nullptr);
-    }
-    {
-        const auto& buffer = skyboxCube;
-        vmaDestroyBuffer(allocator,
-                         buffer.vertexBuffer.buffer,
-                         buffer.vertexBuffer.allocation);
-        vmaDestroyBuffer(allocator,
-                         buffer.indexBuffer.buffer,
-                         buffer.indexBuffer.allocation);
-    }
 
     for (auto& pools : allocators) {
         pools.destroy_pools();
     }
+}
 
-    indiceBuffer.cleanup(allocator);
-    verticeBuffer.cleanup(allocator);
-    materialBuffer.cleanup(allocator);
+Handle<ImageAsset>
+AssetServer::load_ktx(const std::string& filepath)
+{
+    ktxTexture* texture;
+
+    const auto err = ktxTexture_CreateFromNamedFile(
+        filepath.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &texture);
+
+    if (err != KTX_SUCCESS) {
+        auto temp =
+            std::filesystem::absolute(std::filesystem::path(filepath)).string();
+        throw_error("Failed to load skybox, KTX error: {}\nFilepath {}",
+                    ktxErrorString(err),
+                    std::move(temp));
+    }
+
+    VkExtent3D extent;
+    extent.width = texture->baseWidth;
+    extent.height = texture->baseHeight;
+    extent.depth = texture->baseDepth;
+
+    cmdCreateImgs.emplace_back(texture, extent, true, false);
+
+    // I'll make this better when I refactor the asset server
+    uint32_t index = loadedImages.size();
+
+    for (const auto& cmd : cmdCreateImgs) {
+        if (!cmd.gltf) {
+            ++index;
+        }
+    }
+
+    return { index - 1 };
+}
+
+AllocatedImage&
+AssetServer::get_image_from_handle(const Handle<ImageAsset> handle)
+{
+    return loadedImages[handle.index];
+}
+
+void
+AssetServer::register_pass(RenderGraph::PassBuilder& pass,
+                           Resource<VulkanResourceManager>& manager)
+{
+    // Mega buffer stagings
+    if (vertexBuffer.current_upload_size() != 0) {
+        pass.create_buffer(Passes::vertexBufferStaging,
+                           true,
+                           vertexBuffer.current_upload_size(),
+                           VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
+                           VMA_MEMORY_USAGE_CPU_TO_GPU);
+        pass.write_buffer(Passes::vertexBufferStaging,
+                          VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+
+        pass.write_buffer(vertexBuffer.handle,
+                          VK_ACCESS_TRANSFER_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+    }
+
+    if (indiceBuffer.current_upload_size() != 0) {
+        pass.create_buffer(Passes::indiceBufferStaging,
+                           true,
+                           indiceBuffer.current_upload_size(),
+                           VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
+                           VMA_MEMORY_USAGE_CPU_TO_GPU);
+        pass.write_buffer(Passes::indiceBufferStaging,
+                          VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+
+        pass.write_buffer(indiceBuffer.handle,
+                          VK_ACCESS_TRANSFER_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+    }
+
+    if (materialBuffer.current_upload_size() != 0) {
+        pass.create_buffer(Passes::materialBufferStaging,
+                           true,
+                           materialBuffer.current_upload_size(),
+                           VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
+                           VMA_MEMORY_USAGE_CPU_TO_GPU);
+        pass.write_buffer(Passes::materialBufferStaging,
+                          VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+
+        pass.write_buffer(materialBuffer.handle,
+                          VK_ACCESS_TRANSFER_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+    }
+
+    // Reserve more handles if need be
+    if (cmdCreateImgs.size() > reservedBufferHandles.size()) {
+        const uint32_t diff =
+            cmdCreateImgs.size() - reservedBufferHandles.size();
+
+        for (uint32_t i = 0; i < diff; i++) {
+            reservedBufferHandles.emplace_back(
+                Passes::HandleAllocator::allocate_buffer(
+                    "asset_server_reserved"));
+        }
+    }
+
+    // Create image and staging buffer
+    // Write to both
+    for (const auto& [cmd, staging] :
+         std::views::zip(cmdCreateImgs, reservedBufferHandles)) {
+        ImageRequirements req{ .format = VK_FORMAT_R8G8B8A8_UNORM,
+                               .extent = cmd.extent,
+                               .usages = VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                         VK_IMAGE_USAGE_SAMPLED_BIT,
+                               .aspects = VK_IMAGE_ASPECT_COLOR_BIT };
+
+        const auto handle =
+            manager->get_handle_from_requirements(req, "asset_texture_img");
+
+        uninitialisedImages.push_back(
+            manager->get_resource_from_handle(handle));
+
+        pass.create_buffer(
+            staging,
+            true,
+            Utils::calculate_image_size(cmd.extent, VK_FORMAT_R8G8B8A8_UNORM),
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        pass.write_buffer(staging,
+                          VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                          VK_PIPELINE_STAGE_2_TRANSFER_BIT);
+
+        pass.write_image(handle,
+                         VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    }
+}
+
+void
+AssetServer::flush(ParallelResource<RenderGraph::PassServer>& passServer)
+{
+
+    // When we add pass, we declare that we allocate handles for all these
+    // images, and declare that we're writing to them
+    // For the staging buffers, we run .create_buffer() for
+    // each image / mega buffer we're uploading.
+    // This allows the graph to manage lifetime i.e. free after upload
+
+    // At a later time I'll worry about de allocating assets
+
+    VkCommandBuffer cmd;
+    {
+        auto server = passServer.write();
+        cmd = server->get_cmd_buffer(Passes::uploadAssetsPass);
+    }
+
+    if (cmd == VK_NULL_HANDLE) {
+        return;
+    }
+
+    const auto& server = passServer.illegal();
+
+    // Transfer the image data
+    for (const auto& [create, image, stagingHandle] : std::views::zip(
+             cmdCreateImgs, uninitialisedImages, reservedBufferHandles)) {
+
+        const auto& staging = server.get_resource(stagingHandle);
+
+        if (create.gltf) {
+            Utils::upload_image_asset(create.data, cmd, image, staging);
+
+            gltfImages.push_back(image);
+
+            free(create.data);
+        } else {
+            if (create.ktx) {
+                const auto ptr = static_cast<ktxTexture*>(create.data);
+                Utils::upload_image_asset(ptr, cmd, image, staging);
+
+                loadedImages.push_back(image);
+
+                ktxTexture_Destroy(ptr);
+            }
+        }
+    }
+
+    // Reset cmds
+    cmdCreateImgs.clear();
+    uninitialisedImages.clear();
+
+    if (vertexBuffer.current_upload_size() != 0) {
+        vertexBuffer.push_to_gpu(
+            cmd, server.get_resource(Passes::vertexBufferStaging));
+    }
+
+    if (indiceBuffer.current_upload_size() != 0) {
+        indiceBuffer.push_to_gpu(
+            cmd, server.get_resource(Passes::indiceBufferStaging));
+    }
+
+    if (materialBuffer.current_upload_size() != 0) {
+        materialBuffer.push_to_gpu(
+            cmd, server.get_resource(Passes::materialBufferStaging));
+    }
+}
+
+void
+AssetServer::declare_scene_access(RenderGraph::PassBuilder& pass)
+{
+    // For now I am comfortable guaranteeing we access in the vertex & fragment
+    // shaders only
+    pass.read_buffer(vertexBuffer.handle,
+                     VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT);
+    pass.read_buffer(indiceBuffer.handle, VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT);
+    pass.read_buffer(materialBuffer.handle,
+                     VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
+
+    // Scene data buffers. Managed elsewhere, but only filled with data of
+    // actual renderables.
+    pass.read_buffer(Passes::entityDataBuffer,
+                     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
+    pass.read_buffer(Passes::sceneDataBuffer,
+                     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
+
+    // I'd like to restructure the asset server at a later stage
+    // Perhaps splitting it into several pieces so it's easier to manage, while
+    // maintaining the unified api
+    // Maybe a generic image loading interface, which I can then reuse for gltfs
+    // For the time being, I simply assume we'll be accessing all gltfs
+
+    // It might be valuable to only add barriers for specific assets at a later
+    // stage
+    for (const auto& image : gltfImages) {
+        pass.read_image(image.handle,
+                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
+    }
+}
+
+void
+AssetServer::declare_access_to_images(
+    RenderGraph::PassBuilder& pass,
+    const std::vector<Handle<ImageAsset>>& images)
+{
+    throw_error("Unimplemented");
 }

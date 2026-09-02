@@ -8,35 +8,37 @@ using namespace Cel::Renderer::RenderGraph;
 
 PassBuilder&
 PassBuilder::create_buffer(const Handle<AllocatedBuffer> buffer,
+                           bool perFrame,
                            size_t allocSize,
                            VkBufferUsageFlags usages,
                            VmaMemoryUsage memoryUsage)
 {
     pass.newBuffers.emplace_back(
-        buffer, BufferRequirements{ allocSize, usages, memoryUsage });
+        buffer, perFrame, BufferRequirements{ allocSize, usages, memoryUsage });
 
     return *this;
 }
 
 PassBuilder&
 PassBuilder::create_image(const Handle<AllocatedImage> image,
+                          bool perFrame,
                           VkFormat format,
                           VkExtent3D extent,
                           VkImageUsageFlags usages,
                           VkImageAspectFlags aspects)
 {
     pass.newImages.emplace_back(
-        image, ImageRequirements{ format, extent, usages, aspects });
+        image, perFrame, ImageRequirements{ format, extent, usages, aspects });
 
     return *this;
 }
 
 PassBuilder&
 PassBuilder::read_buffer(const Handle<AllocatedBuffer> buffer,
-                         VkPipelineStageFlags2 stages)
+                         VkPipelineStageFlags2 stages,
+                         VkAccessFlags2 flags)
 {
-    pass.bufferReads.emplace_back(
-        buffer, BufferAccess{ VK_ACCESS_2_SHADER_READ_BIT, stages });
+    pass.bufferReads.emplace_back(buffer, BufferAccess{ flags, stages });
 
     return *this;
 }
@@ -44,10 +46,10 @@ PassBuilder::read_buffer(const Handle<AllocatedBuffer> buffer,
 PassBuilder&
 PassBuilder::read_image(Handle<AllocatedImage> image,
                         VkPipelineStageFlags2 stages,
-                        VkImageLayout layout)
+                        VkImageLayout layout,
+                        VkAccessFlags2 flags)
 {
-    pass.imageReads.emplace_back(
-        image, ImageAccess{ VK_ACCESS_2_SHADER_READ_BIT, stages, layout });
+    pass.imageReads.emplace_back(image, ImageAccess{ flags, stages, layout });
 
     return *this;
 }
