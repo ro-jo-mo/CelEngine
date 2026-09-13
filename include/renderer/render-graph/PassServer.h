@@ -7,6 +7,9 @@
 #include <unordered_set>
 
 namespace Cel::Renderer::RenderGraph {
+class ExecutionPlan;
+}
+namespace Cel::Renderer::RenderGraph {
 
 // Gives render passes access to image / buffers and command buffers.
 class PassServer
@@ -23,6 +26,12 @@ class PassServer
      */
     [[nodiscard]] VkCommandBuffer get_cmd_buffer(Handle<RenderPass> handle);
 
+    [[nodiscard]] DescriptorAllocator& get_descriptor_allocator();
+
+    [[nodiscard]] VkDevice get_device() const;
+
+    [[nodiscard]] VkExtent2D get_extent() const;
+
     [[nodiscard]] AllocatedBuffer& get_resource(
         Handle<AllocatedBuffer> handle) const;
 
@@ -35,6 +44,7 @@ class PassServer
      */
     void update_frame(
         uint32_t _currentFrame,
+        VkExtent2D _extent,
         const std::unordered_map<Handle<RenderPass>, uint32_t>& _validPasses,
         const std::unordered_map<Handle<AllocatedBuffer>,
                                  Handle<AllocatedBuffer>>& bufferMapping,
@@ -45,6 +55,18 @@ class PassServer
         VulkanResourceManager& manager);
 
   private:
+    // Returns an unused command buffer. Used purely for the pre and post pass
+    // cmd buffers recorded during graph execution
+    VkCommandBuffer get_prepost_command_buffer();
+
+    struct Semaphore
+    {
+        VkSemaphore semaphore;
+        uint64_t current;
+    };
+
+    Semaphore& get_semaphore(uint32_t queue);
+
     uint32_t get_pool_index(Handle<RenderPass> handle);
 
     void allocate_cmd_buffers(uint32_t index);
@@ -65,11 +87,19 @@ class PassServer
     // Makes the terrible assumption that we'll never use
     // a queue family index >= 16
     std::array<uint32_t, 16> queueToIndex;
+    std::array<Semaphore, 16> semaphores;
 
-    // A mapping of this current frame + render pass -> recorded cmd buffer
-    std::array<std::unordered_map<Handle<RenderPass>, VkCommandBuffer>,
+    // A mapping of this current frame + render pass -> recorded cmd buffer &
+    // pool index
+    std::array<std::unordered_map<Handle<RenderPass>,
+                                  std::pair<VkCommandBuffer, uint32_t>>,
                FRAMES_IN_FLIGHT>
         passCmdBuffers;
+
+    std::array<DescriptorAllocator, FRAMES_IN_FLIGHT> descriptorAllocators;
+
+    std::array<std::vector<VkCommandBuffer>, FRAMES_IN_FLIGHT>
+        prePostCommandBuffers;
 
     std::unordered_map<Handle<AllocatedBuffer>,
                        std::reference_wrapper<AllocatedBuffer>>
@@ -84,9 +114,12 @@ class PassServer
         imagesToFree;
 
     uint32_t currentFrame = 0;
+    VkExtent2D extent;
     std::unordered_map<Handle<RenderPass>, uint32_t> validPasses;
 
     VkDevice device;
+
+    friend class ExecutionPlan;
 };
 
 }

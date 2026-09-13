@@ -18,6 +18,12 @@ auto assert_spv = [](SpvReflectResult result) {
     }
 };
 
+PipelineBuilder::PipelineBuilder(VkDevice device)
+    : device(device)
+{
+    initialise_defaults();
+}
+
 Pipeline
 PipelineBuilder::build()
 {

@@ -49,6 +49,23 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
     for (uint32_t i = 0; i < totalPools; i++) {
         allocate_cmd_buffers(i);
     }
+
+    // Create semaphores
+
+    VkSemaphoreTypeCreateInfo typeInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
+        .pNext = nullptr,
+        .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
+        .initialValue = 0
+    };
+    VkSemaphoreCreateInfo info{ .sType =
+                                    VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+                                .pNext = &typeInfo,
+                                .flags = 0 };
+
+    for (const auto queue : queues) {
+        vkCreateSemaphore(device, &info, nullptr, &semaphores[queue].semaphore);
+    }
 }
 
 VkCommandBuffer
@@ -79,9 +96,33 @@ Cel::Renderer::RenderGraph::PassServer::get_cmd_buffer(
     auto cmd = availableBuffers[index].back();
     availableBuffers[index].pop_back();
 
-    passCmdBuffers[currentFrame].emplace(handle, cmd);
+    passCmdBuffers[currentFrame].emplace(handle, std::make_pair(cmd, index));
+
+    // Begin command recording
+    const VkCommandBufferBeginInfo beginInfo =
+        Initialisers::command_buffer_begin_info(
+            VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    vkBeginCommandBuffer(cmd, &beginInfo);
 
     return cmd;
+}
+
+Cel::Renderer::DescriptorAllocator&
+Cel::Renderer::RenderGraph::PassServer::get_descriptor_allocator()
+{
+    return descriptorAllocators[currentFrame];
+}
+
+VkDevice
+Cel::Renderer::RenderGraph::PassServer::get_device() const
+{
+    return device;
+}
+
+VkExtent2D
+Cel::Renderer::RenderGraph::PassServer::get_extent() const
+{
+    return extent;
 }
 
 Cel::Renderer::AllocatedBuffer&
@@ -102,6 +143,7 @@ Cel::Renderer::RenderGraph::PassServer::get_resource(
 void
 Cel::Renderer::RenderGraph::PassServer::update_frame(
     const uint32_t _currentFrame,
+    const VkExtent2D _extent,
     const std::unordered_map<Handle<RenderPass>, uint32_t>& _validPasses,
     const std::unordered_map<Handle<AllocatedBuffer>, Handle<AllocatedBuffer>>&
         bufferMapping,
@@ -112,6 +154,7 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     VulkanResourceManager& manager)
 {
     currentFrame = _currentFrame;
+    extent = _extent;
     validPasses = _validPasses;
 
     // Free buffers + images from the last time
@@ -130,6 +173,18 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     for (size_t i = width * currentFrame; i < width * (currentFrame + 1); i++) {
         vkResetCommandPool(device, commandPools[i], 0);
     }
+
+    // Mark command buffers as available
+    for (const auto& [cmd, i] :
+         passCmdBuffers[currentFrame] | std::views::values) {
+        availableBuffers[i].push_back(cmd);
+    }
+    passCmdBuffers[currentFrame].clear();
+
+    for (auto cmd : prePostCommandBuffers[currentFrame]) {
+        availableBuffers[0].push_back(cmd);
+    }
+    prePostCommandBuffers[currentFrame].clear();
 
     // Create a mapping from the pass handled to actual vk resources
     // Set to be freed either the next frame (if transient resource) or the next
@@ -150,6 +205,28 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
         imagesToFree[freeFrame].emplace_back(mapped);
         mappedImages.emplace(handle, manager.get_resource_from_handle(mapped));
     }
+}
+
+VkCommandBuffer
+Cel::Renderer::RenderGraph::PassServer::get_prepost_command_buffer()
+{
+    if (availableBuffers[0].empty()) {
+        allocate_cmd_buffers(0);
+    }
+
+    const auto cmd = availableBuffers[0].back();
+
+    availableBuffers[0].pop_back();
+
+    prePostCommandBuffers[currentFrame].push_back(cmd);
+
+    return cmd;
+}
+
+Cel::Renderer::RenderGraph::PassServer::Semaphore&
+Cel::Renderer::RenderGraph::PassServer::get_semaphore(uint32_t queue)
+{
+    return semaphores[queue];
 }
 
 uint32_t

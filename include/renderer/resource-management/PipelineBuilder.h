@@ -23,11 +23,7 @@ struct DescriptorSetLayoutData
 class PipelineBuilder
 {
   public:
-    explicit PipelineBuilder(VkDevice device)
-        : device(device)
-    {
-        initialise_defaults();
-    }
+    explicit PipelineBuilder(VkDevice device);
 
     Pipeline build();
 

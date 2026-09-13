@@ -14,6 +14,16 @@ Cel::Common::RelativeScheduler<Cel::Handle<RenderPass>,
 Graph::add_pass(const RenderPass& pass)
 {
     passes.insert({ pass.id, pass });
+    graph.add_edge(Passes::setupPass, pass.id);
+    return add_system(pass.id);
+}
+
+Cel::Common::RelativeScheduler<Cel::Handle<RenderPass>,
+                               Cel::Common::Graph<Cel::Handle<RenderPass>>>
+Graph::add_setup_pass(const RenderPass& pass)
+{
+    passes.insert({ pass.id, pass });
+    graph.add_edge(pass.id, Passes::setupPass);
     return add_system(pass.id);
 }
 
@@ -31,6 +41,9 @@ Graph::compile(VulkanResourceManager& manager)
 
     // Someone needs to check when a resource is last used, so it can be reused
 
+    // The setup pass is a dummy pass, but still needs initialisation
+    passes[Passes::setupPass] = { .id = Passes::setupPass };
+
     auto tracker = manager.branch_tracker();
 
     compile_passes(manager, tracker);
@@ -45,6 +58,11 @@ Graph::compile(VulkanResourceManager& manager)
     auto iter = graph.iter();
 
     search_branch(iter, tracker, plan);
+}
+
+void
+Graph::execute(PassServer& passServer)
+{
 }
 
 void
@@ -293,13 +311,14 @@ bool
 Graph::is_write_barrier_needed(const Handle<AllocatedBuffer> handle,
                                BranchingResourceTracker& tracker)
 {
-    return tracker.lastPassToAccessResource.get(handle) == Passes::nullPass;
+    return tracker.lastPassToAccessResource.get(handle) != Passes::nullPass;
 }
 
 bool
 Graph::is_write_barrier_needed(Handle<AllocatedImage> handle,
                                BranchingResourceTracker& tracker)
 {
+    // TODO: I should be checking the image layout and last pass access here
     return true;
 }
 
@@ -309,7 +328,6 @@ Graph::create_transition(const Handle<AllocatedBuffer> handle,
                          const BufferAccess& state,
                          BranchingResourceTracker& tracker)
 {
-
     return { .semaphore = tracker.lastPassToAccessResource.get(handle),
              .barrier = { .srcStageMask = state.stages,
                           .srcAccessMask = state.access,
@@ -317,7 +335,7 @@ Graph::create_transition(const Handle<AllocatedBuffer> handle,
                           .dstAccessMask = access.access,
                           .srcQueueFamilyIndex = state.queue,
                           .dstQueueFamilyIndex = access.queue,
-                          .buffer = handle } };
+                          .handle = handle } };
 }
 
 ImageTransfer
@@ -335,7 +353,7 @@ Graph::create_transition(const Handle<AllocatedImage> handle,
                           .newLayout = access.layout,
                           .srcQueueFamilyIndex = state.queue,
                           .dstQueueFamilyIndex = access.queue,
-                          .image = handle } };
+                          .handle = handle } };
 }
 
 BufferBarrier
@@ -349,7 +367,7 @@ Graph::create_barrier(const Handle<AllocatedBuffer> handle,
              .dstAccessMask = access.access,
              .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
              .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-             .buffer = handle };
+             .handle = handle };
 }
 
 ImageBarrier
@@ -363,5 +381,5 @@ Graph::create_barrier(const Handle<AllocatedImage> handle,
              .dstAccessMask = access.access,
              .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
              .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-             .image = handle };
+             .handle = handle };
 }

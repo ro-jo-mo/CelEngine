@@ -2,15 +2,22 @@
 
 #include "core/Error.h"
 #include "renderer/VulkanHelpers.h"
+#include "renderer/passes/HandleAllocator.h"
 
 using namespace Cel::Renderer;
 using namespace Cel::Renderer::RenderGraph;
+
+PassBuilder::PassBuilder(const Handle<RenderPass> id)
+{
+    pass.id = id;
+    pass.queue = UINT32_MAX; // Flag unset
+}
 
 PassBuilder&
 PassBuilder::create_buffer(const Handle<AllocatedBuffer> buffer,
                            bool perFrame,
                            size_t allocSize,
-                           VkBufferUsageFlags usages,
+                           VkBufferUsageFlags2 usages,
                            VmaMemoryUsage memoryUsage)
 {
     pass.newBuffers.emplace_back(
@@ -79,6 +86,29 @@ PassBuilder::write_image(const Handle<AllocatedImage> image,
 }
 
 PassBuilder&
+PassBuilder::upload_buffer(Handle<AllocatedBuffer> staging,
+                           Handle<AllocatedBuffer> uploadTo)
+{
+    // We write to the cpu and then read for the transfer
+    write_buffer(staging,
+                 VK_ACCESS_2_HOST_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
+                 VK_PIPELINE_STAGE_2_HOST_BIT | VK_PIPELINE_STAGE_2_COPY_BIT);
+
+    write_buffer(
+        uploadTo, VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_PIPELINE_STAGE_2_COPY_BIT);
+
+    return *this;
+}
+
+PassBuilder&
+PassBuilder::upload_image(Handle<AllocatedImage> staging,
+                          Handle<AllocatedImage> uploadTo)
+{
+
+    return *this;
+}
+
+PassBuilder&
 PassBuilder::set_queue(const uint32_t queue)
 {
     pass.queue = queue;
@@ -93,6 +123,12 @@ PassBuilder::build()
 
     if (pass.imageWrites.size() + pass.bufferWrites.size() == 0) {
         throw_error("render pass must write to at least one resource");
+    }
+
+    if (pass.queue == UINT32_MAX) {
+        // I think I'll actually set the queue in build as a parameter instead
+        throw_error("Pass: {} does not have a queue set",
+                    Passes::HandleAllocator::get_name(pass.id));
     }
 
     auto set_queues = [this](auto& data) {

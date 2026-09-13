@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 
 namespace Cel::Renderer {
+
 class DescriptorAllocator
 {
   public:

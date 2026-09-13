@@ -633,12 +633,12 @@ AssetServer::register_pass(RenderGraph::PassBuilder& pass,
 {
     // Mega buffer stagings
     if (vertexBuffer.current_upload_size() != 0) {
-        pass.create_buffer(Passes::vertexBufferStaging,
+        pass.create_buffer(Passes::vertexStagingBuffer,
                            true,
                            vertexBuffer.current_upload_size(),
                            VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
                            VMA_MEMORY_USAGE_CPU_TO_GPU);
-        pass.write_buffer(Passes::vertexBufferStaging,
+        pass.write_buffer(Passes::vertexStagingBuffer,
                           VK_ACCESS_2_TRANSFER_WRITE_BIT,
                           VK_PIPELINE_STAGE_2_TRANSFER_BIT);
 
@@ -648,12 +648,12 @@ AssetServer::register_pass(RenderGraph::PassBuilder& pass,
     }
 
     if (indiceBuffer.current_upload_size() != 0) {
-        pass.create_buffer(Passes::indiceBufferStaging,
+        pass.create_buffer(Passes::indiceStagingBuffer,
                            true,
                            indiceBuffer.current_upload_size(),
                            VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
                            VMA_MEMORY_USAGE_CPU_TO_GPU);
-        pass.write_buffer(Passes::indiceBufferStaging,
+        pass.write_buffer(Passes::indiceStagingBuffer,
                           VK_ACCESS_2_TRANSFER_WRITE_BIT,
                           VK_PIPELINE_STAGE_2_TRANSFER_BIT);
 
@@ -663,12 +663,12 @@ AssetServer::register_pass(RenderGraph::PassBuilder& pass,
     }
 
     if (materialBuffer.current_upload_size() != 0) {
-        pass.create_buffer(Passes::materialBufferStaging,
+        pass.create_buffer(Passes::materialStagingBuffer,
                            true,
                            materialBuffer.current_upload_size(),
                            VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
                            VMA_MEMORY_USAGE_CPU_TO_GPU);
-        pass.write_buffer(Passes::materialBufferStaging,
+        pass.write_buffer(Passes::materialStagingBuffer,
                           VK_ACCESS_2_TRANSFER_WRITE_BIT,
                           VK_PIPELINE_STAGE_2_TRANSFER_BIT);
 
@@ -777,17 +777,17 @@ AssetServer::flush(ParallelResource<RenderGraph::PassServer>& passServer)
 
     if (vertexBuffer.current_upload_size() != 0) {
         vertexBuffer.push_to_gpu(
-            cmd, server.get_resource(Passes::vertexBufferStaging));
+            cmd, server.get_resource(Passes::vertexStagingBuffer));
     }
 
     if (indiceBuffer.current_upload_size() != 0) {
         indiceBuffer.push_to_gpu(
-            cmd, server.get_resource(Passes::indiceBufferStaging));
+            cmd, server.get_resource(Passes::indiceStagingBuffer));
     }
 
     if (materialBuffer.current_upload_size() != 0) {
         materialBuffer.push_to_gpu(
-            cmd, server.get_resource(Passes::materialBufferStaging));
+            cmd, server.get_resource(Passes::materialStagingBuffer));
     }
 }
 

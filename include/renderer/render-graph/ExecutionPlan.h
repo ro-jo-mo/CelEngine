@@ -7,6 +7,7 @@
 #include <vector>
 
 namespace Cel::Renderer::RenderGraph {
+class PassServer;
 
 struct RenderPass;
 
@@ -39,12 +40,33 @@ class ExecutionPlan
 
     std::vector<ExecutePass> compile();
 
+    static void execute(std::vector<ExecutePass>& plan, PassServer& passServer);
+
   private:
     explicit ExecutionPlan(ExecutionPlan* original)
         : original(original)
         , totalCost(original->totalCost)
     {
     }
+
+    struct BarrierSet
+    {
+        std::vector<VkBufferMemoryBarrier2> buffers;
+        std::vector<VkImageMemoryBarrier2> images;
+    };
+
+    static void add_barriers(
+        std::unordered_map<Handle<RenderPass>, BarrierSet>& preBarriers,
+        const ExecutePass& pass,
+        const PassServer& passServer);
+
+    static void add_transfers(
+        std::unordered_map<Handle<RenderPass>, BarrierSet>& preBarriers,
+        std::unordered_map<Handle<RenderPass>, BarrierSet>& postBarriers,
+        const ExecutePass& pass,
+        PassServer& passServer);
+
+    static void add_merges();
 
     static void add_execution_to_list(ExecutionPlan* plan,
                                       std::vector<ExecutePass>& list);

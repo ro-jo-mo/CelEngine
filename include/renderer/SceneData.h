@@ -11,15 +11,13 @@ struct SceneData
     // Struct that we'll push to the gpu
     struct
     {
-        VkDeviceAddress verticesBufferAddress;
+        VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress materialBufferAddress;
         VkDeviceAddress perEntityBufferAddress;
         glm::mat4 viewMatrix;
         glm::mat4 projectionMatrix;
         glm::mat4 viewProjMatrix;
     } data;
-
-    PerFrameMegaBuffer entityBuffer;
 
     /**
      * Contains a mapping of entity id to the entity buffer.
@@ -32,6 +30,8 @@ struct SceneData
      * entityToIndex.insert(entity,entityToIndex.size())
      **/
     std::unordered_map<Entity, uint32_t> entityToIndex;
+
+    uint32_t get_entity_index(Entity entity);
 };
 
 }

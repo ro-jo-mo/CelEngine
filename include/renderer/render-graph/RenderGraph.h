@@ -5,11 +5,13 @@
 #include "common/Handle.h"
 #include "common/Scheduler.h"
 #include "renderer/VulkanTypes.h"
+#include "renderer/passes/Passes.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
 
 #include <unordered_map>
 
 namespace Cel::Renderer::RenderGraph {
+class PassServer;
 
 // Overall flow:
 // Render::First -> add passes to render graph
@@ -24,9 +26,17 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
                               Common::Graph<Handle<RenderPass>>>
     add_pass(const RenderPass& pass);
 
-    template<typename... Passes>
+    Common::RelativeScheduler<Handle<RenderPass>,
+                              Common::Graph<Handle<RenderPass>>>
+    add_setup_pass(const RenderPass& pass);
+
+    template<typename... Ts>
     Common::RelativeScheduler<Handle<RenderPass>, Scheduler> add_chain(
-        Passes... pass);
+        Ts... _passes);
+
+    template<typename... Ts>
+    Common::RelativeScheduler<Handle<RenderPass>, Scheduler> add_setup_chain(
+        Ts... _passes);
 
     /**
      * Creates a plan for executing the graph
@@ -36,7 +46,7 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     void compile(VulkanResourceManager& manager);
 
     // Finally execute the render passes
-    void execute();
+    void execute(PassServer& passServer);
 
   private:
     // Resolve the buffer and image handles to handles to actual vulkan
@@ -105,13 +115,24 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     friend class PassBuilder;
 };
 
-template<typename... Passes>
+template<typename... Ts>
 Common::RelativeScheduler<Handle<RenderPass>,
                           Common::Scheduler<Handle<RenderPass>>>
-Graph::add_chain(Passes... pass)
+Graph::add_chain(Ts... _passes)
 {
-    (void(passes.insert({ pass.id, pass })), ...);
-
-    return add_chain(pass.id...);
+    (void(passes.insert({ _passes.id, _passes })), ...);
+    (void(graph.add_edge(Passes::setupPass, _passes.id)), ...);
+    return add_chain(_passes.id...);
 }
+
+template<typename... Ts>
+Common::RelativeScheduler<Handle<RenderPass>,
+                          Common::Scheduler<Handle<RenderPass>>>
+Graph::add_setup_chain(Ts... _passes)
+{
+    (void(passes.insert({ _passes.id, _passes })), ...);
+    (void(graph.add_edge(_passes.id, Passes::setupPass)), ...);
+    return add_chain(_passes.id...);
+}
+
 }

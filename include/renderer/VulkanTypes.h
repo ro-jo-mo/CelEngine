@@ -84,8 +84,6 @@ struct PerEntityGpuData
     uint32_t materialIndex;
 };
 
-
-
 struct GlobalDescriptorData
 {
     DescriptorAllocator allocator;
@@ -126,7 +124,7 @@ struct AllocatedMeshBuffer
 struct BufferRequirements
 {
     size_t allocSize;
-    VkBufferUsageFlags usages;
+    VkBufferUsageFlags2 usages;
     VmaMemoryUsage memoryUsage;
 };
 

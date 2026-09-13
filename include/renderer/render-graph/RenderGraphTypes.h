@@ -73,7 +73,7 @@ struct BufferBarrier
     VkAccessFlags2 dstAccessMask;
     uint32_t srcQueueFamilyIndex;
     uint32_t dstQueueFamilyIndex;
-    Handle<AllocatedBuffer> buffer;
+    Handle<AllocatedBuffer> handle;
 };
 struct ImageBarrier
 {
@@ -85,7 +85,7 @@ struct ImageBarrier
     VkImageLayout newLayout;
     uint32_t srcQueueFamilyIndex;
     uint32_t dstQueueFamilyIndex;
-    Handle<AllocatedImage> image;
+    Handle<AllocatedImage> handle;
 };
 
 // Each pass has an implicit signal semaphore, represented by a

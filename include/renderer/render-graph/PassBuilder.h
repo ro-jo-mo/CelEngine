@@ -25,7 +25,7 @@ struct RenderPass;
 class PassBuilder
 {
   public:
-    explicit PassBuilder(const Handle<RenderPass> id) { pass.id = id; }
+    explicit PassBuilder(const Handle<RenderPass> id);
 
     /**
      * @brief Creates a *per frame* buffer
@@ -37,7 +37,7 @@ class PassBuilder
     PassBuilder& create_buffer(Handle<AllocatedBuffer> buffer,
                                bool perFrame,
                                size_t allocSize,
-                               VkBufferUsageFlags usages,
+                               VkBufferUsageFlags2 usages,
                                VmaMemoryUsage memoryUsage);
 
     /**
@@ -73,6 +73,14 @@ class PassBuilder
                             VkImageLayout layout,
                             VkAccessFlags2 flags = VK_ACCESS_2_SHADER_READ_BIT);
 
+    /**
+     * Write to this resource. If your both reading and writing, you should
+     * declare it as a write and merge the flags
+     * @param buffer
+     * @param access
+     * @param stages
+     * @return
+     */
     PassBuilder& write_buffer(Handle<AllocatedBuffer> buffer,
                               VkAccessFlags2 access,
                               VkPipelineStageFlags2 stages);
@@ -81,6 +89,18 @@ class PassBuilder
                              VkAccessFlags2 access,
                              VkPipelineStageFlags2 stages,
                              VkImageLayout layout);
+
+    /**
+     * Shorthand for declaring host write to staging and transfer to uploadTo
+     * @param staging
+     * @param uploadTo
+     * @return
+     */
+    PassBuilder& upload_buffer(Handle<AllocatedBuffer> staging,
+                               Handle<AllocatedBuffer> uploadTo);
+
+    PassBuilder& upload_image(Handle<AllocatedImage> staging,
+                              Handle<AllocatedImage> uploadTo);
 
     PassBuilder& set_queue(uint32_t queue);
 

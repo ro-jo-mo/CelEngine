@@ -110,13 +110,20 @@ class ParallelResource : IResource
     ReadGuard read();
 
     /**
-     * In the case of PassServer in particular, the const access functionality
-     * could be an entirely separate resource. That is to say there is no read
-     * write conflicts, and using a read lock would simply be wasteful.
+     * In some cases i.e. the pass server, the read only functionality is
+     * entirely independent of the write functionality. That is to say that one
+     * thread could be writing while another is reading and both would be in a
+     * valid state. We *could* separate the pass server into two separate
+     * resources, one for retrieving cmd buffers (write access) and one for
+     * retrieving resources (read access), but logically these both fall under
+     * the category of data to be served to a pass.
+     *
+     * Instead I allow a read access without locking through this method.
      *
      * This should obviously not be used unless you are already familiar with
      * the resources inner workings, and have firm guarantees about the
      * functionality
+     *
      * @return
      */
     const T& illegal();

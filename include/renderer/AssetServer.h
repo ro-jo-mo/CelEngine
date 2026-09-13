@@ -16,6 +16,7 @@ struct RenderPass;
 }
 // Pre declarations
 namespace Cel::Renderer {
+class Camera;
 namespace Assets {
 class AssetServer;
 }
@@ -25,14 +26,9 @@ cleanup_asset_server(Resource<Assets::AssetServer>& assetServer);
 }
 
 namespace Cel::Renderer::Passes {
+struct PassFriend;
+struct SceneData;
 
-void
-register_asset_upload_pass(Resource<Assets::AssetServer>& server,
-                           Resource<VulkanResourceManager>& manager,
-                           Resource<RenderGraph::Graph>& graph);
-void
-upload_assets(Resource<Assets::AssetServer>& assetServer,
-              ParallelResource<RenderGraph::PassServer> passServer);
 }
 
 namespace Cel::Renderer::Assets {
@@ -79,13 +75,6 @@ class AssetServer
      * Registers that this render pass accesses loaded assets.
      * I make possibly problematic assumptions about the pipeline stages
      *
-     * There is a big
-     * caveat here, that the pass be must registered *after* the
-     * "register_asset_upload_pass" system, as this is when the actual vulkan
-     * handles manifest.
-     *
-     * Once async asset loading is introduced I'll likely fix
-     * this.
      * @param pass
      */
     void declare_scene_access(RenderGraph::PassBuilder& pass);
@@ -94,10 +83,11 @@ class AssetServer
         RenderGraph::PassBuilder& pass,
         const std::vector<Handle<ImageAsset>>& images);
 
-  private:
     [[nodiscard]] Material get_material(Handle<Material> material) const;
+
     [[nodiscard]] Mesh get_mesh(Handle<Mesh> mesh) const;
 
+  private:
     void create_defaults(VulkanResourceManager& manager);
 
     void load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage);
@@ -171,17 +161,13 @@ class AssetServer
 
     VkDevice device;
 
+    // ========================================================================
+
     // Beloved lack of module level access permissions. What a fantastic
     // language design!
-    friend class Cel::Renderer::DrawData;
-    friend void Cel::Renderer::cleanup_asset_server(
+    friend struct Cel::Renderer::DrawData;
+    friend void Renderer::cleanup_asset_server(
         Resource<AssetServer>& assetServer);
-    friend void Cel::Renderer::Passes::register_asset_upload_pass(
-        Resource<Assets::AssetServer>& server,
-        Resource<VulkanResourceManager>& manager,
-        Resource<RenderGraph::Graph>& graph);
-    friend void Cel::Renderer::Passes::upload_assets(
-        Resource<Assets::AssetServer>& assetServer,
-        ParallelResource<RenderGraph::PassServer> passServer);
+    friend struct Passes::PassFriend;
 };
 }

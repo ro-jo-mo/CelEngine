@@ -1,5 +1,20 @@
 #pragma once
 
+#include "common/Handle.h"
+#include "ecs/Query.h"
+#include "ecs/Resource.h"
+
+namespace Cel::Renderer {
+class VulkanResourceManager;
+}
+namespace Cel::Renderer::RenderGraph {
+class Graph;
+}
+namespace Cel::Renderer::Assets {
+struct Mesh;
+struct Material;
+class AssetServer;
+}
 namespace Cel::Renderer::Passes {
 
 // Passes will create their own indirect buffers?
@@ -15,6 +30,18 @@ namespace Cel::Renderer::Passes {
 // its uploaded during a pass
 
 void
-draw_meshes();
+register_indirect_draw_data_pass(
+    Query<With<Handle<Assets::Mesh>, Handle<Assets::Material>>, Without<>>&
+        renderables);
+
+void
+create_indirect_draw_data();
+
+void
+register_draw_mesh(Resource<Assets::AssetServer>& server,
+                   Resource<RenderGraph::Graph>& graph);
+
+void
+draw_mesh();
 
 }
