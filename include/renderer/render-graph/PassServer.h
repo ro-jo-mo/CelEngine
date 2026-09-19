@@ -57,7 +57,7 @@ class PassServer
   private:
     // Returns an unused command buffer. Used purely for the pre and post pass
     // cmd buffers recorded during graph execution
-    VkCommandBuffer get_prepost_command_buffer();
+    VkCommandBuffer get_prepost_cmd_buffer();
 
     struct Semaphore
     {

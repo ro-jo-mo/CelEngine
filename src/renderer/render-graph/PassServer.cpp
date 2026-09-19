@@ -66,6 +66,8 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
     for (const auto queue : queues) {
         vkCreateSemaphore(device, &info, nullptr, &semaphores[queue].semaphore);
     }
+
+    descriptorAllocators[0].init();
 }
 
 VkCommandBuffer

@@ -40,7 +40,11 @@ class ExecutionPlan
 
     std::vector<ExecutePass> compile();
 
-    static void execute(std::vector<ExecutePass>& plan, PassServer& passServer);
+    static void execute(
+        std::vector<ExecutePass>& plan,
+        const std::unordered_map<Handle<RenderPass>, RenderPass>& passes,
+        PassServer& passServer,
+        VulkanResourceManager& manager);
 
   private:
     explicit ExecutionPlan(ExecutionPlan* original)
@@ -49,24 +53,35 @@ class ExecutionPlan
     {
     }
 
-    struct BarrierSet
+    struct PassSubmitInfo
     {
         std::vector<VkBufferMemoryBarrier2> buffers;
         std::vector<VkImageMemoryBarrier2> images;
+        VkSemaphoreSubmitInfo signalSemaphoreInfo;
+        std::vector<VkSemaphoreSubmitInfo> waitSemaphoreInfo;
     };
 
-    static void add_barriers(
-        std::unordered_map<Handle<RenderPass>, BarrierSet>& preBarriers,
-        const ExecutePass& pass,
-        const PassServer& passServer);
+    static void add_barriers(std::vector<PassSubmitInfo>& preBarriers,
+                             const ExecutePass& pass,
+                             VulkanResourceManager& manager);
 
-    static void add_transfers(
-        std::unordered_map<Handle<RenderPass>, BarrierSet>& preBarriers,
-        std::unordered_map<Handle<RenderPass>, BarrierSet>& postBarriers,
-        const ExecutePass& pass,
-        PassServer& passServer);
+    static void add_transfers(std::vector<PassSubmitInfo>& preBarriers,
+                              std::vector<PassSubmitInfo>& postBarriers,
+                              const std::vector<uint32_t>& passToOrder,
+                              const ExecutePass& pass,
+                              PassServer& passServer,
+                              VulkanResourceManager& manager);
 
-    static void add_merges();
+    static void add_merges(
+        const ExecutePass& pass,
+        std::vector<PassSubmitInfo>& preBarriers,
+        const std::unordered_map<Handle<AllocatedBuffer>, Handle<RenderPass>>&
+            bufferMergePoints,
+        const std::unordered_map<Handle<AllocatedImage>, Handle<RenderPass>>&
+            imageMergePoints,
+        VulkanResourceManager& manager);
+
+    static void record_barriers(VkCommandBuffer cmd, PassSubmitInfo& info);
 
     static void add_execution_to_list(ExecutionPlan* plan,
                                       std::vector<ExecutePass>& list);
