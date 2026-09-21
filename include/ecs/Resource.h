@@ -105,31 +105,46 @@ class ParallelResource : IResource
         const T& ref;
     };
 
+    class AbsoluteGuard : public WriteGuard
+    {
+      public:
+        AbsoluteGuard(auto& mutex, auto& partial, auto& ref)
+            : WriteGuard(mutex, ref)
+            , partialGuard(partial)
+        {
+        }
+
+      private:
+        std::unique_lock<std::shared_mutex> partialGuard;
+    };
+
     WriteGuard write();
 
     ReadGuard read();
 
     /**
-     * In some cases i.e. the pass server, the read only functionality is
-     * entirely independent of the write functionality. That is to say that one
-     * thread could be writing while another is reading and both would be in a
-     * valid state. We *could* separate the pass server into two separate
-     * resources, one for retrieving cmd buffers (write access) and one for
-     * retrieving resources (read access), but logically these both fall under
-     * the category of data to be served to a pass.
+     * In the case where we have a firm guarantee the data we're reading is
+     * different from the data that could be written to, we can use a partial
+     * read.
      *
-     * Instead I allow a read access without locking through this method.
+     * This really only applies to a case like the pass server, where
+     * write access is required for cmd buffers, but never resource access.
      *
-     * This should obviously not be used unless you are already familiar with
-     * the resources inner workings, and have firm guarantees about the
-     * functionality
+     * This only blocks the absolute lock.
+     *
+     */
+    ReadGuard partial_read();
+
+    /**
+     * A fully blocking lock. Sort of like joining the threads.
      *
      * @return
      */
-    const T& illegal();
+    AbsoluteGuard absolute();
 
   protected:
-    std::shared_mutex mutex;
+    std::shared_mutex fullMutex;
+    std::shared_mutex partialMutex;
     T resource;
 };
 
@@ -165,20 +180,28 @@ template<typename T>
 ParallelResource<T>::WriteGuard
 ParallelResource<T>::write()
 {
-    return { mutex, resource };
+    return { fullMutex, resource };
 }
 
 template<typename T>
 ParallelResource<T>::ReadGuard
 ParallelResource<T>::read()
 {
-    return { mutex, resource };
+    return { fullMutex, resource };
 }
 
 template<typename T>
-const T&
-ParallelResource<T>::illegal()
+ParallelResource<T>::ReadGuard
+ParallelResource<T>::partial_read()
 {
-    return resource;
+    return { partialMutex, resource };
 }
+
+template<typename T>
+ParallelResource<T>::AbsoluteGuard
+ParallelResource<T>::absolute()
+{
+    return { fullMutex, partialMutex, resource };
+}
+
 }

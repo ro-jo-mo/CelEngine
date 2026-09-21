@@ -44,9 +44,7 @@ Cel::Renderer::Passes::register_indirect_draw_data_pass(
                        VMA_MEMORY_USAGE_GPU_ONLY)
         .upload_buffer(indirectStagingBuffer, indirectBuffer);
 
-    // All indirect data needs to be created before scene data so the entity
-    // buffer is correctly made
-    graph->add_setup_pass(pass.build()).before(Passes::createSceneDataPass);
+    graph->add_setup_pass(pass.build());
 }
 
 void
@@ -91,19 +89,20 @@ Cel::Renderer::Passes::create_indirect_draw_data(
         cmd = passServer.write()->get_cmd_buffer(indirectDataPass);
     }
 
-    auto& access = passServer.illegal();
+    auto access = passServer.partial_read();
 
     Utils::upload_to_buffer(cmd,
                             indirectCalls.data(),
                             sizeof(VkDrawIndexedIndirectCommand),
-                            access.get_resource(indirectBuffer),
+                            access->get_resource(indirectBuffer),
                             0,
-                            access.get_resource(indirectStagingBuffer));
+                            access->get_resource(indirectStagingBuffer));
 }
 
 void
-Cel::Renderer::Passes::register_draw_mesh(Resource<Assets::AssetServer>& server,
-                                          Resource<RenderGraph::Graph>& graph)
+Cel::Renderer::Passes::register_draw_mesh_pass(
+    Resource<Assets::AssetServer>& server,
+    Resource<RenderGraph::Graph>& graph)
 {
     auto pass = RenderGraph::PassBuilder(drawMeshPass);
 
@@ -138,25 +137,25 @@ Cel::Renderer::Passes::draw_mesh(
         cmd = passServer.write()->get_cmd_buffer(drawMeshPass);
     }
 
-    auto access = passServer.illegal();
+    auto access = passServer.partial_read();
 
     // Rendering info setup
     VkRenderingAttachmentInfo colourAttachment = Initialisers::attachment_info(
-        access.get_resource(Passes::drawImage).imageView,
+        access->get_resource(Passes::drawImage).imageView,
         nullptr,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     VkRenderingAttachmentInfo depthAttachment =
         Initialisers::depth_attachment_info(
-            access.get_resource(Passes::depthImage).imageView,
+            access->get_resource(Passes::depthImage).imageView,
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
     VkRenderingInfo renderInfo = Initialisers::rendering_info(
-        access.get_extent(), &colourAttachment, &depthAttachment);
+        access->get_extent(), &colourAttachment, &depthAttachment);
 
     vkCmdBeginRendering(cmd, &renderInfo);
 
-    static auto pipeline = PipelineBuilder(access.get_device())
+    static auto pipeline = PipelineBuilder(access->get_device())
                                .add_shader_module("./shaders/mesh.vert.spv",
                                                   VK_SHADER_STAGE_VERTEX_BIT)
                                .add_shader_module("./shaders/mesh.frag.spv",
@@ -165,7 +164,7 @@ Cel::Renderer::Passes::draw_mesh(
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
 
-    const auto& indirect = access.get_resource(indirectBuffer);
+    const auto& indirect = access->get_resource(indirectBuffer);
 
     // Lastly execute indirect draw
     vkCmdDrawIndexedIndirect(cmd,
@@ -173,4 +172,6 @@ Cel::Renderer::Passes::draw_mesh(
                              0,
                              renderables.size(),
                              sizeof(VkDrawIndexedIndirectCommand));
+
+    vkCmdEndRendering(cmd);
 }

@@ -8,6 +8,7 @@ namespace Cel::Renderer {
 class VulkanResourceManager;
 }
 namespace Cel::Renderer::RenderGraph {
+class PassServer;
 class Graph;
 }
 namespace Cel::Renderer::Assets {
@@ -16,6 +17,7 @@ struct Material;
 class AssetServer;
 }
 namespace Cel::Renderer::Passes {
+struct SceneData;
 
 // Passes will create their own indirect buffers?
 // Passes will add to the indirect mega buffer during their registration phase
@@ -30,18 +32,23 @@ namespace Cel::Renderer::Passes {
 // its uploaded during a pass
 
 void
-register_indirect_draw_data_pass(
-    Query<With<Handle<Assets::Mesh>, Handle<Assets::Material>>, Without<>>&
-        renderables);
+register_indirect_draw_data_pass(Resource<RenderGraph::Graph>& graph);
 
 void
-create_indirect_draw_data();
+create_indirect_draw_data(
+    Query<With<Entity, Handle<Assets::Mesh>, Handle<Assets::Material>>>&
+        renderables,
+    ParallelResource<RenderGraph::PassServer>& passServer,
+    Resource<Assets::AssetServer>& assetServer,
+    Resource<SceneData>& scene);
 
 void
-register_draw_mesh(Resource<Assets::AssetServer>& server,
-                   Resource<RenderGraph::Graph>& graph);
+register_draw_mesh_pass(Resource<Assets::AssetServer>& server,
+                        Resource<RenderGraph::Graph>& graph);
 
 void
-draw_mesh();
+draw_mesh(Query<With<Entity, Handle<Assets::Mesh>, Handle<Assets::Material>>>&
+              renderables,
+          ParallelResource<RenderGraph::PassServer>& passServer);
 
 }

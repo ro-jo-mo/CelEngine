@@ -15,7 +15,7 @@ namespace Cel::Renderer::RenderGraph {
 class PassServer
 {
   public:
-    PassServer(VkDevice device, std::vector<uint32_t>& queues);
+    PassServer(VkDevice device, std::array<Queue, QUEUE_COUNT>& queues);
 
     /**
      * @brief Get the cmd buffer for this render pass for recording
@@ -57,7 +57,7 @@ class PassServer
   private:
     // Returns an unused command buffer. Used purely for the pre and post pass
     // cmd buffers recorded during graph execution
-    VkCommandBuffer get_prepost_cmd_buffer();
+    VkCommandBuffer get_prepost_cmd_buffer(uint32_t queue);
 
     struct Semaphore
     {
@@ -84,13 +84,19 @@ class PassServer
     std::vector<std::vector<VkCommandBuffer>> availableBuffers;
 
     // Maps queue indices to 0..queue_count
-    // Makes the terrible assumption that we'll never use
+    // Makes the reasonable assumption that we'll never use
     // a queue family index >= 16
     std::array<uint32_t, 16> queueToIndex;
+
+    // A timeline semaphore for each queue
     std::array<Semaphore, 16> semaphores;
 
-    // A mapping of this current frame + render pass -> recorded cmd buffer &
-    // pool index
+    // Synchronisation for our frames in flight
+    std::array<VkSemaphore, FRAMES_IN_FLIGHT> acquireSemaphores;
+    std::array<VkFence, FRAMES_IN_FLIGHT> fences;
+
+    // A mapping of this current frame + render pass -> recorded cmd buffer
+    // & pool index
     std::array<std::unordered_map<Handle<RenderPass>,
                                   std::pair<VkCommandBuffer, uint32_t>>,
                FRAMES_IN_FLIGHT>
@@ -116,6 +122,8 @@ class PassServer
     uint32_t currentFrame = 0;
     VkExtent2D extent;
     std::unordered_map<Handle<RenderPass>, uint32_t> validPasses;
+
+    std::array<Queue, QUEUE_COUNT>& queues;
 
     VkDevice device;
 

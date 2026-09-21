@@ -9,15 +9,16 @@
 
 Cel::Renderer::RenderGraph::PassServer::PassServer(
     VkDevice device,
-    std::vector<uint32_t>& queues)
-    : device(device)
+    std::array<Queue, QUEUE_COUNT>& queues)
+    : queues(queues)
+    , device(device)
 {
     // Sanity check
     assert(QUEUE_COUNT == queues.size());
 
     // Create a mapping of the queues to an index
     for (const auto& [i, queue] : std::views::enumerate(queues)) {
-        queueToIndex[queue] = i;
+        queueToIndex[queue.family] = i;
     }
 
     // Initialise pools
@@ -31,7 +32,7 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
 
         for (const auto& queue : queues) {
             VkCommandPoolCreateInfo create =
-                Initialisers::command_pool_create_info(queue);
+                Initialisers::command_pool_create_info(queue.family);
 
             for (uint32_t j = 0; j < ThreadManager::total_threads(); j++) {
                 VkCommandPool pool;
@@ -52,22 +53,37 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
 
     // Create semaphores
 
-    VkSemaphoreTypeCreateInfo typeInfo{
+    VkSemaphoreTypeCreateInfo semaphoreType{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
         .pNext = nullptr,
         .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE,
         .initialValue = 0
     };
-    VkSemaphoreCreateInfo info{ .sType =
-                                    VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-                                .pNext = &typeInfo,
-                                .flags = 0 };
+    VkSemaphoreCreateInfo semaphoreInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = &semaphoreType,
+        .flags = 0
+    };
 
     for (const auto queue : queues) {
-        vkCreateSemaphore(device, &info, nullptr, &semaphores[queue].semaphore);
+        vkCreateSemaphore(device,
+                          &semaphoreInfo,
+                          nullptr,
+                          &semaphores[queue.family].semaphore);
     }
 
-    descriptorAllocators[0].init();
+    VkFenceCreateInfo fenceInfo{ .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                                 .pNext = nullptr,
+                                 .flags = VK_FENCE_CREATE_SIGNALED_BIT };
+
+    // Binary semaphores for acquisition
+    semaphoreInfo.pNext = nullptr;
+
+    for (size_t i = 0; i < FRAMES_IN_FLIGHT; i++) {
+        vkCreateFence(device, &fenceInfo, nullptr, &fences[i]);
+        vkCreateSemaphore(
+            device, &semaphoreInfo, nullptr, &acquireSemaphores[i]);
+    }
 }
 
 VkCommandBuffer
@@ -159,6 +175,12 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     extent = _extent;
     validPasses = _validPasses;
 
+    // We need to wait for the frame in flight to finish before resetting cmd
+    // buffers
+    vk_check(
+        vkWaitForFences(device, 1, &fences[currentFrame], VK_TRUE, UINT64_MAX));
+    vk_check(vkResetFences(device, 1, &fences[currentFrame]));
+
     // Free buffers + images from the last time
     // Freeing at this point allows the resource manager to possibly reuse it
     for (const auto& handle : buffersToFree[currentFrame]) {
@@ -210,15 +232,18 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
 }
 
 VkCommandBuffer
-Cel::Renderer::RenderGraph::PassServer::get_prepost_command_buffer()
+Cel::Renderer::RenderGraph::PassServer::get_prepost_cmd_buffer(
+    const uint32_t queue)
 {
-    if (availableBuffers[0].empty()) {
-        allocate_cmd_buffers(0);
+    const auto index = queue * ThreadManager::total_threads();
+
+    if (availableBuffers[index].empty()) {
+        allocate_cmd_buffers(index);
     }
 
-    const auto cmd = availableBuffers[0].back();
+    const auto cmd = availableBuffers[index].back();
 
-    availableBuffers[0].pop_back();
+    availableBuffers[index].pop_back();
 
     prePostCommandBuffers[currentFrame].push_back(cmd);
 

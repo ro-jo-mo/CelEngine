@@ -130,6 +130,9 @@ ExecutionPlan::add_transfers(std::vector<PassSubmitInfo>& preBarriers,
 
             const auto& semaphore =
                 passServer.get_semaphore(transfer.barrier.srcQueueFamilyIndex);
+            // Each pass is assigned a signal value, based on its ordering in
+            // execution. If another pass relies on the semaphore, it will
+            // signal it with this value
             uint64_t signalValue =
                 passToOrder[transfer.semaphore.index] + semaphore.current;
 
@@ -260,11 +263,19 @@ ExecutionPlan::record_barriers(VkCommandBuffer cmd, PassSubmitInfo& info)
                                      static_cast<uint32_t>(info.images.size()),
                                  .pImageMemoryBarriers = info.images.data() };
 
+    const VkCommandBufferBeginInfo beginInfo =
+        Initialisers::command_buffer_begin_info(
+            VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+    vkBeginCommandBuffer(cmd, &beginInfo);
     vkCmdPipelineBarrier2(cmd, &dependency);
+    vkEndCommandBuffer(cmd);
 }
 
 void
-ExecutionPlan::execute(
+ExecutionPlan::create_submit_infos(
+    std::array<std::vector<VkSubmitInfo2>, QUEUE_COUNT>& submits,
+
     std::vector<ExecutePass>& plan,
     const std::unordered_map<Handle<RenderPass>, RenderPass>& passes,
     PassServer& passServer,
@@ -277,18 +288,6 @@ ExecutionPlan::execute(
     // we're assigning pass handles statically at startup.
     static auto [maxPasses] =
         Passes::HandleAllocator::allocate_pass("greatest_handle");
-    constexpr VkSubmitInfo2 defaultSubmit{ .sType =
-                                               VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-                                           .pNext = nullptr,
-                                           .flags = 0,
-                                           .waitSemaphoreInfoCount = 0,
-                                           .pWaitSemaphoreInfos = nullptr,
-                                           .commandBufferInfoCount = 0,
-                                           .pCommandBufferInfos = nullptr,
-                                           .signalSemaphoreInfoCount = 0,
-                                           .pSignalSemaphoreInfos = nullptr };
-
-    std::vector submits{ maxPasses, defaultSubmit };
 
     // upper limit
     constexpr VkCommandBufferSubmitInfo defaultCmdSubmit = {
@@ -314,9 +313,11 @@ ExecutionPlan::execute(
     // Used to grant a stable value for timeline semaphores
     std::vector<uint32_t> passToOrder{ maxPasses, 0 };
 
-    // Just the ordering of the passes, so I don't have to load the original
-    // execution back into memory for recording
-    std::vector<Handle<RenderPass>> ordering{ plan.size() };
+    // Just the ordering of the passes and their queues, so I don't have to load
+    // the original execution back into memory for recording
+    std::vector<std::pair<Handle<RenderPass>, uint32_t>> ordering{
+        plan.size()
+    };
 
     for (const auto& [i, pass] : std::views::enumerate(plan)) {
         const auto& renderPass = passes.at(pass.pass);
@@ -324,7 +325,7 @@ ExecutionPlan::execute(
         mark_trackers(renderPass, passes, bufferMergePoints, imageMergePoints);
 
         passToOrder[pass.pass.index] = i;
-        ordering[i] = pass.pass;
+        ordering[i] = { pass.pass, passes.at(pass.pass).queue };
 
         add_barriers(preBarriers, pass, manager);
         add_transfers(
@@ -333,14 +334,18 @@ ExecutionPlan::execute(
             pass, preBarriers, bufferMergePoints, imageMergePoints, manager);
     }
 
-    for (auto pass : ordering) {
-        auto& submit = submits[pass.index];
+    for (auto [pass, queue] : ordering) {
+
+        auto& submit = submits[passServer.queueToIndex[queue]].emplace_back(
+            VK_STRUCTURE_TYPE_SUBMIT_INFO_2, nullptr, 0);
 
         auto& pre = preBarriers[pass.index];
         auto& post = postBarriers[pass.index];
 
         recorded[pass.index * 3 + 1].commandBuffer =
             passServer.passCmdBuffers[passServer.currentFrame].at(pass).first;
+
+        vkEndCommandBuffer(recorded[pass.index * 3 + 1].commandBuffer);
 
         uint32_t offset = 1;
         uint32_t count = 1;
@@ -350,7 +355,7 @@ ExecutionPlan::execute(
             count++;
 
             // Record pre barriers
-            const auto cmd = passServer.get_prepost_cmd_buffer();
+            const auto cmd = passServer.get_prepost_cmd_buffer(queue);
             recorded[pass.index * 3].commandBuffer = cmd;
             record_barriers(cmd, pre);
         }
@@ -358,7 +363,7 @@ ExecutionPlan::execute(
             count++;
 
             // Record post barriers
-            const auto cmd = passServer.get_prepost_cmd_buffer();
+            const auto cmd = passServer.get_prepost_cmd_buffer(queue);
             recorded[pass.index * 3 + 2].commandBuffer = cmd;
             record_barriers(cmd, post);
         }
@@ -373,7 +378,111 @@ ExecutionPlan::execute(
         submit.pWaitSemaphoreInfos = pre.waitSemaphoreInfo.data();
     }
 
-    std::sort(submits.begin(), submits.end(), []() { });
+    // Tick cpu semaphore data
+    for (auto& semaphore : passServer.semaphores) {
+        semaphore.current += maxPasses;
+    }
+}
+
+void
+ExecutionPlan::execute(
+    std::vector<ExecutePass>& plan,
+    const std::unordered_map<Handle<RenderPass>, RenderPass>& passes,
+    const Handle<RenderPass> presentPass,
+    PassServer& passServer,
+    Swapchain& swapchain,
+    VulkanResourceManager& manager)
+{
+
+    std::array<std::vector<VkSubmitInfo2>, QUEUE_COUNT> submits;
+
+    create_submit_infos(submits, plan, passes, passServer, manager);
+
+    uint32_t swapchainIndex;
+    VkResult result = vkAcquireNextImageKHR(
+        passServer.device,
+        swapchain.swapchain,
+        UINT64_MAX,
+        passServer.acquireSemaphores[passServer.currentFrame],
+        VK_NULL_HANDLE,
+        &swapchainIndex);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        // Introduce code to handle resizing swapchain
+        fmt::println("Out of date swapchain, needs resizing");
+        return;
+    }
+
+    {
+        // Copy image to swapchain on the present pass
+        const auto cmd = passServer.get_cmd_buffer(presentPass);
+
+        const auto& drawImage = passServer.get_resource(Passes::drawImage);
+
+        Utils::copy_image_to_image(cmd,
+                                   drawImage.image,
+                                   swapchain.images[swapchainIndex],
+                                   passServer.extent,
+                                   swapchain.extent);
+
+        Utils::transition_image_layout(cmd,
+                                       swapchain.images[swapchainIndex],
+                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    }
+
+    VkSemaphoreSubmitInfo swapSemInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .pNext = nullptr,
+        .semaphore = swapchain.submitSemaphores[swapchainIndex],
+        .value = 0,
+        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .deviceIndex = 0
+    };
+
+    const auto presentQueue = passes.at(presentPass).queue;
+
+    for (size_t i = 0; i < QUEUE_COUNT; i++) {
+
+        if (submits[i].empty()) {
+            continue;
+        }
+
+        // If this is the queue we're presenting from, signal the present
+        // semaphore and fence once it's done
+        VkFence fence = nullptr;
+        if (i == passServer.queueToIndex[presentQueue]) {
+            fence = passServer.fences[passServer.currentFrame];
+
+            auto& final = submits[i].back();
+
+            // The very final pass shouldn't signal any semaphores currently, so
+            // we don't need a list.
+            assert(final.signalSemaphoreInfoCount == 1);
+            final.signalSemaphoreInfoCount = 1;
+            final.pSignalSemaphoreInfos = &swapSemInfo;
+        }
+
+        vk_check(vkQueueSubmit2(passServer.queues[i].queue,
+                                submits[i].size(),
+                                submits[i].data(),
+                                fence));
+    }
+
+    VkPresentInfoKHR presentInfo{
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext = nullptr,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &swapchain.submitSemaphores[swapchainIndex],
+        .swapchainCount = 1,
+        .pSwapchains = &swapchain.swapchain,
+        .pImageIndices = &swapchainIndex,
+        .pResults = nullptr
+    };
+
+    vkQueuePresentKHR(
+        passServer.queues[passServer.queueToIndex[presentQueue]].queue,
+        &presentInfo);
 }
 
 void

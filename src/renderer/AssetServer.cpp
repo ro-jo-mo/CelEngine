@@ -737,21 +737,21 @@ AssetServer::flush(ParallelResource<RenderGraph::PassServer>& passServer)
 
     VkCommandBuffer cmd;
     {
-        auto server = passServer.write();
-        cmd = server->get_cmd_buffer(Passes::uploadAssetsPass);
+        auto access = passServer.write();
+        cmd = access->get_cmd_buffer(Passes::uploadAssetsPass);
     }
 
     if (cmd == VK_NULL_HANDLE) {
         return;
     }
 
-    const auto& server = passServer.illegal();
+    auto access = passServer.partial_read();
 
     // Transfer the image data
     for (const auto& [create, image, stagingHandle] : std::views::zip(
              cmdCreateImgs, uninitialisedImages, reservedBufferHandles)) {
 
-        const auto& staging = server.get_resource(stagingHandle);
+        const auto& staging = access->get_resource(stagingHandle);
 
         if (create.gltf) {
             Utils::upload_image_asset(create.data, cmd, image, staging);
@@ -777,17 +777,17 @@ AssetServer::flush(ParallelResource<RenderGraph::PassServer>& passServer)
 
     if (vertexBuffer.current_upload_size() != 0) {
         vertexBuffer.push_to_gpu(
-            cmd, server.get_resource(Passes::vertexStagingBuffer));
+            cmd, access->get_resource(Passes::vertexStagingBuffer));
     }
 
     if (indiceBuffer.current_upload_size() != 0) {
         indiceBuffer.push_to_gpu(
-            cmd, server.get_resource(Passes::indiceStagingBuffer));
+            cmd, access->get_resource(Passes::indiceStagingBuffer));
     }
 
     if (materialBuffer.current_upload_size() != 0) {
         materialBuffer.push_to_gpu(
-            cmd, server.get_resource(Passes::materialStagingBuffer));
+            cmd, access->get_resource(Passes::materialStagingBuffer));
     }
 }
 

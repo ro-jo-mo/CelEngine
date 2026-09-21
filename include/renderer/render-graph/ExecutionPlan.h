@@ -43,7 +43,9 @@ class ExecutionPlan
     static void execute(
         std::vector<ExecutePass>& plan,
         const std::unordered_map<Handle<RenderPass>, RenderPass>& passes,
+        Handle<RenderPass> presentPass,
         PassServer& passServer,
+        Swapchain& swapchain,
         VulkanResourceManager& manager);
 
   private:
@@ -85,6 +87,14 @@ class ExecutionPlan
 
     static void add_execution_to_list(ExecutionPlan* plan,
                                       std::vector<ExecutePass>& list);
+
+    static void create_submit_infos(
+        std::array<std::vector<VkSubmitInfo2>, QUEUE_COUNT>& submits,
+
+        std::vector<ExecutePass>& plan,
+        const std::unordered_map<Handle<RenderPass>, RenderPass>& passes,
+        PassServer& passServer,
+        VulkanResourceManager& manager);
 
     ExecutionPlan* original = nullptr;
 

@@ -81,7 +81,7 @@ RelativeScheduler<Key, Graph>::after(Node runsBefore)
     graph.add_node(runsBefore);
 
     for (const auto& entry : this->entrance) {
-        graph.add_edge(reinterpret_cast<Key>(runsBefore), entry);
+        graph.add_edge(runsBefore, entry);
     }
 
     return *this;
@@ -114,7 +114,7 @@ RelativeScheduler<Key, Graph>::before(Node runsAfter)
     graph.add_node(runsAfter);
 
     for (const auto& exits : this->exit) {
-        graph.add_edge(exits, reinterpret_cast<Key>(runsAfter));
+        graph.add_edge(exits, runsAfter);
     }
 
     return *this;

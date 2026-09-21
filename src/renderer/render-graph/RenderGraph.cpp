@@ -3,7 +3,6 @@
 #include "renderer/render-graph/ExecutionPlan.h"
 #include "renderer/resource-management/ResourceTracker.h"
 
-#include <map>
 #include <ranges>
 
 using namespace Cel::Renderer;
@@ -13,7 +12,7 @@ Cel::Common::RelativeScheduler<Cel::Handle<RenderPass>,
                                Cel::Common::Graph<Cel::Handle<RenderPass>>>
 Graph::add_pass(const RenderPass& pass)
 {
-    passes.insert({ pass.id, pass });
+    passes.emplace(pass.id, pass);
     graph.add_edge(Passes::setupPass, pass.id);
     return add_system(pass.id);
 }
@@ -22,9 +21,16 @@ Cel::Common::RelativeScheduler<Cel::Handle<RenderPass>,
                                Cel::Common::Graph<Cel::Handle<RenderPass>>>
 Graph::add_setup_pass(const RenderPass& pass)
 {
-    passes.insert({ pass.id, pass });
+    passes.emplace(pass.id, pass);
     graph.add_edge(pass.id, Passes::setupPass);
     return add_system(pass.id);
+}
+
+void
+Graph::set_present_pass(const RenderPass& pass)
+{
+    passes.emplace(pass.id, pass);
+    presentPass = pass.id;
 }
 
 void
@@ -46,6 +52,18 @@ Graph::compile(VulkanResourceManager& manager)
 
     auto tracker = manager.branch_tracker();
 
+    // Set last pass in graph
+
+    graph.add_node(presentPass);
+
+    for (const auto& [pass, node] : graph.adjacencyList) {
+
+        // If this node is a final node, add an edge to the last pass
+        if (node.empty()) {
+            graph.add_edge(pass, presentPass);
+        }
+    }
+
     compile_passes(manager, tracker);
 
     ExecutionPlan plan{};
@@ -61,8 +79,12 @@ Graph::compile(VulkanResourceManager& manager)
 }
 
 void
-Graph::execute(PassServer& passServer)
+Graph::execute(PassServer& passServer,
+               Swapchain& swapchain,
+               VulkanResourceManager& manager)
 {
+    ExecutionPlan::execute(
+        finalPlan, passes, presentPass, passServer, swapchain, manager);
 }
 
 void
@@ -118,15 +140,19 @@ Graph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
         // If we've finished the plan, ...
         if (iter.begin() == iter.end()) {
             if (plan.cost() < bestCost) {
+                bestCost = plan.cost();
+
                 finalPlan = plan.compile();
             }
             return;
         }
 
-        const auto currentLength = iter.begin()->first;
+        const auto greatestCriticalPath = iter.begin()->first;
 
         for (auto [length, pass] : iter) {
-            if (length == currentLength) {
+
+            // Only select from nodes with a matching path length
+            if (length == greatestCriticalPath) {
                 nodes.push_back(pass);
             } else {
                 break;

@@ -30,6 +30,10 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
                               Common::Graph<Handle<RenderPass>>>
     add_setup_pass(const RenderPass& pass);
 
+    // This is effectively a dummy pass. We don't expect it to record any data,
+    // but it will specify the present queue and necessary barriers.
+    void set_present_pass(const RenderPass& pass);
+
     template<typename... Ts>
     Common::RelativeScheduler<Handle<RenderPass>, Scheduler> add_chain(
         Ts... _passes);
@@ -46,7 +50,9 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     void compile(VulkanResourceManager& manager);
 
     // Finally execute the render passes
-    void execute(PassServer& passServer);
+    void execute(PassServer& passServer,
+                 Swapchain& swapchain,
+                 VulkanResourceManager& manager);
 
   private:
     // Resolve the buffer and image handles to handles to actual vulkan
@@ -101,6 +107,8 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
 
     // A mapping of pass id's to the actual pass data
     std::unordered_map<Handle<RenderPass>, RenderPass> passes;
+
+    Handle<RenderPass> presentPass;
 
     // Converts the resource handles used by render passes to actual handles to
     // vulkan resources
