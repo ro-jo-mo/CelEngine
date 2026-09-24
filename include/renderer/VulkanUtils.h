@@ -48,19 +48,6 @@ copy_image_to_image(VkCommandBuffer cmd,
                     VkExtent2D dstSize);
 
 [[nodiscard]] AllocatedImage
-create_image(const void* data,
-             VkExtent3D size,
-             VkFormat format,
-             VkImageUsageFlags usage,
-             bool mipmapped,
-
-             const char* allocName,
-             VulkanContext& context,
-             VmaAllocator& allocator,
-             const ImmediateSubmit& immediate,
-             const GraphicsQueue& graphicsQueue);
-
-[[nodiscard]] AllocatedImage
 create_image(VkExtent3D size,
              VkFormat format,
              VkImageUsageFlags usage,
@@ -94,16 +81,6 @@ upload_image_asset(ktxTexture* texture,
 size_t
 calculate_image_size(VkExtent3D extent, VkFormat format);
 
-[[nodiscard]] AllocatedImage
-create_cube_map(ktxTexture* texture,
-                VkFormat format,
-
-                const char* allocName,
-                VulkanContext& context,
-                VmaAllocator& allocator,
-                const ImmediateSubmit& immediate,
-                const GraphicsQueue& graphicsQueue);
-
 [[nodiscard]] AllocatedBuffer
 create_buffer(Handle<AllocatedBuffer> handle,
               size_t allocSize,
@@ -112,29 +89,6 @@ create_buffer(Handle<AllocatedBuffer> handle,
 
               const char* allocName,
               const VmaAllocator& allocator);
-
-[[nodiscard]] AllocatedMeshBuffer
-upload_mesh(std::vector<uint32_t>& indices,
-            std::vector<Assets::Vertex>& vertices,
-            VulkanContext& context,
-            VmaAllocator& allocator,
-            ImmediateSubmit& immediate,
-            GraphicsQueue& queue);
-
-[[nodiscard]] AllocatedMeshBuffer
-upload_mesh(std::vector<uint32_t>& indices,
-            std::vector<float>& vertices,
-
-            VulkanContext& context,
-            VmaAllocator& allocator,
-            ImmediateSubmit& immediate,
-            GraphicsQueue& queue);
-
-void
-submit_immediate(std::function<void(VkCommandBuffer cmd)>&& function,
-                 const VulkanContext& context,
-                 const ImmediateSubmit& immediate,
-                 const GraphicsQueue& queue);
 
 [[nodiscard]] uint32_t
 calculate_mip_map_levels(VkExtent3D extent);
@@ -149,22 +103,14 @@ void
 destroy_buffer(const AllocatedBuffer& buffer, const VmaAllocator& allocator);
 
 void
-upload_to_buffer(const void* data,
-                 uint32_t size,
-                 VkBuffer destination,
-                 uint32_t destinationOffset,
-
-                 VulkanContext& context,
-                 VmaAllocator& allocator,
-                 ImmediateSubmit& immediate,
-                 GraphicsQueue& queue);
-
-void
 upload_to_buffer(VkCommandBuffer cmd,
                  const void* data,
                  uint32_t size,
                  const AllocatedBuffer& destination,
                  uint32_t destinationOffset,
                  const AllocatedBuffer& staging);
+
+void
+set_scissor_and_viewport(VkCommandBuffer cmd, const VkExtent2D& extent);
 
 };

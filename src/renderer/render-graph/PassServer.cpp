@@ -84,6 +84,16 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
         vkCreateSemaphore(
             device, &semaphoreInfo, nullptr, &acquireSemaphores[i]);
     }
+
+    std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
+    };
+
+    for (auto& allocator : descriptorAllocators) {
+        allocator = { device, 512, sizes };
+    }
 }
 
 VkCommandBuffer
@@ -91,7 +101,7 @@ Cel::Renderer::RenderGraph::PassServer::get_cmd_buffer(
     Handle<RenderPass> handle)
 {
     // Cull unneeded passes
-    if (!validPasses.contains(handle)) {
+    if (!passesQueues.contains(handle)) {
         return VK_NULL_HANDLE;
     }
 
@@ -160,9 +170,8 @@ Cel::Renderer::RenderGraph::PassServer::get_resource(
 
 void
 Cel::Renderer::RenderGraph::PassServer::update_frame(
-    const uint32_t _currentFrame,
     const VkExtent2D _extent,
-    const std::unordered_map<Handle<RenderPass>, uint32_t>& _validPasses,
+    const std::unordered_map<Handle<RenderPass>, RenderPass>& passesInUse,
     const std::unordered_map<Handle<AllocatedBuffer>, Handle<AllocatedBuffer>>&
         bufferMapping,
     const std::unordered_map<Handle<AllocatedImage>, Handle<AllocatedImage>>&
@@ -171,9 +180,14 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
     VulkanResourceManager& manager)
 {
-    currentFrame = _currentFrame;
+    currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
     extent = _extent;
-    validPasses = _validPasses;
+
+    passesQueues.clear();
+
+    for (const auto& pass : passesInUse | std::views::values) {
+        passesQueues.emplace(pass.id, pass.queue);
+    }
 
     // We need to wait for the frame in flight to finish before resetting cmd
     // buffers
@@ -213,7 +227,7 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     // Create a mapping from the pass handled to actual vk resources
     // Set to be freed either the next frame (if transient resource) or the next
     // occurrence of this frame (if per frame)
-    const auto nextFrame = currentFrame % FRAMES_IN_FLIGHT;
+    const auto nextFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
 
     for (const auto& [handle, mapped] : bufferMapping) {
         const auto freeFrame =
@@ -251,16 +265,16 @@ Cel::Renderer::RenderGraph::PassServer::get_prepost_cmd_buffer(
 }
 
 Cel::Renderer::RenderGraph::PassServer::Semaphore&
-Cel::Renderer::RenderGraph::PassServer::get_semaphore(uint32_t queue)
+Cel::Renderer::RenderGraph::PassServer::get_semaphore(const uint32_t queue)
 {
-    return semaphores[queue];
+    return semaphores[queueToIndex[queue]];
 }
 
 uint32_t
 Cel::Renderer::RenderGraph::PassServer::get_pool_index(
     const Handle<RenderPass> handle)
 {
-    const auto queue = queueToIndex[validPasses[handle]];
+    const auto queue = queueToIndex[passesQueues[handle]];
     const auto thread = ThreadManager::get_thread_id();
 
     return currentFrame * (QUEUE_COUNT * ThreadManager::total_threads()) +

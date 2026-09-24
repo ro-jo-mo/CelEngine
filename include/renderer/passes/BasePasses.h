@@ -25,6 +25,9 @@ struct SceneData;
 // Convenient friend
 struct PassFriend
 {
+
+    static void register_present_pass(Resource<RenderGraph::Graph>& graph);
+
     static void register_create_scene_data_pass(
         Resource<RenderGraph::Graph>& graph);
 
@@ -43,6 +46,7 @@ struct PassFriend
     static void upload_assets(
         Resource<Assets::AssetServer>& assetServer,
         ParallelResource<RenderGraph::PassServer>& passServer);
+
 };
 
 }

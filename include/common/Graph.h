@@ -158,9 +158,10 @@ class Graph<Key>::Iterator
     explicit Iterator(Graph& graph)
         : graph(graph)
     {
-        for (const auto& [key, reqs] : graph.reverseAdjacencyList) {
+        for (const auto& [key, reqs] : graph.adjacencyList) {
             if (reqs.empty()) {
                 calculate_critical_path_lengths(key);
+                readyNodes.emplace(criticalPaths.at(key), key);
             }
         }
     }
@@ -219,18 +220,18 @@ Graph<Key>::Iterator::calculate_unused(Key endpoint)
 {
     std::unordered_set<Key> used;
 
-    auto recurse = [&](const Key key, auto&& recurse) {
+    auto recurse = [&](const Key key, auto&& _recurse) {
         used.insert(key);
 
         auto& dependencies = graph.get_dependencies(key);
         for (const auto& dep : dependencies) {
-            recurse(dep, recurse);
+            _recurse(dep, _recurse);
         }
     };
 
     recurse(endpoint, recurse);
 
-    // I'd assume it is slightly cheaper to check a node is !unusued that is
+    // I'd assume it is slightly cheaper to check a node is !unused that is
     // used On the assumption unused will be far smaller than used
     for (const auto& key : graph.adjacencyList | std::views::keys) {
         if (!used.contains(key)) {

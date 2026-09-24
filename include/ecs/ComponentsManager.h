@@ -69,7 +69,7 @@ class ComponentsManager
 };
 
 template<typename T>
-inline void
+void
 ComponentsManager::register_component()
 {
     if (componentArrays.contains(typeid(T))) {
@@ -77,6 +77,7 @@ ComponentsManager::register_component()
     }
     componentArrays[typeid(T)] = std::make_shared<ComponentArray<T>>();
 }
+
 template<typename T>
 T&
 ComponentsManager::get_component(Entity entity)

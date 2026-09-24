@@ -43,9 +43,8 @@ class PassServer
      * mapping of pass handles to real handles
      */
     void update_frame(
-        uint32_t _currentFrame,
         VkExtent2D _extent,
-        const std::unordered_map<Handle<RenderPass>, uint32_t>& _validPasses,
+        const std::unordered_map<Handle<RenderPass>, RenderPass>& passesInUse,
         const std::unordered_map<Handle<AllocatedBuffer>,
                                  Handle<AllocatedBuffer>>& bufferMapping,
         const std::unordered_map<Handle<AllocatedImage>,
@@ -70,8 +69,6 @@ class PassServer
     uint32_t get_pool_index(Handle<RenderPass> handle);
 
     void allocate_cmd_buffers(uint32_t index);
-
-    std::unordered_set<Handle<RenderPass>> passesInUse;
 
     // Pool per queue per frame in flight per thread
     // Indexed through:
@@ -121,7 +118,7 @@ class PassServer
 
     uint32_t currentFrame = 0;
     VkExtent2D extent;
-    std::unordered_map<Handle<RenderPass>, uint32_t> validPasses;
+    std::unordered_map<Handle<RenderPass>, uint32_t> passesQueues;
 
     std::array<Queue, QUEUE_COUNT>& queues;
 

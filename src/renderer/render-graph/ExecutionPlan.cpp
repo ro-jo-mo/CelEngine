@@ -65,6 +65,7 @@ format_to_image_aspect(VkFormat format)
         case VK_FORMAT_D32_SFLOAT_S8_UINT:
             return VK_IMAGE_ASPECT_DEPTH_BIT;
         case VK_FORMAT_R8G8B8_UNORM:
+        case VK_FORMAT_R16G16B16A16_SFLOAT:
             return VK_IMAGE_ASPECT_COLOR_BIT;
 
         default:
@@ -311,7 +312,7 @@ ExecutionPlan::create_submit_infos(
 
     // A map of pass.id to it's place in the total execution order
     // Used to grant a stable value for timeline semaphores
-    std::vector<uint32_t> passToOrder{ maxPasses, 0 };
+    std::vector<uint32_t> passToOrder(maxPasses);
 
     // Just the ordering of the passes and their queues, so I don't have to load
     // the original execution back into memory for recording
@@ -418,6 +419,11 @@ ExecutionPlan::execute(
         const auto cmd = passServer.get_cmd_buffer(presentPass);
 
         const auto& drawImage = passServer.get_resource(Passes::drawImage);
+
+        Utils::transition_image_layout(cmd,
+                                       swapchain.images[swapchainIndex],
+                                       VK_IMAGE_LAYOUT_UNDEFINED,
+                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
         Utils::copy_image_to_image(cmd,
                                    drawImage.image,

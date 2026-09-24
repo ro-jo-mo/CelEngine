@@ -17,6 +17,7 @@
     "stb",
     "gtest",
     "ktx",
-    "spirv-reflect"
+    "spirv-reflect",
+    "spirv-headers"
   ]
 }

@@ -99,10 +99,10 @@ class PassBuilder
     PassBuilder& upload_buffer(Handle<AllocatedBuffer> staging,
                                Handle<AllocatedBuffer> uploadTo);
 
-    PassBuilder& upload_image(Handle<AllocatedImage> staging,
+    PassBuilder& upload_image(Handle<AllocatedBuffer> staging,
                               Handle<AllocatedImage> uploadTo);
 
-    PassBuilder& set_queue(uint32_t queue);
+    PassBuilder& set_queue(const Queue& queue);
 
     RenderPass build();
 

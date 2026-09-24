@@ -24,6 +24,14 @@ template<typename T>
 struct IsResource<Resource<T>> : std::true_type
 {};
 
+template<typename T>
+struct IsParallelResource : std::false_type
+{};
+
+template<typename T>
+struct IsParallelResource<ParallelResource<T>> : std::true_type
+{};
+
 template<typename T, typename... Ts>
 constexpr bool
 has_type_t()

@@ -1,4 +1,4 @@
-#include "../include/renderer/passes/RenderPlugin.h"
+#include "../include/renderer/RenderPlugin.h"
 #include "core/App.h"
 #include "core/CorePlugin.h"
 #include "renderer/AssetServer.h"
@@ -7,6 +7,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include "input/Input.h"
 #include "renderer/Window.h"
+#include "renderer/passes/PassPlugin.h"
+#include "renderer/render-graph/RenderGraphPlugin.h"
 
 #include <fastgltf/types.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -136,6 +138,8 @@ main()
     App ecs;
     ecs.add_plugin<CorePlugin>()
         .add_plugin<Renderer::RenderPlugin>()
+        .add_plugin<Renderer::RenderGraph::RenderGraphPlugin>()
+        .add_plugin<Renderer::Passes::PassPlugin>()
         .add_plugin<MyPlugin>();
     ecs.start<Startup>()
         .loop<FixedSchedule<PhysicsUpdate, 50>,

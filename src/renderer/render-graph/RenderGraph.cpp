@@ -1,6 +1,7 @@
 #include "renderer/render-graph/RenderGraph.h"
 
 #include "renderer/render-graph/ExecutionPlan.h"
+#include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/ResourceTracker.h"
 
 #include <ranges>
@@ -59,7 +60,7 @@ Graph::compile(VulkanResourceManager& manager)
     for (const auto& [pass, node] : graph.adjacencyList) {
 
         // If this node is a final node, add an edge to the last pass
-        if (node.empty()) {
+        if (node.empty() && pass != presentPass) {
             graph.add_edge(pass, presentPass);
         }
     }
@@ -67,11 +68,6 @@ Graph::compile(VulkanResourceManager& manager)
     compile_passes(manager, tracker);
 
     ExecutionPlan plan{};
-
-    // Insert the base plan
-    // This is used to insert any barriers needed for across frame resources,
-    // like the vertex buffer
-    plan.push({ .pass = Passes::basePass });
 
     auto iter = graph.iter();
 
@@ -88,25 +84,42 @@ Graph::execute(PassServer& passServer,
 }
 
 void
+Graph::reset()
+{
+    passes.clear();
+    bufferHandleToMapped.clear();
+    imageHandleToMapped.clear();
+    perFrameBuffers.clear();
+    perFrameImages.clear();
+    finalPlan.clear();
+    bestCost = UINT32_MAX;
+}
+
+void
 Graph::compile_passes(VulkanResourceManager& manager,
                       BranchingResourceTracker& tracker)
 {
     // We mark the state as coming from a null pass, meaning it has no existing
     // state and thus needs no synchronisation (apart from layout transition)
-    auto create_helper = [&](auto& creates, auto& addTo) {
+    auto create_helper = [&](auto& creates, auto& addTo, auto& perFrames) {
         for (auto& create : creates) {
             auto handle = manager.get_handle_from_requirements(
                 create.requirements,
                 Passes::HandleAllocator::get_name(create.id));
             addTo[create.id] = handle;
             tracker.lastPassToAccessResource.set(handle, Passes::nullPass);
+
+            if (create.perFrame) {
+                perFrames.emplace(handle);
+            }
         }
     };
 
     // We firstly need to create the actual mapping from handle to mapped handle
     for (auto& pass : passes | std::views::values) {
-        create_helper(pass.newBuffers, bufferHandleToMapped);
-        create_helper(pass.newImages, imageHandleToMapped);
+        create_helper(
+            pass.bufferCreates, bufferHandleToMapped, perFrameBuffers);
+        create_helper(pass.imageCreates, imageHandleToMapped, perFrameImages);
     }
 
     auto to_mapped = [&](auto& iter, auto& map) {

@@ -3,14 +3,10 @@
 
 void
 Cel::Renderer::cleanup_renderer(Resource<FinalCleanup>& cleanup,
-                                Resource<FramesInFlight>& frameData,
                                 Resource<VulkanContext>& context)
 {
     vkDeviceWaitIdle(context->device);
-
-    for (auto& frame : frameData->frames) {
-        frame.toDelete.flush();
-    }
+    
     cleanup->flush();
 }
 

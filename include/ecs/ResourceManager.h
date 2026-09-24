@@ -27,16 +27,22 @@ class ResourceManager
      * @param args Arguments to initialise resource with
      */
     template<typename T, typename... Args>
-    Resource<T>& insert_resource(Args&&... args);
+    void insert_resource(Args&&... args);
 
     template<typename T>
-    Resource<T>& insert_resource(T resource);
+    void insert_resource(T resource);
+
+    template<typename T>
+    void insert_resource_as_null();
 
     template<typename T, typename... Args>
-    ParallelResource<T>& insert_parallel_resource(Args&&... args);
+    void insert_parallel_resource(Args&&... args);
 
     template<typename T>
-    ParallelResource<T>& insert_parallel_resource(T resource);
+    void insert_parallel_resource(T resource);
+
+    template<typename T>
+    void insert_parallel_resource_as_null();
 
     /**
      * @brief Return resource
@@ -56,7 +62,7 @@ class ResourceManager
 };
 
 template<typename T, typename... Args>
-Resource<T>&
+void
 ResourceManager::insert_resource(Args&&... args)
 {
     using Type = Resource<std::remove_const_t<T>>;
@@ -66,13 +72,12 @@ ResourceManager::insert_resource(Args&&... args)
         throw_error("inserted resource already exists", typeid(T).name());
     }
 
-    resources[id] = std::make_unique<Type>(std::forward<Args>(args)...);
-
-    return get_resource<T>();
+    resources[id] =
+        std::make_unique<Type>(std::in_place, std::forward<Args>(args)...);
 }
 
 template<typename T>
-Resource<T>&
+void
 ResourceManager::insert_resource(T resource)
 {
     using Type = Resource<std::remove_const_t<T>>;
@@ -81,13 +86,11 @@ ResourceManager::insert_resource(T resource)
     if (resources.contains(id)) {
         throw_error("inserted resource already exists", typeid(T).name());
     }
-    resources[id] = std::make_unique<Type>(resource);
-
-    return get_resource<T>();
+    resources[id] = std::make_unique<Type>(std::in_place, resource);
 }
 
 template<typename T, typename... Args>
-ParallelResource<T>&
+void
 ResourceManager::insert_parallel_resource(Args&&... args)
 {
     using Type = ParallelResource<std::remove_const_t<T>>;
@@ -99,13 +102,11 @@ ResourceManager::insert_parallel_resource(Args&&... args)
     }
 
     parallelResources[typeid(ParallelResource<T>)] =
-        std::make_unique<Type>(std::forward<Args>(args)...);
-
-    return get_resource<T>();
+        std::make_unique<Type>(std::in_place, std::forward<Args>(args)...);
 }
 
 template<typename T>
-ParallelResource<T>&
+void
 ResourceManager::insert_parallel_resource(T resource)
 {
     using Type = ParallelResource<std::remove_const_t<T>>;
@@ -115,9 +116,34 @@ ResourceManager::insert_parallel_resource(T resource)
         throw_error("inserted parallel resource already exists",
                     typeid(T).name());
     }
-    parallelResources[id] = std::make_unique<Type>(resource);
+    parallelResources[id] = std::make_unique<Type>(std::in_place, resource);
+}
 
-    return get_resource<T>();
+template<typename T>
+void
+ResourceManager::insert_resource_as_null()
+{
+    using Type = Resource<std::remove_const_t<T>>;
+    const std::type_index id = typeid(Type);
+
+    if (resources.contains(id)) {
+        throw_error("inserted resource already exists", typeid(T).name());
+    }
+    resources[id] = std::make_unique<Type>();
+}
+
+template<typename T>
+void
+ResourceManager::insert_parallel_resource_as_null()
+{
+    using Type = ParallelResource<std::remove_const_t<T>>;
+    const std::type_index id = typeid(Type);
+
+    if (parallelResources.contains(id)) {
+        throw_error("inserted parallel resource already exists",
+                    typeid(T).name());
+    }
+    parallelResources[id] = std::make_unique<Type>();
 }
 
 template<typename T>
@@ -144,7 +170,7 @@ ResourceManager::get_parallel_resource()
     using Type = ParallelResource<std::remove_const_t<T>>;
     const std::type_index id = typeid(Type);
 
-    if (!resources.contains(id)) {
+    if (!parallelResources.contains(id)) {
         throw_error("requested parallel resource does not exist yet {}",
                     typeid(Type).name());
     }

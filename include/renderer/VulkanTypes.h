@@ -19,15 +19,9 @@ struct Swapchain
     VkSwapchainKHR swapchain;
     std::vector<VkImage> images;
     std::vector<VkImageView> imageViews;
-    std::vector<VkSemaphore> submitSemaphores;
     VkFormat format;
     VkExtent2D extent;
-};
-
-struct GraphicsQueue
-{
-    VkQueue queue;
-    uint32_t family;
+    std::vector<VkSemaphore> submitSemaphores;
 };
 
 struct Queue
@@ -44,32 +38,6 @@ struct VulkanContext
     VkSurfaceKHR surface;
 };
 
-struct FrameData
-{
-    VkCommandPool commandPool;
-    VkCommandBuffer commandBuffer;
-    VkSemaphore acquireSemaphore;
-    VkFence renderFence;
-    DescriptorAllocator descriptorAllocator;
-    PerFrameCleanup toDelete;
-};
-
-struct FramesInFlight
-{
-    std::vector<FrameData> frames;
-    size_t currentFrame;
-    const size_t totalFrames;
-    [[nodiscard]] FrameData& Get() { return frames[currentFrame]; }
-    void Tick() { currentFrame = (currentFrame + 1) % totalFrames; }
-};
-
-struct ImmediateSubmit
-{
-    VkCommandPool commandPool;
-    VkCommandBuffer commandBuffer;
-    VkFence fence;
-};
-
 struct RenderExtent
 {
     VkExtent2D extent;
@@ -82,17 +50,6 @@ struct PerEntityGpuData
     glm::mat4 transform;
     glm::mat4 normalTransform;
     uint32_t materialIndex;
-};
-
-struct GlobalDescriptorData
-{
-    DescriptorAllocator allocator;
-
-    // Mesh pipeline
-    VkDescriptorSetLayout sceneLayout;
-
-    // Skybox pipeline
-    VkDescriptorSetLayout skyboxLayout;
 };
 
 struct AllocatedBuffer

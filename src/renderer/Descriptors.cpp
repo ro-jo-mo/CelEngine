@@ -5,16 +5,12 @@
 #include <ranges>
 #include <vulkan/vulkan_core.h>
 
-void
-Cel::Renderer::DescriptorAllocator::init(
-    VkDevice vkdevice,
-
+Cel::Renderer::DescriptorAllocator::DescriptorAllocator(
+    VkDevice device,
     const uint32_t initialSets,
     const std::span<PoolSizeRatio> poolRatios)
+    : device(device)
 {
-    device = vkdevice;
-
-    ratios.clear();
     for (auto r : poolRatios) {
         ratios.push_back(r);
     }

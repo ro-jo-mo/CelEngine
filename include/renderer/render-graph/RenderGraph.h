@@ -14,11 +14,11 @@ namespace Cel::Renderer::RenderGraph {
 class PassServer;
 
 // Overall flow:
-// Render::First -> add passes to render graph
-// Render::PreUpdate -> compile graph
-// Render::Update -> record commands
-// Render::PostUpdate -> execute graph
-// Render::Final -> cleanup
+// Render::First -> set render extent ... etc
+// Render::PreUpdate -> add passes to render graph
+// Render::Update -> compile graph
+// Render::PostUpdate -> record commands
+// Render::Final -> execute graph & cleanup (maybe)
 class Graph : Common::Scheduler<Handle<RenderPass>>
 {
   public:
@@ -53,6 +53,8 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     void execute(PassServer& passServer,
                  Swapchain& swapchain,
                  VulkanResourceManager& manager);
+
+    void reset();
 
   private:
     // Resolve the buffer and image handles to handles to actual vulkan
@@ -117,10 +119,14 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     std::unordered_map<Handle<AllocatedImage>, Handle<AllocatedImage>>
         imageHandleToMapped;
 
+    std::unordered_set<Handle<AllocatedBuffer>> perFrameBuffers;
+    std::unordered_set<Handle<AllocatedImage>> perFrameImages;
+
     std::vector<ExecutionPlan::ExecutePass> finalPlan;
     uint32_t bestCost = UINT32_MAX;
 
     friend class PassBuilder;
+    friend class RenderGraphPlugin;
 };
 
 template<typename... Ts>

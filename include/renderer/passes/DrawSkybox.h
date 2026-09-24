@@ -2,7 +2,7 @@
 #include "ecs/Resource.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/render-graph/RenderGraph.h"
-
+/*
 namespace Cel::Renderer::Passes {
 
 struct SkyboxData
@@ -19,4 +19,4 @@ add_skybox_pass(Resource<RenderGraph::Graph>& graph);
 void
 draw_skybox(ParallelResource<RenderGraph::PassServer>& server);
 
-}
+}*/

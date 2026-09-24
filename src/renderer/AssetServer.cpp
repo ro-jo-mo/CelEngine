@@ -51,6 +51,7 @@ AssetServer::AssetServer(VulkanResourceManager& manager)
                        .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
                      "material_mega_buffer_alloc",
                      manager)
+    , device(manager.device)
 
 {
     create_defaults(manager);
@@ -319,29 +320,35 @@ AssetServer::load_samplers(const fastgltf::Asset& asset)
     }
 }
 
-uint32_t
-AssetServer::resolve_texture_sampler(
+void
+AssetServer::resolve_texture_sampler(CmdCreateSampler& cmd)
+{
+    cmd.toSet = textureCache.add_texture(gltfImages[cmd.imageIndex].imageView,
+                                         samplers[cmd.samplerIndex]);
+}
+
+void
+AssetServer::create_sampler_cmd(
     fastgltf::Asset& asset,
+    uint32_t& toSet,
     const std::optional<fastgltf::TextureInfo>& textureInfo,
     const size_t imageOffset,
     const size_t samplerOffset)
 {
+    size_t textureIndex = 0;
+    size_t samplerIndex = 0;
 
     if (textureInfo.has_value()) {
         auto& texture = asset.textures[textureInfo.value().textureIndex];
-        const auto view =
-            gltfImages[texture.imageIndex.value() + imageOffset].imageView;
 
-        VkSampler sampler;
+        textureIndex = texture.imageIndex.value() + imageOffset;
+
         if (texture.samplerIndex.has_value()) {
-            sampler = samplers[texture.samplerIndex.value() + samplerOffset];
-        } else {
-            sampler = samplers[0];
+            samplerIndex = texture.samplerIndex.value() + samplerOffset;
         }
-
-        return textureCache.add_texture(view, sampler);
     }
-    return textureCache.add_texture(gltfImages[0].imageView, samplers[0]);
+
+    cmdCreateSamplers.emplace_back(textureIndex, samplerIndex, toSet);
 }
 
 void
@@ -355,7 +362,7 @@ AssetServer::load_materials(fastgltf::Asset& asset,
         // Material constants will be stored in a buffer on the gpu
         // The material will then contain the buffer index and offset for these
         // constants
-        MaterialConstants constants{};
+        auto& constants = materialList.emplace_back();
 
         const auto& [baseColorFactor,
                      metallicFactor,
@@ -371,12 +378,19 @@ AssetServer::load_materials(fastgltf::Asset& asset,
             metallicFactor, roughnessFactor, 0, 0
         };
 
-        constants.colorTextureIndex = resolve_texture_sampler(
-            asset, baseColorTexture, imageOffset, samplerOffset);
-        constants.metalRoughnessTextureIndex = resolve_texture_sampler(
-            asset, metallicRoughnessTexture, imageOffset, samplerOffset);
-        constants.normalTextureIndex = resolve_texture_sampler(
+        create_sampler_cmd(asset,
+                           constants.colorTextureIndex,
+                           baseColorTexture,
+                           imageOffset,
+                           samplerOffset);
+        create_sampler_cmd(asset,
+                           constants.metalRoughnessTextureIndex,
+                           metallicRoughnessTexture,
+                           imageOffset,
+                           samplerOffset);
+        create_sampler_cmd(
             asset,
+            constants.normalTextureIndex,
             gltfMaterial.normalTexture.transform([](const auto& info) {
                 return fastgltf::TextureInfo{ .textureIndex = info.textureIndex,
                                               .texCoordIndex =
@@ -384,8 +398,6 @@ AssetServer::load_materials(fastgltf::Asset& asset,
             }),
             imageOffset,
             samplerOffset);
-
-        materialList.push_back(constants);
     }
 
     const auto bufferOffset = materialBuffer.allocate(
@@ -397,9 +409,9 @@ AssetServer::load_materials(fastgltf::Asset& asset,
 }
 
 AssetNode
-CreateNodeTree(const size_t nodeIndex,
-               fastgltf::Asset& asset,
-               std::vector<Model>& models)
+create_node_tree(const size_t nodeIndex,
+                 fastgltf::Asset& asset,
+                 std::vector<Model>& models)
 {
     auto node = asset.nodes[nodeIndex];
 
@@ -434,7 +446,7 @@ CreateNodeTree(const size_t nodeIndex,
         node.transform);
 
     for (auto const child : node.children) {
-        newNode.children.push_back(CreateNodeTree(child, asset, models));
+        newNode.children.push_back(create_node_tree(child, asset, models));
     }
 
     return newNode;
@@ -451,7 +463,7 @@ AssetServer::load_nodes(fastgltf::Asset& asset, std::vector<Model>& models)
     roots.reserve(scene.nodeIndices.size());
 
     for (const auto& index : scene.nodeIndices) {
-        roots.push_back(CreateNodeTree(index, asset, models));
+        roots.push_back(create_node_tree(index, asset, models));
     }
 
     std::vector<size_t> rootIds(roots.size());
@@ -498,13 +510,13 @@ AssetServer::load_gltf_asset(const char* filepath)
     size_t imageOffset = gltfImages.size();
     size_t samplerOffset = samplers.size();
 
-    DescriptorAllocator descriptorAllocator{};
     std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1 }
     };
-    descriptorAllocator.init(device, 1024, sizes);
+
+    DescriptorAllocator descriptorAllocator{ device, 1024, sizes };
 
     load_images(asset);
     load_samplers(asset);
@@ -712,14 +724,7 @@ AssetServer::register_pass(RenderGraph::PassBuilder& pass,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        pass.write_buffer(staging,
-                          VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                          VK_PIPELINE_STAGE_2_TRANSFER_BIT);
-
-        pass.write_image(handle,
-                         VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                         VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        pass.upload_image(staging, handle);
     }
 }
 
@@ -773,6 +778,7 @@ AssetServer::flush(ParallelResource<RenderGraph::PassServer>& passServer)
 
     // Reset cmds
     cmdCreateImgs.clear();
+    cmdCreateSamplers.clear();
     uninitialisedImages.clear();
 
     if (vertexBuffer.current_upload_size() != 0) {

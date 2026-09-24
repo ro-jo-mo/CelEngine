@@ -1,4 +1,5 @@
 #pragma once
+
 #include "core/Plugin.h"
 
 namespace Cel::Renderer::Passes {

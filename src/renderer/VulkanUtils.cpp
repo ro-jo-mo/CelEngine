@@ -183,88 +183,6 @@ Cel::Renderer::Utils::copy_image_to_image(VkCommandBuffer cmd,
 }
 
 Cel::Renderer::AllocatedImage
-Cel::Renderer::Utils::create_image(const void* data,
-                                   VkExtent3D size,
-                                   VkFormat format,
-                                   VkImageUsageFlags usage,
-                                   bool mipmapped,
-
-                                   const char* allocName,
-                                   VulkanContext& context,
-                                   VmaAllocator& allocator,
-                                   const ImmediateSubmit& immediate,
-                                   const GraphicsQueue& graphicsQueue)
-{
-
-    size_t dataSize = size.depth * size.width * size.height * 4;
-    AllocatedBuffer uploadBuffer =
-        create_buffer(dataSize,
-                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                      VMA_MEMORY_USAGE_CPU_TO_GPU,
-                      "image_upload_buffer_alloc",
-                      allocator);
-
-    memcpy(uploadBuffer.info.pMappedData, data, dataSize);
-
-    AllocatedImage newImage =
-        create_image(size,
-                     format,
-                     usage | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                         VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
-                     mipmapped,
-                     allocName,
-                     context,
-                     allocator);
-
-    submit_immediate(
-        [&](VkCommandBuffer cmd) {
-            transition_image_layout(cmd,
-                                    newImage.image,
-                                    VK_IMAGE_LAYOUT_UNDEFINED,
-                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-            VkBufferImageCopy copyRegion = {};
-            copyRegion.bufferOffset = 0;
-            copyRegion.bufferRowLength = 0;
-            copyRegion.bufferImageHeight = 0;
-
-            copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            copyRegion.imageSubresource.mipLevel = 0;
-            copyRegion.imageSubresource.baseArrayLayer = 0;
-            copyRegion.imageSubresource.layerCount = 1;
-            copyRegion.imageExtent = size;
-
-            // copy the buffer into the image
-            vkCmdCopyBufferToImage(cmd,
-                                   uploadBuffer.buffer,
-                                   newImage.image,
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                   1,
-                                   &copyRegion);
-
-            if (mipmapped) {
-                generate_mip_maps(cmd,
-                                  newImage.image,
-                                  VkExtent2D{ newImage.imageExtent.width,
-                                              newImage.imageExtent.height });
-            } else {
-                transition_image_layout(
-                    cmd,
-                    newImage.image,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            }
-        },
-        context,
-        immediate,
-        graphicsQueue);
-
-    destroy_buffer(uploadBuffer, allocator);
-
-    return newImage;
-}
-
-Cel::Renderer::AllocatedImage
 Cel::Renderer::Utils::create_image(VkExtent3D size,
                                    VkFormat format,
                                    VkImageUsageFlags usage,
@@ -454,6 +372,7 @@ Cel::Renderer::Utils::calculate_image_size(VkExtent3D extent, VkFormat format)
     size_t formatSize;
     switch (format) {
         case VK_FORMAT_R8G8B8A8_SNORM:
+        case VK_FORMAT_R8G8B8A8_UNORM:
             formatSize = 4;
             break;
         default:
@@ -461,124 +380,6 @@ Cel::Renderer::Utils::calculate_image_size(VkExtent3D extent, VkFormat format)
             throw_error("Unsupported image format");
     }
     return extent.depth * extent.width * extent.height * formatSize;
-}
-
-Cel::Renderer::AllocatedImage
-Cel::Renderer::Utils::create_cube_map(ktxTexture* texture,
-                                      VkFormat format,
-
-                                      const char* allocName,
-                                      VulkanContext& context,
-                                      VmaAllocator& allocator,
-                                      const ImmediateSubmit& immediate,
-                                      const GraphicsQueue& graphicsQueue)
-{
-    // Read basic image data from ktx file
-    VkExtent3D extent{ .width = texture->baseWidth,
-                       .height = texture->baseHeight,
-                       .depth = 1 };
-    uint32_t mipLevels = texture->numLevels;
-    ktx_uint8_t* textureData = ktxTexture_GetData(texture);
-    ktx_size_t textureSize = ktxTexture_GetDataSize(texture);
-
-    // Create upload buffer
-    AllocatedBuffer uploadBuffer =
-        create_buffer(textureSize,
-                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                      VMA_MEMORY_USAGE_CPU_TO_GPU,
-                      "skybox_upload_buffer_alloc",
-                      allocator);
-    // Upload image into buffer
-    memcpy(uploadBuffer.info.pMappedData, textureData, textureSize);
-
-    // Create cubemap image on gpu
-    VkImageCreateInfo imageCreateInfo = Initialisers::image_create_info(
-        format,
-        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        extent);
-    imageCreateInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-    imageCreateInfo.arrayLayers = 6;
-    imageCreateInfo.mipLevels = mipLevels;
-    imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    VkImageViewCreateInfo imageViewCreateInfo =
-        Initialisers::image_view_create_info(
-            format, VK_NULL_HANDLE, VK_IMAGE_ASPECT_COLOR_BIT);
-    imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-    imageViewCreateInfo.format = format;
-    imageViewCreateInfo.subresourceRange = {
-        VK_IMAGE_ASPECT_COLOR_BIT, 0, mipLevels, 0, 6
-    };
-
-    AllocatedImage newImage = create_image(imageCreateInfo,
-                                           imageViewCreateInfo,
-                                           allocName,
-                                           context.device,
-                                           allocator);
-
-    // Move image data from buffer to gpu image
-    submit_immediate(
-        [&](VkCommandBuffer cmd) {
-            std::vector<VkBufferImageCopy> copyRegions;
-            copyRegions.reserve(6 * mipLevels);
-
-            for (size_t face = 0; face < 6; face++) {
-                for (size_t mip = 0; mip < mipLevels; mip++) {
-                    ktx_size_t offset;
-                    auto err = ktxTexture_GetImageOffset(
-                        texture, mip, 0, face, &offset);
-                    assert(err == KTX_SUCCESS);
-
-                    VkBufferImageCopy copy{};
-                    copy.bufferOffset = offset;
-
-                    copy.imageExtent.width = extent.width >> mip;
-                    copy.imageExtent.height = extent.height >> mip;
-                    copy.imageExtent.depth = 1;
-
-                    copy.imageSubresource.aspectMask =
-                        VK_IMAGE_ASPECT_COLOR_BIT;
-                    copy.imageSubresource.mipLevel = mip;
-                    copy.imageSubresource.baseArrayLayer = face;
-                    copy.imageSubresource.layerCount = 1;
-
-                    copyRegions.push_back(copy);
-                }
-            }
-
-            VkImageSubresourceRange subresourceRange = {};
-            subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            subresourceRange.baseMipLevel = 0;
-            subresourceRange.levelCount = mipLevels;
-            subresourceRange.layerCount = 6;
-
-            transition_image_layout(cmd,
-                                    newImage.image,
-                                    VK_IMAGE_LAYOUT_UNDEFINED,
-                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-            // copy the buffer into the image
-            vkCmdCopyBufferToImage(cmd,
-                                   uploadBuffer.buffer,
-                                   newImage.image,
-                                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                   copyRegions.size(),
-                                   copyRegions.data());
-
-            transition_image_layout(cmd,
-                                    newImage.image,
-                                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                    subresourceRange);
-        },
-        context,
-        immediate,
-        graphicsQueue);
-
-    destroy_buffer(uploadBuffer, allocator);
-
-    return newImage;
 }
 
 Cel::Renderer::AllocatedBuffer
@@ -612,33 +413,6 @@ Cel::Renderer::Utils::create_buffer(const Handle<AllocatedBuffer> handle,
     vmaSetAllocationName(allocator, newBuffer.allocation, allocName);
 
     return newBuffer;
-}
-
-void
-Cel::Renderer::Utils::submit_immediate(
-    std::function<void(VkCommandBuffer cmd)>&& function,
-    const VulkanContext& context,
-    const ImmediateSubmit& immediate,
-    const GraphicsQueue& queue)
-{
-    vk_check(vkResetFences(context.device, 1, &immediate.fence));
-    vk_check(vkResetCommandBuffer(immediate.commandBuffer, 0));
-
-    auto beginInfo = Initialisers::command_buffer_begin_info(
-        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    vkBeginCommandBuffer(immediate.commandBuffer, &beginInfo);
-    function(immediate.commandBuffer);
-    vkEndCommandBuffer(immediate.commandBuffer);
-
-    VkCommandBufferSubmitInfo submitInfo =
-        Initialisers::command_buffer_submit_info(immediate.commandBuffer);
-    VkSubmitInfo2 submitInfo2 =
-        Initialisers::submit_info(&submitInfo, nullptr, nullptr);
-
-    vk_check(vkQueueSubmit2(queue.queue, 1, &submitInfo2, immediate.fence));
-    vk_check(vkWaitForFences(
-        context.device, 1, &immediate.fence, VK_TRUE, UINT64_MAX));
 }
 
 uint32_t
@@ -750,206 +524,6 @@ Cel::Renderer::Utils::destroy_buffer(const AllocatedBuffer& buffer,
     vmaDestroyBuffer(allocator, buffer.buffer, buffer.allocation);
 }
 
-Cel::Renderer::AllocatedMeshBuffer
-Cel::Renderer::Utils::upload_mesh(std::vector<uint32_t>& indices,
-                                  std::vector<Assets::Vertex>& vertices,
-                                  VulkanContext& context,
-                                  VmaAllocator& allocator,
-                                  ImmediateSubmit& immediate,
-                                  GraphicsQueue& queue)
-{
-    const size_t vertexBufferSize = vertices.size() * sizeof(Assets::Vertex);
-    const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
-
-    AllocatedMeshBuffer newSurface;
-    newSurface.indexCount = indices.size();
-
-    newSurface.vertexBuffer = create_buffer(
-        vertexBufferSize,
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        "vertex_buffer_alloc",
-        allocator);
-
-    VkBufferDeviceAddressInfo deviceAddressInfo{
-        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = newSurface.vertexBuffer.buffer
-    };
-    newSurface.vertexBufferAddress =
-        vkGetBufferDeviceAddress(context.device, &deviceAddressInfo);
-
-    newSurface.indexBuffer = create_buffer(indexBufferSize,
-                                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                                           VMA_MEMORY_USAGE_GPU_ONLY,
-                                           "index_buffer_alloc",
-                                           allocator);
-
-    AllocatedBuffer staging = create_buffer(vertexBufferSize + indexBufferSize,
-                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                            VMA_MEMORY_USAGE_CPU_ONLY,
-                                            "mesh_staging_buffer_alloc",
-                                            allocator);
-
-    void* data = staging.info.pMappedData;
-
-    // copy vertex buffer
-    memcpy(data, vertices.data(), vertexBufferSize);
-    // copy index buffer
-    memcpy(static_cast<char*>(data) + vertexBufferSize,
-           indices.data(),
-           indexBufferSize);
-
-    submit_immediate(
-        [&](VkCommandBuffer cmd) {
-            VkBufferCopy vertexCopy{ 0 };
-            vertexCopy.dstOffset = 0;
-            vertexCopy.srcOffset = 0;
-            vertexCopy.size = vertexBufferSize;
-
-            vkCmdCopyBuffer(cmd,
-                            staging.buffer,
-                            newSurface.vertexBuffer.buffer,
-                            1,
-                            &vertexCopy);
-
-            VkBufferCopy indexCopy{ 0 };
-            indexCopy.dstOffset = 0;
-            indexCopy.srcOffset = vertexBufferSize;
-            indexCopy.size = indexBufferSize;
-
-            vkCmdCopyBuffer(cmd,
-                            staging.buffer,
-                            newSurface.indexBuffer.buffer,
-                            1,
-                            &indexCopy);
-        },
-        context,
-        immediate,
-        queue);
-
-    destroy_buffer(staging, allocator);
-
-    return newSurface;
-}
-
-Cel::Renderer::AllocatedMeshBuffer
-Cel::Renderer::Utils::upload_mesh(std::vector<uint32_t>& indices,
-                                  std::vector<float>& vertices,
-                                  VulkanContext& context,
-                                  VmaAllocator& allocator,
-                                  ImmediateSubmit& immediate,
-                                  GraphicsQueue& queue)
-{
-    const size_t vertexBufferSize = vertices.size() * sizeof(float);
-    const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
-
-    AllocatedMeshBuffer newSurface;
-    newSurface.indexCount = indices.size();
-
-    newSurface.vertexBuffer = create_buffer(
-        vertexBufferSize,
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY,
-        "vertex_buffer_alloc",
-        allocator);
-
-    VkBufferDeviceAddressInfo deviceAddressInfo{
-        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = newSurface.vertexBuffer.buffer
-    };
-    newSurface.vertexBufferAddress =
-        vkGetBufferDeviceAddress(context.device, &deviceAddressInfo);
-
-    newSurface.indexBuffer = create_buffer(indexBufferSize,
-                                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                                               VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                                           VMA_MEMORY_USAGE_GPU_ONLY,
-                                           "index_buffer_alloc",
-                                           allocator);
-
-    AllocatedBuffer staging = create_buffer(vertexBufferSize + indexBufferSize,
-                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                            VMA_MEMORY_USAGE_CPU_ONLY,
-                                            "mesh_staging_buffer_alloc",
-                                            allocator);
-
-    void* data = staging.info.pMappedData;
-
-    // copy vertex buffer
-    memcpy(data, vertices.data(), vertexBufferSize);
-    // copy index buffer
-    memcpy(static_cast<char*>(data) + vertexBufferSize,
-           indices.data(),
-           indexBufferSize);
-
-    submit_immediate(
-        [&](VkCommandBuffer cmd) {
-            VkBufferCopy vertexCopy{};
-            vertexCopy.dstOffset = 0;
-            vertexCopy.srcOffset = 0;
-            vertexCopy.size = vertexBufferSize;
-
-            vkCmdCopyBuffer(cmd,
-                            staging.buffer,
-                            newSurface.vertexBuffer.buffer,
-                            1,
-                            &vertexCopy);
-
-            VkBufferCopy indexCopy{ 0 };
-            indexCopy.dstOffset = 0;
-            indexCopy.srcOffset = vertexBufferSize;
-            indexCopy.size = indexBufferSize;
-
-            vkCmdCopyBuffer(cmd,
-                            staging.buffer,
-                            newSurface.indexBuffer.buffer,
-                            1,
-                            &indexCopy);
-        },
-        context,
-        immediate,
-        queue);
-
-    destroy_buffer(staging, allocator);
-
-    return newSurface;
-}
-void
-Cel::Renderer::Utils::upload_to_buffer(const void* data,
-                                       const uint32_t size,
-                                       VkBuffer destination,
-                                       const uint32_t destinationOffset,
-                                       VulkanContext& context,
-                                       VmaAllocator& allocator,
-                                       ImmediateSubmit& immediate,
-                                       GraphicsQueue& queue)
-{
-    AllocatedBuffer staging = create_buffer(size,
-                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                            VMA_MEMORY_USAGE_CPU_ONLY,
-                                            "upload_to_XX_staging_buffer_alloc",
-                                            allocator);
-
-    memcpy(staging.info.pMappedData, data, size);
-
-    submit_immediate(
-        [=](VkCommandBuffer cmd) {
-            VkBufferCopy copy{};
-            copy.dstOffset = destinationOffset;
-            copy.srcOffset = 0;
-            copy.size = size;
-
-            vkCmdCopyBuffer(cmd, staging.buffer, destination, 1, &copy);
-        },
-        context,
-        immediate,
-        queue);
-
-    destroy_buffer(staging, allocator);
-}
 void
 Cel::Renderer::Utils::upload_to_buffer(VkCommandBuffer cmd,
                                        const void* data,
@@ -966,4 +540,26 @@ Cel::Renderer::Utils::upload_to_buffer(VkCommandBuffer cmd,
     copy.size = size;
 
     vkCmdCopyBuffer(cmd, staging.buffer, destination.buffer, 1, &copy);
+}
+
+void
+Cel::Renderer::Utils::set_scissor_and_viewport(VkCommandBuffer cmd,
+                                               const VkExtent2D& extent)
+{
+    VkViewport viewport{};
+    viewport.x = 0;
+    viewport.y = static_cast<float>(extent.height);
+    viewport.width = static_cast<float>(extent.width);
+    viewport.height = -static_cast<float>(extent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset.x = 0;
+    scissor.offset.y = 0;
+    scissor.extent = extent;
+
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
 }

@@ -53,8 +53,8 @@ struct RenderPass
 
     uint32_t queue;
 
-    std::vector<BufferCreate> newBuffers;
-    std::vector<ImageCreate> newImages;
+    std::vector<BufferCreate> bufferCreates;
+    std::vector<ImageCreate> imageCreates;
 
     std::vector<BufferRead> bufferReads;
     std::vector<ImageRead> imageReads;

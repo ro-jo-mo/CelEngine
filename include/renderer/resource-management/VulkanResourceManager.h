@@ -16,6 +16,8 @@ namespace Cel::Renderer {
 class VulkanResourceManager
 {
   public:
+    VulkanResourceManager(VkDevice device, VmaAllocator allocator);
+
     // At this stage only a handle is returned. No resource is actually
     // allocated
     Handle<AllocatedBuffer> get_handle_from_requirements(
@@ -49,6 +51,8 @@ class VulkanResourceManager
     void free_resource(Handle<AllocatedImage> handle);
 
     [[nodiscard]] BranchingResourceTracker branch_tracker() const;
+
+    VkDevice device;
 
   private:
     static bool is_compatible(const BufferRequirements& actual,
@@ -98,12 +102,11 @@ class VulkanResourceManager
         friend class VulkanResourceManager;
     };
 
-    ResourcePool<AllocatedBuffer, BufferRequirements> bufferPool;
-    ResourcePool<AllocatedImage, ImageRequirements> imagePool;
+    ResourcePool<AllocatedBuffer, BufferRequirements> bufferPool{ *this };
+    ResourcePool<AllocatedImage, ImageRequirements> imagePool{ *this };
 
     ResourceTracker tracker;
 
-    VkDevice device;
     VmaAllocator allocator;
 };
 

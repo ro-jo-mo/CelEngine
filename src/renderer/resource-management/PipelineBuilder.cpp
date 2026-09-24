@@ -4,6 +4,7 @@
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanUtils.h"
 
+#include <core/Config.h>
 #include <fstream>
 #include <ranges>
 #include <spirv_reflect.h>
@@ -216,12 +217,13 @@ PipelineBuilder::add_shader_module(const char* path,
     std::ifstream file(path, std::ios::ate | std::ios::binary);
 
     if (!file.is_open()) {
-        throw_error("unable to open shader file {}", std::move(path));
+        auto absolute = std::filesystem::absolute(path).string();
+        throw_error("unable to open shader file {}", std::move(absolute));
     }
 
     // The cursors is at the end of the file, so it can be used to get the
     // file size in bytes
-    size_t fileSize = (size_t)file.tellg();
+    size_t fileSize = file.tellg();
     std::vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
 
     file.seekg(0);
@@ -339,7 +341,7 @@ PipelineBuilder::reflect_descriptor_data(const SpvReflectEntryPoint* entry,
 
                 if (flags &
                     VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) {
-                    val.binding.descriptorCount = 4000;
+                    val.binding.descriptorCount = MAX_VARIABLE_DESCRIPTOR_ARRAY;
                 }
 
                 // basic correctness check
@@ -348,7 +350,7 @@ PipelineBuilder::reflect_descriptor_data(const SpvReflectEntryPoint* entry,
             } else {
                 if (flags &
                     VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) {
-                    binding.descriptorCount = 4000;
+                    binding.descriptorCount = MAX_VARIABLE_DESCRIPTOR_ARRAY;
                 }
 
                 descriptorSetLayouts.emplace(

@@ -2,6 +2,8 @@ set(namespace "CelEngine")
 
 set(MAX_ENTITIES 2048 CACHE STRING "Max number of entities that can exist at once")
 set(CMD_BUFFERS_PER_POOL 30 CACHE STRING "(Deprecated) Total number of cmd buffers created per pool for render passes")
+set(MAX_VARIABLE_DESCRIPTOR_ARRAY 4000 CACHE STRING "The number of descriptors assigned when creating a variable descriptor array for a shader")
+
 
 configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/../include/core/Config.h.in
@@ -21,6 +23,7 @@ find_package(fastgltf CONFIG REQUIRED)
 find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
+find_package(SPIRV-Headers CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC)
 
@@ -40,11 +43,12 @@ target_link_libraries(${PROJECT_NAME}
         fastgltf::fastgltf
         KTX::ktx
         unofficial::spirv-reflect
+        SPIRV-Headers::SPIRV-Headers
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_LEFT_HANDED)
+target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_LEFT_HANDED SPIRV_REFLECT_USE_SYSTEM_SPIRV_H)
 
 target_sources(${PROJECT_NAME}
         PRIVATE
@@ -57,6 +61,7 @@ target_sources(${PROJECT_NAME}
         "core/Time.cpp"
         "core/Transform.cpp"
         "core/CorePlugin.cpp"
+        "core/ThreadManager.cpp"
 
         "input/Input.cpp"
 
@@ -66,11 +71,11 @@ target_sources(${PROJECT_NAME}
         "renderer/Window.cpp"
         "renderer/VulkanSetup.cpp"
         "renderer/VulkanHelpers.cpp"
-        "renderer/Draw.cpp"
         "renderer/VulkanUtils.cpp"
         "renderer/AssetServer.cpp"
         "renderer/Descriptors.cpp"
         "renderer/Camera.cpp"
+        "renderer/SceneData.cpp"
 
         "renderer/render-graph/PassBuilder.cpp"
         "renderer/render-graph/RenderGraph.cpp"
@@ -79,6 +84,9 @@ target_sources(${PROJECT_NAME}
         "renderer/render-graph/PassServer.cpp"
 
         "renderer/passes/HandleAllocator.cpp"
+        "renderer/passes/BasePasses.cpp"
+        "renderer/passes/DrawMeshes.cpp"
+        "renderer/passes/PassPlugin.cpp"
 
         "renderer/resource-management/ResourceTracker.cpp"
         "renderer/resource-management/VulkanResourceManager.cpp"
@@ -138,12 +146,13 @@ set(public_headers
         include/renderer/Window.h
         include/renderer/VulkanHelpers.h
         include/renderer/VulkanTypes.h
-        include/renderer/Draw.h
         include/renderer/VulkanUtils.h
         include/renderer/AssetTypes.h
         include/renderer/Descriptors.h
         include/renderer/Camera.h
-        include/renderer/MegaBuffer.h
+        include/renderer/Queues.h
+        include/renderer/SceneData.h
+
 
         include/renderer/render-graph/RenderGraph.h
         include/renderer/render-graph/RenderGraphPlugin.h
@@ -154,6 +163,11 @@ set(public_headers
 
         include/renderer/passes/HandleAllocator.h
         include/renderer/passes/Passes.h
+        include/renderer/passes/BasePasses.h
+        include/renderer/passes/DrawMeshes.h
+        include/renderer/passes/PassPlugin.h
+        include/renderer/passes/BasePasses.h
+
 
         include/renderer/passes/DrawMeshes.h
         include/renderer/passes/DrawSkybox.h
@@ -164,6 +178,7 @@ set(public_headers
         include/renderer/resource-management/VulkanResourceManager.h
         include/renderer/resource-management/PipelineBuilder.h
         include/renderer/resource-management/DeletionQueue.h
+        include/renderer/resource-management/MegaBuffer.h
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")

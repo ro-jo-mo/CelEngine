@@ -88,15 +88,35 @@ class AssetServer
     [[nodiscard]] Mesh get_mesh(Handle<Mesh> mesh) const;
 
   private:
+    // Commands
+    struct CmdCreateImg
+    {
+        void* data;
+        VkExtent3D extent;
+        bool ktx;
+        bool gltf;
+    };
+
+    struct CmdCreateSampler
+    {
+        size_t imageIndex;
+        size_t samplerIndex;
+        uint32_t toSet;
+    };
+
     void create_defaults(VulkanResourceManager& manager);
 
     void load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage);
 
     void load_images(fastgltf::Asset& asset);
+
     void load_samplers(const fastgltf::Asset& asset);
 
-    uint32_t resolve_texture_sampler(
+    void resolve_texture_sampler(CmdCreateSampler& cmd);
+
+    void create_sampler_cmd(
         fastgltf::Asset& asset,
+        uint32_t& toSet,
         const std::optional<fastgltf::TextureInfo>& textureInfo,
         size_t imageOffset,
         size_t samplerOffset);
@@ -104,7 +124,9 @@ class AssetServer
     void load_materials(fastgltf::Asset& asset,
                         size_t imageOffset,
                         size_t samplerOffset);
+
     AssetNode load_nodes(fastgltf::Asset& asset, std::vector<Model>& models);
+
     std::vector<Model> load_models(fastgltf::Asset& asset,
                                    size_t materialOffset);
 
@@ -138,18 +160,12 @@ class AssetServer
     // We reserve a healthy number of handles at startup
     std::vector<Handle<AllocatedBuffer>> reservedBufferHandles;
 
-    // Commands
-    struct CreateImgCmd
-    {
-        void* data;
-        VkExtent3D extent;
-        bool ktx;
-        bool gltf;
-    };
     struct CreateMeshCmd
     {};
-    std::vector<CreateImgCmd> cmdCreateImgs;
-    // Store image allocations here until they're officially created with data
+    std::vector<CmdCreateImg> cmdCreateImgs;
+    std::vector<CmdCreateSampler> cmdCreateSamplers;
+    // Store image allocations here until they're officially created with
+    // data
     std::vector<AllocatedImage> uninitialisedImages;
 
     MegaBuffer vertexBuffer;

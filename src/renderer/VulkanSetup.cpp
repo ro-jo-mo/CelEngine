@@ -5,10 +5,12 @@
 #include "core/Error.h"
 #include "renderer/AssetServer.h"
 #include "renderer/Descriptors.h"
+#include "renderer/Queues.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanTypes.h"
 #include "renderer/VulkanUtils.h"
 #include "renderer/Window.h"
+#include "renderer/resource-management/VulkanResourceManager.h"
 
 #include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>
@@ -19,15 +21,19 @@ using namespace Cel::Renderer;
 constexpr bool useValidationLayers = true;
 
 void
-init_vulkan(ResourceManager& resourceManager)
+init_vulkan(Resource<VulkanContext>& context,
+            Resource<VmaAllocator>& allocator,
+            Resource<Window>& window,
+            Resource<FinalCleanup>& cleanup)
 {
+    window.initialise();
+
     // Firstly create a window
-    auto& window = resourceManager.insert_resource<Window>();
     VkSurfaceKHR surface;
 
     // Create a vulkan instance with our requirements
     vkb::InstanceBuilder builder;
-    auto instanceBuild = builder.set_app_name("My App")
+    auto instanceBuild = builder.set_app_name("Cel App")
                              .request_validation_layers(useValidationLayers)
                              .use_default_debug_messenger()
                              .require_api_version(1, 3, 0)
@@ -54,6 +60,7 @@ init_vulkan(ResourceManager& resourceManager)
     features12.runtimeDescriptorArray = true;
     features12.drawIndirectCount = true;
     features12.scalarBlockLayout = true;
+    features12.timelineSemaphore = true;
 
     VkPhysicalDeviceVulkan13Features features13{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES
@@ -75,50 +82,98 @@ init_vulkan(ResourceManager& resourceManager)
     vkb::DeviceBuilder deviceBuilder{ physicalDevice };
     auto deviceBuild = deviceBuilder.build().value();
 
-    VulkanContext context{ .instance = instanceBuild.instance,
-                           .gpu = deviceBuild.physical_device,
-                           .device = deviceBuild.device,
-                           .surface = surface };
+    context.initialise(instanceBuild.instance,
+                       deviceBuild.physical_device,
+                       deviceBuild.device,
+                       surface);
 
-    resourceManager.insert_resource(context);
+    bool computeFound = false;
+    bool transferFound = false;
+    bool graphicsFound = false;
 
-    auto [graphicsQueue, graphicsQueueFamily] =
-        deviceBuild.get_queue_and_index(vkb::QueueType::graphics).value();
+    // Originally I assumed it wouldn't really matter if we picked a random
+    // queue that matched the filter requirements below.
+    // However, most vendors seem to order their queues such that the first
+    // found is likely the ideal match, i.e. the rtx 3070 has graphics, transfer
+    // & compute first, then specialised video and optical flow queues that
+    // would also match the transfer filter
 
-    GraphicsQueue queue{ graphicsQueue, graphicsQueueFamily };
+    // As such, we go for the first match when searching for queues
 
-    resourceManager.insert_resource(queue);
+    for (const auto& [i, queue] :
+         std::views::enumerate(physicalDevice.get_queue_families())) {
 
-    VmaAllocator allocator;
+        // Graphics
+        if (queue.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            if (graphicsFound) {
+                continue;
+            }
+            graphicsFound = true;
+            vkGetDeviceQueue(context->device, i, 0, &Queues::graphics.queue);
+            Queues::graphics.family = i;
+        }
+
+        // Compute
+        if (queue.queueFlags & VK_QUEUE_COMPUTE_BIT &&
+            !(queue.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
+            if (computeFound) {
+                continue;
+            }
+            computeFound = true;
+            vkGetDeviceQueue(context->device, i, 0, &Queues::compute.queue);
+            Queues::compute.family = i;
+        }
+
+        // Transfer
+        if (queue.queueFlags & VK_QUEUE_TRANSFER_BIT &&
+            !(queue.queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+            !(queue.queueFlags & VK_QUEUE_COMPUTE_BIT)) {
+            if (transferFound) {
+                continue;
+            }
+            transferFound = true;
+            vkGetDeviceQueue(context->device, i, 0, &Queues::transfer.queue);
+            Queues::transfer.family = i;
+        }
+    }
+
+    if (!graphicsFound) {
+        throw_error("Unable to find a sufficient device (gpu)");
+    }
+    if (!computeFound) {
+        Queues::compute = Queues::graphics;
+    }
+    if (!transferFound) {
+        Queues::transfer = Queues::graphics;
+    }
+
+    allocator.initialise();
+
     VmaAllocatorCreateInfo allocatorInfo = {};
-    allocatorInfo.physicalDevice = context.gpu;
-    allocatorInfo.device = context.device;
-    allocatorInfo.instance = context.instance;
+    allocatorInfo.physicalDevice = context->gpu;
+    allocatorInfo.device = context->device;
+    allocatorInfo.instance = context->instance;
     allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-    vmaCreateAllocator(&allocatorInfo, &allocator);
+    vmaCreateAllocator(&allocatorInfo, allocator.get());
 
-    resourceManager.insert_resource(allocator);
-
-    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
-
-    cleanup->push([=, &window]() {
-        vmaDestroyAllocator(allocator);
-        vkDestroyDevice(context.device, nullptr);
-        vkDestroySurfaceKHR(instanceBuild, context.surface, nullptr);
-        vkb::destroy_debug_utils_messenger(context.instance,
+    cleanup->push([&]() {
+        vmaDestroyAllocator(*allocator);
+        vkDestroyDevice(context->device, nullptr);
+        vkDestroySurfaceKHR(instanceBuild, context->surface, nullptr);
+        vkb::destroy_debug_utils_messenger(context->instance,
                                            instanceBuild.debug_messenger);
 
-        vkDestroyInstance(context.instance, nullptr);
+        vkDestroyInstance(context->instance, nullptr);
         SDL_DestroyWindow(window->window);
         SDL_Quit();
     });
 }
 
 void
-init_swapchain(ResourceManager& resourceManager)
+init_swapchain(Resource<VulkanContext>& context,
+               Resource<Swapchain>& swapchain,
+               Resource<FinalCleanup>& cleanup)
 {
-    auto& context = resourceManager.get_resource<VulkanContext>();
-
     vkb::SwapchainBuilder builder{ context->gpu,
                                    context->device,
                                    context->surface };
@@ -135,316 +190,47 @@ init_swapchain(ResourceManager& resourceManager)
             .build()
             .value();
 
-    Swapchain swapchain{ .swapchain = swapchainBuild.swapchain,
-                         .images = swapchainBuild.get_images().value(),
-                         .imageViews = swapchainBuild.get_image_views().value(),
-                         .format = format,
-                         .extent = swapchainBuild.extent };
+    swapchain.initialise(swapchainBuild.swapchain,
+                         swapchainBuild.get_images().value(),
+                         swapchainBuild.get_image_views().value(),
+                         format,
+                         swapchainBuild.extent);
 
     // Create semaphores for swapchain images
     VkSemaphoreCreateInfo semaphoreCreateInfo =
         Initialisers::semaphore_create_info();
 
-    swapchain.submitSemaphores =
-        std::vector<VkSemaphore>(swapchain.images.size());
+    swapchain->submitSemaphores.resize(swapchain->images.size());
 
-    for (size_t i = 0; i < swapchain.images.size(); i++) {
+    for (size_t i = 0; i < swapchain->images.size(); i++) {
         vkCreateSemaphore(context->device,
                           &semaphoreCreateInfo,
                           nullptr,
-                          &swapchain.submitSemaphores[i]);
+                          &swapchain->submitSemaphores[i]);
     }
 
-    resourceManager.insert_resource(swapchain);
-
-    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
-
-    cleanup->push([=, &context]() {
-        vkDestroySwapchainKHR(context->device, swapchain.swapchain, nullptr);
-        for (int i = 0; i < swapchain.imageViews.size(); i++) {
+    cleanup->push([&]() {
+        vkDestroySwapchainKHR(context->device, swapchain->swapchain, nullptr);
+        for (int i = 0; i < swapchain->imageViews.size(); i++) {
             vkDestroyImageView(
-                context->device, swapchain.imageViews[i], nullptr);
+                context->device, swapchain->imageViews[i], nullptr);
             vkDestroySemaphore(
-                context->device, swapchain.submitSemaphores[i], nullptr);
+                context->device, swapchain->submitSemaphores[i], nullptr);
         }
     });
 }
 
 void
-init_draw_images(ResourceManager& resourceManager)
+Renderer::initialise_renderer(Resource<VulkanContext>& context,
+                              Resource<VmaAllocator>& allocator,
+                              Resource<Window>& window,
+                              Resource<Swapchain>& swapchain,
+                              Resource<VulkanResourceManager>& manager,
+                              Resource<Assets::AssetServer>& server,
+                              Resource<FinalCleanup>& cleanup)
 {
-    auto& swapchain = resourceManager.get_resource<Swapchain>();
-    auto& allocator = resourceManager.get_resource<VmaAllocator>();
-    auto& context = resourceManager.get_resource<VulkanContext>();
-
-    const VkExtent3D drawExtent{ .width = swapchain->extent.width,
-                                 .height = swapchain->extent.height,
-                                 .depth = 1 };
-
-    DrawImage drawImage;
-    drawImage.imageFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
-    drawImage.imageExtent = drawExtent;
-
-    VkImageUsageFlags drawImageUsages{};
-    drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    drawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
-    drawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    VkImageCreateInfo drawImageCreateInfo = Initialisers::image_create_info(
-        drawImage.imageFormat, drawImageUsages, drawImage.imageExtent);
-
-    VmaAllocationCreateInfo drawImageAllocationInfo{};
-    drawImageAllocationInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    drawImageAllocationInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    vmaCreateImage(*allocator,
-                   &drawImageCreateInfo,
-                   &drawImageAllocationInfo,
-                   &drawImage.image,
-                   &drawImage.allocation,
-                   nullptr);
-    vmaSetAllocationName(*allocator, drawImage.allocation, "draw_image_alloc");
-
-    VkImageViewCreateInfo drawViewCreateInfo =
-        Initialisers::image_view_create_info(
-            drawImage.imageFormat, drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
-
-    vk_check(vkCreateImageView(
-        context->device, &drawViewCreateInfo, nullptr, &drawImage.imageView));
-
-    resourceManager.insert_resource(drawImage);
-
-    // Create depth image
-    DepthImage depth;
-    depth.imageFormat = VK_FORMAT_D32_SFLOAT;
-    depth.imageExtent = drawImage.imageExtent;
-    VkImageUsageFlags depthImageUsages{};
-    depthImageUsages |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    VkImageCreateInfo depthImageCreateInfo = Initialisers::image_create_info(
-        depth.imageFormat, depthImageUsages, drawImage.imageExtent);
-
-    vmaCreateImage(*allocator,
-                   &depthImageCreateInfo,
-                   &drawImageAllocationInfo,
-                   &depth.image,
-                   &depth.allocation,
-                   nullptr);
-
-    vmaSetAllocationName(*allocator, depth.allocation, "depth_image_alloc");
-    VkImageViewCreateInfo depthImageViewCreateInfo =
-        Initialisers::image_view_create_info(
-            depth.imageFormat, depth.image, VK_IMAGE_ASPECT_DEPTH_BIT);
-    vk_check(vkCreateImageView(
-        context->device, &depthImageViewCreateInfo, nullptr, &depth.imageView));
-
-    resourceManager.insert_resource(depth);
-
-    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
-
-    cleanup->push([=, &context, &allocator]() {
-        vkDestroyImageView(context->device, drawImage.imageView, nullptr);
-        vkDestroyImageView(context->device, depth.imageView, nullptr);
-        vmaDestroyImage(*allocator, drawImage.image, drawImage.allocation);
-        vmaDestroyImage(*allocator, depth.image, depth.allocation);
-    });
-}
-
-void
-init_frame_data(ResourceManager& resourceManager)
-{
-    auto& queue = resourceManager.get_resource<GraphicsQueue>();
-    auto& context = resourceManager.get_resource<VulkanContext>();
-    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
-
-    FramesInFlight frameData{ .totalFrames = FRAMES_IN_FLIGHT };
-
-    VkCommandPoolCreateInfo commandPoolCreateInfo =
-        Initialisers::command_pool_create_info(
-            queue->family, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-
-    VkFenceCreateInfo fenceCreateInfo =
-        Initialisers::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
-    VkSemaphoreCreateInfo semaphoreCreateInfo =
-        Initialisers::semaphore_create_info();
-
-    // Create per frame resources
-    for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-        FrameData frame{};
-
-        // Firstly create command pool / buffer
-        vk_check(vkCreateCommandPool(context->device,
-                                     &commandPoolCreateInfo,
-                                     nullptr,
-                                     &frame.commandPool));
-
-        VkCommandBufferAllocateInfo commandBufferAllocateInfo =
-            Initialisers::command_buffer_allocate_info(frame.commandPool, 1);
-
-        vk_check(vkAllocateCommandBuffers(
-            context->device, &commandBufferAllocateInfo, &frame.commandBuffer));
-
-        // Next create synchronisation primitives
-        vk_check(vkCreateFence(
-            context->device, &fenceCreateInfo, nullptr, &frame.renderFence));
-
-        vk_check(vkCreateSemaphore(context->device,
-                                   &semaphoreCreateInfo,
-                                   nullptr,
-                                   &frame.acquireSemaphore));
-
-        frameData.frames.push_back(frame);
-
-        cleanup->push([=, &context]() {
-            vkDestroyCommandPool(context->device, frame.commandPool, nullptr);
-            vkDestroyFence(context->device, frame.renderFence, nullptr);
-
-            vkDestroySemaphore(
-                context->device, frame.acquireSemaphore, nullptr);
-        });
-    }
-
-    // Lastly create resources for immediate submit
-    ImmediateSubmit immediate{};
-    vk_check(vkCreateCommandPool(context->device,
-                                 &commandPoolCreateInfo,
-                                 nullptr,
-                                 &immediate.commandPool));
-
-    VkCommandBufferAllocateInfo commandBufferAllocateInfo =
-        Initialisers::command_buffer_allocate_info(immediate.commandPool, 1);
-
-    vk_check(vkAllocateCommandBuffers(
-        context->device, &commandBufferAllocateInfo, &immediate.commandBuffer));
-
-    vk_check(vkCreateFence(
-        context->device, &fenceCreateInfo, nullptr, &immediate.fence));
-
-    resourceManager.insert_resource(immediate);
-    resourceManager.insert_resource(frameData);
-
-    cleanup->push([=, &context]() {
-        vkDestroyCommandPool(context->device, immediate.commandPool, nullptr);
-        vkDestroyFence(context->device, immediate.fence, nullptr);
-    });
-}
-
-void
-init_descriptor_data(ResourceManager& resourceManager)
-{
-    auto& context = resourceManager.get_resource<VulkanContext>();
-    auto& frameData = resourceManager.get_resource<FramesInFlight>();
-
-    GlobalDescriptorData global{};
-
-    std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
-    };
-
-    global.allocator.init(context->device, 10, sizes);
-
-    auto& frames = frameData->frames;
-    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
-
-    for (int i = 0; i < FRAMES_IN_FLIGHT; i++) {
-        // create a descriptor pool
-        std::vector<DescriptorAllocator::PoolSizeRatio> frameSizes = {
-            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
-            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
-            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4 },
-        };
-
-        frames[i].descriptorAllocator.init(context->device, 1000, frameSizes);
-
-        cleanup->push(
-            [&, i]() { frames[i].descriptorAllocator.destroy_pools(); });
-    }
-
-    auto& globalRes = resourceManager.insert_resource(global);
-
-    cleanup->push([&]() {
-        vkDestroyDescriptorSetLayout(
-            context->device, globalRes->sceneLayout, nullptr);
-        vkDestroyDescriptorSetLayout(
-            context->device, globalRes->skyboxLayout, nullptr);
-        globalRes->allocator.destroy_pools();
-    });
-}
-
-void
-init_asset_server(ResourceManager& resourceManager)
-{
-    auto& context = resourceManager.get_resource<VulkanContext>();
-    auto& queue = resourceManager.get_resource<GraphicsQueue>();
-    auto& allocator = resourceManager.get_resource<VmaAllocator>();
-    auto& immediate = resourceManager.get_resource<ImmediateSubmit>();
-    auto& global = resourceManager.get_resource<GlobalDescriptorData>();
-
-    resourceManager.insert_resource<Assets::AssetServer>(
-        context, allocator, immediate, queue, global);
-}
-
-void
-init_pipeline(ResourceManager& resourceManager)
-{
-    auto& context = resourceManager.get_resource<VulkanContext>();
-    auto& global = resourceManager.get_resource<GlobalDescriptorData>();
-
-    Pipeline meshPipe = PipelineBuilder(context->device)
-                            .add_shader_module("../../shaders/mesh.vert.spv",
-                                               VK_SHADER_STAGE_VERTEX_BIT)
-                            .add_shader_module("../../shaders/mesh.frag.spv",
-                                               VK_SHADER_STAGE_FRAGMENT_BIT)
-                            .build();
-
-    resourceManager.insert_resource<MeshPipeline>(meshPipe.pipeline,
-                                                  meshPipe.pipelineLayout);
-
-    global->sceneLayout = meshPipe.descriptorSets[0];
-
-    // Create skybox pipeline
-
-    auto skyboxPipe = PipelineBuilder(context->device)
-                          .add_shader_module("../../shaders/skybox.vert.spv",
-                                             VK_SHADER_STAGE_VERTEX_BIT)
-                          .add_shader_module("../../shaders/skybox.frag.spv",
-                                             VK_SHADER_STAGE_FRAGMENT_BIT)
-                          .build();
-
-    global->skyboxLayout = skyboxPipe.descriptorSets[0];
-
-    resourceManager.insert_resource<SkyboxPipeline>(skyboxPipe.pipeline,
-                                                    skyboxPipe.pipelineLayout);
-
-    // clean structures
-
-    auto& cleanup = resourceManager.get_resource<FinalCleanup>();
-
-    cleanup->push([=, &context]() {
-        vkDestroyPipelineLayout(
-            context->device, meshPipe.pipelineLayout, nullptr);
-        vkDestroyPipeline(context->device, meshPipe.pipeline, nullptr);
-
-        vkDestroyPipelineLayout(
-            context->device, skyboxPipe.pipelineLayout, nullptr);
-        vkDestroyPipeline(context->device, skyboxPipe.pipeline, nullptr);
-    });
-}
-
-void
-VulkanInitialiser::initialise(ResourceManager& resourceManager)
-{
-    resourceManager.insert_resource<FinalCleanup>();
-    resourceManager.insert_resource<RenderExtent>();
-
-    init_vulkan(resourceManager);
-    init_swapchain(resourceManager);
-    init_draw_images(resourceManager);
-    init_frame_data(resourceManager);
-    init_descriptor_data(resourceManager);
-    init_asset_server(resourceManager);
-
-    init_pipeline(resourceManager);
+    init_vulkan(context, allocator, window, cleanup);
+    init_swapchain(context, swapchain, cleanup);
+    manager.initialise(context->device, *allocator);
+    server.initialise(*manager);
 }

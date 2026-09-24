@@ -1,6 +1,7 @@
 #include "renderer/passes/DrawMeshes.h"
 
 #include "renderer/AssetServer.h"
+#include "renderer/Queues.h"
 #include "renderer/SceneData.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/passes/Passes.h"
@@ -29,7 +30,8 @@ void
 Cel::Renderer::Passes::register_indirect_draw_data_pass(
     Resource<RenderGraph::Graph>& graph)
 {
-    auto pass = RenderGraph::PassBuilder(indirectDataPass);
+    auto pass =
+        RenderGraph::PassBuilder(indirectDataPass).set_queue(Queues::transfer);
 
     pass.create_buffer(indirectStagingBuffer,
                        true,
@@ -59,7 +61,7 @@ Cel::Renderer::Passes::create_indirect_draw_data(
 
     indirectCalls.reserve(renderables.size());
 
-    for (const auto& [entity, transform, meshHandle, matHandle] : renderables) {
+    for (const auto& [entity, meshHandle, matHandle] : renderables) {
 
         auto index = scene->get_entity_index(entity);
 
@@ -102,11 +104,31 @@ Cel::Renderer::Passes::create_indirect_draw_data(
 void
 Cel::Renderer::Passes::register_draw_mesh_pass(
     Resource<Assets::AssetServer>& server,
-    Resource<RenderGraph::Graph>& graph)
+    Resource<RenderGraph::Graph>& graph,
+    Resource<RenderExtent>& extent)
 {
-    auto pass = RenderGraph::PassBuilder(drawMeshPass);
+    auto pass =
+        RenderGraph::PassBuilder(drawMeshPass).set_queue(Queues::graphics);
 
-    pass.write_image(Passes::drawImage,
+    VkExtent3D ext{ .width = extent->extent.width,
+                    .height = extent->extent.height,
+                    .depth = 1 };
+
+    pass.create_image(Passes::drawImage,
+                      false,
+                      VK_FORMAT_R16G16B16A16_SFLOAT,
+                      ext,
+                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                          VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                      VK_IMAGE_ASPECT_COLOR_BIT)
+        .create_image(Passes::depthImage,
+                      false,
+                      VK_FORMAT_D32_SFLOAT,
+                      ext,
+                      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                          VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                      VK_IMAGE_ASPECT_DEPTH_BIT)
+        .write_image(Passes::drawImage,
                      VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
@@ -129,9 +151,6 @@ Cel::Renderer::Passes::draw_mesh(
         renderables,
     ParallelResource<RenderGraph::PassServer>& passServer)
 {
-    // When should I create indirect data? I'll do it in another pass so we can
-    // use auto sync
-
     VkCommandBuffer cmd;
     {
         cmd = passServer.write()->get_cmd_buffer(drawMeshPass);
@@ -153,12 +172,14 @@ Cel::Renderer::Passes::draw_mesh(
     VkRenderingInfo renderInfo = Initialisers::rendering_info(
         access->get_extent(), &colourAttachment, &depthAttachment);
 
+    Utils::set_scissor_and_viewport(cmd, access->get_extent());
+
     vkCmdBeginRendering(cmd, &renderInfo);
 
     static auto pipeline = PipelineBuilder(access->get_device())
-                               .add_shader_module("./shaders/mesh.vert.spv",
+                               .add_shader_module("../../shaders/mesh.vert.spv",
                                                   VK_SHADER_STAGE_VERTEX_BIT)
-                               .add_shader_module("./shaders/mesh.frag.spv",
+                               .add_shader_module("../../shaders/mesh.frag.spv",
                                                   VK_SHADER_STAGE_FRAGMENT_BIT)
                                .build();
 

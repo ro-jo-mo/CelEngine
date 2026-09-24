@@ -5,6 +5,7 @@
 #include "ecs/Resource.h"
 
 namespace Cel::Renderer {
+struct RenderExtent;
 class VulkanResourceManager;
 }
 namespace Cel::Renderer::RenderGraph {
@@ -44,7 +45,8 @@ create_indirect_draw_data(
 
 void
 register_draw_mesh_pass(Resource<Assets::AssetServer>& server,
-                        Resource<RenderGraph::Graph>& graph);
+                        Resource<RenderGraph::Graph>& graph,
+                        Resource<RenderExtent>& extent);
 
 void
 draw_mesh(Query<With<Entity, Handle<Assets::Mesh>, Handle<Assets::Material>>>&

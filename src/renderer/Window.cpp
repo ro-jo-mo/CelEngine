@@ -18,13 +18,10 @@ Renderer::Window::Window()
 
 void
 Renderer::set_render_extent(Resource<RenderExtent>& renderExtent,
-                          Resource<DrawImage>& drawImage,
-                          Resource<Swapchain>& swapchain)
+                            Resource<Swapchain>& swapchain)
 {
     renderExtent->extent.height =
-        std::min(swapchain->extent.height, drawImage->imageExtent.height) *
-        renderExtent->renderScale;
+        swapchain->extent.height * renderExtent->renderScale;
     renderExtent->extent.width =
-        std::min(swapchain->extent.width, drawImage->imageExtent.width) *
-        renderExtent->renderScale;
+        swapchain->extent.width * renderExtent->renderScale;
 }

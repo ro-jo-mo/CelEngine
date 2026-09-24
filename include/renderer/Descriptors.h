@@ -16,9 +16,12 @@ class DescriptorAllocator
         float ratio;
     };
 
-    void init(VkDevice device,
-              uint32_t initialSets,
-              std::span<PoolSizeRatio> poolRatios);
+    DescriptorAllocator() = default;
+
+    DescriptorAllocator(VkDevice device,
+                        uint32_t initialSets,
+                        std::span<PoolSizeRatio> poolRatios);
+
     void clear_pools();
     void destroy_pools();
 

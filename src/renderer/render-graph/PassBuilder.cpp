@@ -20,7 +20,7 @@ PassBuilder::create_buffer(const Handle<AllocatedBuffer> buffer,
                            VkBufferUsageFlags2 usages,
                            VmaMemoryUsage memoryUsage)
 {
-    pass.newBuffers.emplace_back(
+    pass.bufferCreates.emplace_back(
         buffer, perFrame, BufferRequirements{ allocSize, usages, memoryUsage });
 
     return *this;
@@ -34,7 +34,7 @@ PassBuilder::create_image(const Handle<AllocatedImage> image,
                           VkImageUsageFlags usages,
                           VkImageAspectFlags aspects)
 {
-    pass.newImages.emplace_back(
+    pass.imageCreates.emplace_back(
         image, perFrame, ImageRequirements{ format, extent, usages, aspects });
 
     return *this;
@@ -101,7 +101,7 @@ PassBuilder::upload_buffer(Handle<AllocatedBuffer> staging,
 }
 
 PassBuilder&
-PassBuilder::upload_image(Handle<AllocatedImage> staging,
+PassBuilder::upload_image(Handle<AllocatedBuffer> staging,
                           Handle<AllocatedImage> uploadTo)
 {
 
@@ -109,9 +109,9 @@ PassBuilder::upload_image(Handle<AllocatedImage> staging,
 }
 
 PassBuilder&
-PassBuilder::set_queue(const uint32_t queue)
+PassBuilder::set_queue(const Queue& queue)
 {
-    pass.queue = queue;
+    pass.queue = queue.family;
 
     return *this;
 }
@@ -120,11 +120,7 @@ RenderPass
 PassBuilder::build()
 {
     // Basic validity checks
-
-    if (pass.imageWrites.size() + pass.bufferWrites.size() == 0) {
-        throw_error("render pass must write to at least one resource");
-    }
-
+    
     if (pass.queue == UINT32_MAX) {
         // I think I'll actually set the queue in build as a parameter instead
         throw_error("Pass: {} does not have a queue set",

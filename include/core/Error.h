@@ -7,6 +7,7 @@
 #include <thread>
 
 namespace Cel {
+
 // For some very annoying reason, my runtime deletes the message from
 // runtime_error As such I also print to stderr
 template<typename... T>

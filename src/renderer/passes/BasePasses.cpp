@@ -2,6 +2,7 @@
 
 #include "renderer/AssetServer.h"
 #include "renderer/Camera.h"
+#include "renderer/Queues.h"
 #include "renderer/SceneData.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassBuilder.h"
@@ -9,10 +10,25 @@
 #include "renderer/render-graph/RenderGraph.h"
 
 void
+Cel::Renderer::Passes::PassFriend::register_present_pass(
+    Resource<RenderGraph::Graph>& graph)
+{
+    auto pass = RenderGraph::PassBuilder(Passes::presentPass)
+                    .read_image(Passes::drawImage,
+                                VK_PIPELINE_STAGE_2_BLIT_BIT,
+                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                VK_ACCESS_2_TRANSFER_READ_BIT)
+                    .set_queue(Queues::graphics);
+
+    graph->set_present_pass(pass.build());
+}
+
+void
 Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
     Resource<RenderGraph::Graph>& graph)
 {
-    auto pass = RenderGraph::PassBuilder(Passes::createSceneDataPass);
+    auto pass = RenderGraph::PassBuilder(Passes::createSceneDataPass)
+                    .set_queue(Queues::transfer);
 
     pass // Scene data
         .create_buffer(Passes::sceneDataStagingBuffer,
@@ -32,7 +48,7 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
                        true,
                        sizeof(PerEntityGpuData) * MAX_ENTITIES,
                        VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
-                       VMA_MEMORY_USAGE_GPU_ONLY)
+                       VMA_MEMORY_USAGE_CPU_TO_GPU)
         .create_buffer(Passes::entityDataBuffer,
                        false,
                        sizeof(PerEntityGpuData) * MAX_ENTITIES, // Scalar layout
@@ -56,7 +72,7 @@ Cel::Renderer::Passes::PassFriend::create_and_bind_scene_data(
 {
     const auto& [cam, camTrans] = *camera.begin();
 
-    auto& access = passServer.illegal();
+    auto access = passServer.partial_read();
 
     VkBufferDeviceAddressInfo vertInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -83,9 +99,9 @@ Cel::Renderer::Passes::PassFriend::create_and_bind_scene_data(
                         .perEntityBufferAddress = materialAddress,
                         .viewMatrix = cam.get_view_matrix(),
                         .projectionMatrix =
-                            cam.get_projection_matrix(access.get_extent()),
+                            cam.get_projection_matrix(access->get_extent()),
                         .viewProjMatrix =
-                            cam.get_projection_matrix(access.get_extent()) *
+                            cam.get_projection_matrix(access->get_extent()) *
                             cam.get_view_matrix() };
 
     std::vector<PerEntityGpuData> entityData{ sceneData->entityToIndex.size() };
@@ -110,7 +126,7 @@ Cel::Renderer::Passes::PassFriend::create_and_bind_scene_data(
         VkDescriptorSetLayoutBinding textures{
             .binding = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = 4000,
+            .descriptorCount = MAX_VARIABLE_DESCRIPTOR_ARRAY,
             .stageFlags = VK_SHADER_STAGE_ALL,
             .pImmutableSamplers = nullptr
         };
@@ -118,7 +134,7 @@ Cel::Renderer::Passes::PassFriend::create_and_bind_scene_data(
         builder.add_binding(textures,
                             VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
 
-        baseDescLayout = builder.build(access.get_device());
+        baseDescLayout = builder.build(access->get_device());
     }
 
     VkPipelineLayout baseLayout;
@@ -134,18 +150,19 @@ Cel::Renderer::Passes::PassFriend::create_and_bind_scene_data(
         };
 
         vkCreatePipelineLayout(
-            access.get_device(), &baseLayoutCreateInfo, nullptr, &baseLayout);
+            access->get_device(), &baseLayoutCreateInfo, nullptr, &baseLayout);
     }
 
     DescriptorWriter writer;
     {
-        writer.write_buffer(0,
-                            access.get_resource(Passes::sceneDataBuffer).buffer,
-                            sizeof(sceneData->data),
-                            0,
-                            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+        writer.write_buffer(
+            0,
+            access->get_resource(Passes::sceneDataBuffer).buffer,
+            sizeof(sceneData->data),
+            0,
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-        if (assetServer->textureCache.descriptors.size() > 0) {
+        if (!assetServer->textureCache.descriptors.empty()) {
             VkWriteDescriptorSet arraySet;
             arraySet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             arraySet.descriptorCount =
@@ -170,24 +187,24 @@ Cel::Renderer::Passes::PassFriend::create_and_bind_scene_data(
         baseDescSet =
             server->get_descriptor_allocator().allocate(baseDescLayout);
 
-        writer.update_set(access.get_device(), baseDescSet);
+        writer.update_set(access->get_device(), baseDescSet);
     }
 
     Utils::upload_to_buffer(
         cmd,
         &sceneData->data,
         sizeof(sceneData->data),
-        access.get_resource(Passes::sceneDataBuffer),
+        access->get_resource(Passes::sceneDataBuffer),
         0,
-        access.get_resource(Passes::sceneDataStagingBuffer));
+        access->get_resource(Passes::sceneDataStagingBuffer));
 
     Utils::upload_to_buffer(
         cmd,
         entityData.data(),
         entityData.size(),
-        access.get_resource(Passes::entityDataBuffer),
+        access->get_resource(Passes::entityDataBuffer),
         0,
-        access.get_resource(Passes::entityDataStagingBuffer));
+        access->get_resource(Passes::entityDataStagingBuffer));
 
     vkCmdBindDescriptorSets(cmd,
                             VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -208,7 +225,8 @@ Cel::Renderer::Passes::PassFriend::register_asset_upload_pass(
     Resource<VulkanResourceManager>& manager,
     Resource<RenderGraph::Graph>& graph)
 {
-    auto pass = RenderGraph::PassBuilder(uploadAssetsPass);
+    auto pass =
+        RenderGraph::PassBuilder(uploadAssetsPass).set_queue(Queues::transfer);
 
     server->register_pass(pass, manager);
 

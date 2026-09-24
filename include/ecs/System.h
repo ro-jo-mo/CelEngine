@@ -75,10 +75,14 @@ class SystemAllocator
      * @return The actual Resource / query
      */
     template<typename T>
-    T register_t();
+    void register_t();
 
     template<typename T>
-    struct RegisterAll;
+    static T get_t(QueryManager& queryManager,
+                   ResourceManager& resourceManager);
+
+    template<typename T>
+    struct ParameterHelper;
 
     std::vector<std::type_index> registeredResources;
     std::vector<std::type_index> registeredQueries;
@@ -88,17 +92,28 @@ class SystemAllocator
 
 // Create a simple wrapper class to allow partial template specialisation
 template<typename... Parameters>
-struct SystemAllocator::RegisterAll<ParameterList<Parameters...>>
+struct SystemAllocator::ParameterHelper<ParameterList<Parameters...>>
 {
-    static std::tuple<Parameters&...> execute(SystemAllocator& allocator);
+    static void register_all(SystemAllocator& allocator);
+    static std::tuple<Parameters&...> get_all(QueryManager& queryManager,
+                                              ResourceManager& resourceManager);
 };
 
 template<typename... Parameters>
-std::tuple<Parameters&...>
-SystemAllocator::RegisterAll<ParameterList<Parameters...>>::execute(
+void
+SystemAllocator::ParameterHelper<ParameterList<Parameters...>>::register_all(
     SystemAllocator& allocator)
 {
-    return std::tie(allocator.register_t<Parameters>()...);
+    (void(allocator.register_t<Parameters>()), ...);
+}
+
+template<typename... Parameters>
+std::tuple<Parameters&...>
+SystemAllocator::ParameterHelper<ParameterList<Parameters...>>::get_all(
+    QueryManager& queryManager,
+    ResourceManager& resourceManager)
+{
+    return std::tie(get_t<Parameters>(queryManager, resourceManager)...);
 }
 
 template<typename System>
@@ -108,23 +123,48 @@ SystemAllocator::allocate_system(System system)
     // ParameterList<Params...>
     using Parameters = decltype(get_function_type(system))::Parameters;
 
-    auto args = RegisterAll<Parameters>::execute(*this);
+    ParameterHelper<Parameters>::register_all(*this);
 
-    return [=, args = std::move(args)]() { std::apply(system, args); };
+    return [=, this]() {
+        std::apply(system,
+                   ParameterHelper<Parameters>::get_all(queryManager,
+                                                        resourceManager));
+    };
 }
 
-template<typename _T>
-_T
+template<typename T_>
+void
 SystemAllocator::register_t()
 {
-    using T = std::remove_reference_t<_T>;
+    using T = std::remove_reference_t<T_>;
 
     if constexpr (IsQuery<T>::value) {
         registeredQueries.push_back(std::type_index(typeid(T)));
-        return queryManager.get_query<T>();
     } else if constexpr (IsResource<T>::value) {
         registeredResources.push_back(std::type_index(typeid(T)));
+    } else if constexpr (IsParallelResource<T>::value) {
+        // Don't register access
+    } else {
+        static_assert(alwaysFalse<T>,
+                      "A system can only request resources and queries!");
+        return T();
+    }
+}
+
+template<typename T_>
+T_
+SystemAllocator::get_t(QueryManager& queryManager,
+                       ResourceManager& resourceManager)
+{
+    using T = std::remove_reference_t<T_>;
+
+    if constexpr (IsQuery<T>::value) {
+        return queryManager.get_query<T>();
+    } else if constexpr (IsResource<T>::value) {
         return resourceManager.get_resource<typename T::inner>();
+    } else if constexpr (IsParallelResource<T>::value) {
+        // Don't register access
+        return resourceManager.get_parallel_resource<typename T::inner>();
     } else {
         static_assert(alwaysFalse<T>,
                       "A system can only request resources and queries!");

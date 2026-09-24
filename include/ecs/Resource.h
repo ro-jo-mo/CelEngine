@@ -2,6 +2,7 @@
 
 #include "IResource.h"
 
+#include <assert.h>
 #include <shared_mutex>
 #include <utility>
 
@@ -18,34 +19,60 @@ class Resource : public IResource
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
 
+    // Null constructor
+    Resource() = default;
+
     template<typename... Args>
-    explicit Resource(Args&&... args)
-        : resource(T(std::forward<Args>(args)...))
+    explicit Resource(std::in_place_t, Args&&... args)
+        : resource(std::make_unique<T>(std::forward<Args>(args)...))
     {
     }
 
     using inner = T;
 
+    T* get();
+
     T* operator->();
 
     T& operator*();
 
+    template<typename... Args>
+    void initialise(Args&&... args);
+
   protected:
-    T resource;
+    std::unique_ptr<T> resource;
 };
+
+template<typename T>
+T*
+Resource<T>::get()
+{
+    assert(resource != nullptr && "resource is accessed before initialisation");
+    return resource.get();
+}
 
 template<typename T>
 T*
 Resource<T>::operator->()
 {
-    return &resource;
+    assert(resource != nullptr && "resource is accessed before initialisation");
+    return resource.get();
 }
 
 template<typename T>
 T&
 Resource<T>::operator*()
 {
-    return resource;
+    assert(resource != nullptr && "resource is accessed before initialisation");
+    return *resource;
+}
+
+template<typename T>
+template<typename... Args>
+void
+Resource<T>::initialise(Args&&... args)
+{
+    resource = std::make_unique<T>(std::forward<Args>(args)...);
 }
 
 /**
@@ -54,16 +81,19 @@ Resource<T>::operator*()
  * @tparam T
  */
 template<typename T>
-class ParallelResource : IResource
+class ParallelResource : public IResource
 {
   public:
     // Remove copy constructor
     ParallelResource(const ParallelResource&) = delete;
     ParallelResource& operator=(const ParallelResource&) = delete;
 
+    // Null constructor
+    ParallelResource() = default;
+
     template<typename... Args>
-    explicit ParallelResource(Args&&... args)
-        : resource(T(std::forward<Args>(args)...))
+    explicit ParallelResource(std::in_place_t, Args&&... args)
+        : resource(std::make_unique<T>(std::forward<Args>(args)...))
     {
     }
 
@@ -142,10 +172,13 @@ class ParallelResource : IResource
      */
     AbsoluteGuard absolute();
 
+    template<typename... Args>
+    void initialise(Args&&... args);
+
   protected:
     std::shared_mutex fullMutex;
     std::shared_mutex partialMutex;
-    T resource;
+    std::unique_ptr<T> resource;
 };
 
 template<typename T>
@@ -180,28 +213,40 @@ template<typename T>
 ParallelResource<T>::WriteGuard
 ParallelResource<T>::write()
 {
-    return { fullMutex, resource };
+    assert(resource != nullptr && "resource is accessed before initialisation");
+    return { fullMutex, *resource };
 }
 
 template<typename T>
 ParallelResource<T>::ReadGuard
 ParallelResource<T>::read()
 {
-    return { fullMutex, resource };
+    assert(resource != nullptr && "resource is accessed before initialisation");
+    return { fullMutex, *resource };
 }
 
 template<typename T>
 ParallelResource<T>::ReadGuard
 ParallelResource<T>::partial_read()
 {
-    return { partialMutex, resource };
+    assert(resource != nullptr && "resource is accessed before initialisation");
+    return { partialMutex, *resource };
 }
 
 template<typename T>
 ParallelResource<T>::AbsoluteGuard
 ParallelResource<T>::absolute()
 {
-    return { fullMutex, partialMutex, resource };
+    assert(resource != nullptr && "resource is accessed before initialisation");
+    return { fullMutex, partialMutex, *resource };
+}
+
+template<typename T>
+template<typename... Args>
+void
+ParallelResource<T>::initialise(Args&&... args)
+{
+    resource = std::make_unique<T>(std::forward<Args>(args)...);
 }
 
 }

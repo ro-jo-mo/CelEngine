@@ -3,6 +3,14 @@
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanUtils.h"
 
+Cel::Renderer::VulkanResourceManager::VulkanResourceManager(
+    VkDevice device,
+    VmaAllocator allocator)
+    : device(device)
+    , allocator(allocator)
+{
+}
+
 Cel::Handle<Cel::Renderer::AllocatedBuffer>
 Cel::Renderer::VulkanResourceManager::get_handle_from_requirements(
     const BufferRequirements requirements,
@@ -67,6 +75,9 @@ bool
 Cel::Renderer::VulkanResourceManager::does_resource_exist(
     Handle<AllocatedImage> handle)
 {
+    // Has the handle been added to the pool and not been freed
+    return imagePool.requirements.contains(handle) &&
+           std::ranges::find(imagePool.freed, handle) != imagePool.freed.end();
 }
 
 void

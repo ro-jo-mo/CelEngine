@@ -8,7 +8,6 @@ namespace Cel::Renderer {
 
 void
 cleanup_renderer(Resource<FinalCleanup>& cleanup,
-                 Resource<FramesInFlight>& frameData,
                  Resource<VulkanContext>& context);
 
 void
