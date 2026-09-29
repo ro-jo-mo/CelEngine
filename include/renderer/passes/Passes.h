@@ -9,15 +9,17 @@ namespace Cel::Renderer::Passes {
 
 // All passes run *after* the base pass. Used as a marker for existing resources
 inline const auto basePass = HandleAllocator::allocate_pass("base_pass");
+// Used for inserting transitions
+inline const auto basePassGraphics =
+    HandleAllocator::allocate_pass("base_pass_graphics");
+inline const auto basePassCompute =
+    HandleAllocator::allocate_pass("base_pass_compute");
+inline const auto basePassTransfer =
+    HandleAllocator::allocate_pass("base_pass_transfer");
 
 // Never to be manually used. Implicitly separates the add_pass & add_setup_pass
 // commands.
 inline const auto setupPass = HandleAllocator::allocate_pass("setup_pass");
-
-// The base state of any per frame resource. Simply marks that this resource
-// does not need any synchronisation or transfer from its existing state, as it
-// has no data
-inline const auto nullPass = HandleAllocator::allocate_pass("null_pass");
 
 // Presents the frame to the swapchain
 inline const auto presentPass = HandleAllocator::allocate_pass("present_pass");

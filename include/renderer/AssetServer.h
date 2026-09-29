@@ -185,5 +185,7 @@ class AssetServer
     friend void Renderer::cleanup_asset_server(
         Resource<AssetServer>& assetServer);
     friend struct Passes::PassFriend;
+    friend class RenderGraph::PassServer;
 };
+
 }

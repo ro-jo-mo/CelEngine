@@ -232,7 +232,7 @@ Cel::Renderer::Utils::create_image(VkExtent3D size,
     vk_check(vkCreateImageView(
         context.device, &view_info, nullptr, &newImage.imageView));
 
-    vmaSetAllocationName(allocator, newImage.allocation, allocName);
+    set_resource_name(context.device, allocator, newImage, allocName);
 
     return newImage;
 }
@@ -270,7 +270,7 @@ Cel::Renderer::Utils::create_image(const Handle<AllocatedImage> handle,
     vk_check(vkCreateImageView(
         device, &imageViewCreateInfo, nullptr, &newImage.imageView));
 
-    vmaSetAllocationName(allocator, newImage.allocation, allocName);
+    set_resource_name(device, allocator, newImage, allocName);
 
     return newImage;
 }
@@ -387,7 +387,9 @@ Cel::Renderer::Utils::create_buffer(const Handle<AllocatedBuffer> handle,
                                     const size_t allocSize,
                                     const VkBufferUsageFlags usage,
                                     const VmaMemoryUsage memoryUsage,
+
                                     const char* allocName,
+                                    VkDevice device,
                                     const VmaAllocator& allocator)
 {
     VkBufferCreateInfo bufferInfo = {};
@@ -410,7 +412,7 @@ Cel::Renderer::Utils::create_buffer(const Handle<AllocatedBuffer> handle,
                              &newBuffer.allocation,
                              &newBuffer.info));
 
-    vmaSetAllocationName(allocator, newBuffer.allocation, allocName);
+    set_resource_name(device, allocator, newBuffer, allocName);
 
     return newBuffer;
 }
@@ -562,4 +564,41 @@ Cel::Renderer::Utils::set_scissor_and_viewport(VkCommandBuffer cmd,
     scissor.extent = extent;
 
     vkCmdSetScissor(cmd, 0, 1, &scissor);
+}
+void
+Cel::Renderer::Utils::set_resource_name(VkDevice device,
+                                        VmaAllocator allocator,
+                                        AllocatedImage& image,
+                                        const char* name)
+{
+    vmaSetAllocationName(allocator, image.allocation, name);
+
+    VkDebugUtilsObjectNameInfoEXT nameInfo{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .pNext = nullptr,
+        .objectType = VK_OBJECT_TYPE_IMAGE,
+        .objectHandle = reinterpret_cast<uint64_t>(image.image),
+        .pObjectName = name
+    };
+
+    vkSetDebugUtilsObjectName(device, &nameInfo);
+}
+
+void
+Cel::Renderer::Utils::set_resource_name(VkDevice device,
+                                        VmaAllocator allocator,
+                                        AllocatedBuffer& buffer,
+                                        const char* name)
+{
+    vmaSetAllocationName(allocator, buffer.allocation, name);
+
+    VkDebugUtilsObjectNameInfoEXT nameInfo{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .pNext = nullptr,
+        .objectType = VK_OBJECT_TYPE_BUFFER,
+        .objectHandle = reinterpret_cast<uint64_t>(buffer.buffer),
+        .pObjectName = name
+    };
+
+    vkSetDebugUtilsObjectName(device, &nameInfo);
 }

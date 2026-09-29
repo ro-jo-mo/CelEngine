@@ -2,6 +2,9 @@
 #include "core/Plugin.h"
 
 namespace Cel::Renderer {
+namespace Assets {
+class AssetServer;
+}
 struct RenderExtent;
 class VulkanResourceManager;
 }
@@ -18,6 +21,7 @@ class RenderGraphPlugin final : public Plugin
     static void compile_graph(Resource<Graph>& graph,
                               Resource<VulkanResourceManager>& manager,
                               Resource<RenderExtent>& extent,
+                              Resource<Assets::AssetServer>& assetServer,
                               ParallelResource<PassServer>& server);
 };
 

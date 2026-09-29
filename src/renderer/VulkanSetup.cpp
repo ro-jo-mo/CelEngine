@@ -36,9 +36,16 @@ init_vulkan(Resource<VulkanContext>& context,
     auto instanceBuild = builder.set_app_name("Cel App")
                              .request_validation_layers(useValidationLayers)
                              .use_default_debug_messenger()
+                             .enable_extension("VK_EXT_debug_utils")
                              .require_api_version(1, 3, 0)
+
                              .build()
                              .value();
+
+    Utils::vkSetDebugUtilsObjectName =
+        reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(
+            instanceBuild.fp_vkGetInstanceProcAddr(
+                instanceBuild, "vkSetDebugUtilsObjectNameEXT"));
 
     SDL_Vulkan_CreateSurface(window->window, instanceBuild, nullptr, &surface);
 
@@ -100,6 +107,15 @@ init_vulkan(Resource<VulkanContext>& context,
 
     // As such, we go for the first match when searching for queues
 
+    // Name the queues!
+    VkDebugUtilsObjectNameInfoEXT nameInfo{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .pNext = nullptr,
+        .objectType = VK_OBJECT_TYPE_QUEUE,
+        .objectHandle = 0,
+        .pObjectName = ""
+    };
+
     for (const auto& [i, queue] :
          std::views::enumerate(physicalDevice.get_queue_families())) {
 
@@ -111,6 +127,11 @@ init_vulkan(Resource<VulkanContext>& context,
             graphicsFound = true;
             vkGetDeviceQueue(context->device, i, 0, &Queues::graphics.queue);
             Queues::graphics.family = i;
+
+            nameInfo.objectHandle =
+                reinterpret_cast<uint64_t>(Queues::graphics.queue);
+            nameInfo.pObjectName = "graphics_queue";
+            Utils::vkSetDebugUtilsObjectName(context->device, &nameInfo);
         }
 
         // Compute
@@ -122,6 +143,11 @@ init_vulkan(Resource<VulkanContext>& context,
             computeFound = true;
             vkGetDeviceQueue(context->device, i, 0, &Queues::compute.queue);
             Queues::compute.family = i;
+
+            nameInfo.objectHandle =
+                reinterpret_cast<uint64_t>(Queues::compute.queue);
+            nameInfo.pObjectName = "compute_queue";
+            Utils::vkSetDebugUtilsObjectName(context->device, &nameInfo);
         }
 
         // Transfer
@@ -134,6 +160,11 @@ init_vulkan(Resource<VulkanContext>& context,
             transferFound = true;
             vkGetDeviceQueue(context->device, i, 0, &Queues::transfer.queue);
             Queues::transfer.family = i;
+
+            nameInfo.objectHandle =
+                reinterpret_cast<uint64_t>(Queues::transfer.queue);
+            nameInfo.pObjectName = "transfer_queue";
+            Utils::vkSetDebugUtilsObjectName(context->device, &nameInfo);
         }
     }
 
@@ -146,6 +177,8 @@ init_vulkan(Resource<VulkanContext>& context,
     if (!transferFound) {
         Queues::transfer = Queues::graphics;
     }
+
+    PipelineBuilder::initialise_default_descriptor(context->device);
 
     allocator.initialise();
 
@@ -200,13 +233,13 @@ init_swapchain(Resource<VulkanContext>& context,
     VkSemaphoreCreateInfo semaphoreCreateInfo =
         Initialisers::semaphore_create_info();
 
-    swapchain->submitSemaphores.resize(swapchain->images.size());
+    swapchain->presentSemaphores.resize(swapchain->images.size());
 
     for (size_t i = 0; i < swapchain->images.size(); i++) {
         vkCreateSemaphore(context->device,
                           &semaphoreCreateInfo,
                           nullptr,
-                          &swapchain->submitSemaphores[i]);
+                          &swapchain->presentSemaphores[i]);
     }
 
     cleanup->push([&]() {
@@ -215,7 +248,7 @@ init_swapchain(Resource<VulkanContext>& context,
             vkDestroyImageView(
                 context->device, swapchain->imageViews[i], nullptr);
             vkDestroySemaphore(
-                context->device, swapchain->submitSemaphores[i], nullptr);
+                context->device, swapchain->presentSemaphores[i], nullptr);
         }
     });
 }

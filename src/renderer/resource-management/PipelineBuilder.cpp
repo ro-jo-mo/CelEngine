@@ -139,7 +139,7 @@ PipelineBuilder::initialise_defaults()
 
     renderInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
     // Set generic colour / depth attachments
-    set_color_attachement(VK_FORMAT_R16G16B16A16_SFLOAT);
+    set_color_attachment(VK_FORMAT_R16G16B16A16_SFLOAT);
     set_depth_attachment(VK_FORMAT_D32_SFLOAT);
 }
 
@@ -165,8 +165,17 @@ PipelineBuilder::generate_pipeline_layout()
 
     // Simply add the descriptor bindings to the builder
     // If its a new set, build and push to final descriptor list
+
+    // add default descriptor
+    compiledDescriptors.push_back(defaultSetLayout);
+
     for (const auto& [setAndBinding, layoutBinding] : descriptorSetLayouts) {
         const auto set = setAndBinding.first;
+
+        // skip defaults
+        if (set == 0) {
+            continue;
+        }
 
         if (currentSet != set) {
             compiledDescriptors.push_back(builder.build(device));
@@ -497,7 +506,7 @@ PipelineBuilder::disable_depth_test()
 }
 
 PipelineBuilder&
-PipelineBuilder::set_color_attachement(VkFormat format)
+PipelineBuilder::set_color_attachment(VkFormat format)
 {
     colorAttachmentformat = format;
 
@@ -513,4 +522,45 @@ PipelineBuilder::set_depth_attachment(VkFormat format)
     renderInfo.depthAttachmentFormat = format;
 
     return *this;
+}
+
+void
+PipelineBuilder::initialise_default_descriptor(VkDevice device)
+{
+    {
+        DescriptorLayoutBuilder builder;
+
+        builder.add_binding(
+            0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS);
+
+        VkDescriptorSetLayoutBinding textures{
+            .binding = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = MAX_VARIABLE_DESCRIPTOR_ARRAY,
+            .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
+            .pImmutableSamplers = nullptr
+        };
+
+        builder.add_binding(
+            textures,
+            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+                VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT);
+
+        defaultSetLayout = builder.build(device);
+    }
+
+    {
+        VkPipelineLayoutCreateInfo baseLayoutCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .pNext = nullptr,
+            .flags = 0,
+            .setLayoutCount = 1,
+            .pSetLayouts = &defaultSetLayout,
+            .pushConstantRangeCount = 0,
+            .pPushConstantRanges = nullptr
+        };
+
+        vkCreatePipelineLayout(
+            device, &baseLayoutCreateInfo, nullptr, &defaultPipelineLayout);
+    }
 }

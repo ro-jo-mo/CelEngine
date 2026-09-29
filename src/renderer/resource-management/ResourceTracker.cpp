@@ -1,5 +1,7 @@
 #include "renderer/resource-management/ResourceTracker.h"
 
+#include <ranges>
+
 Cel::Renderer::BufferAccess
 Cel::Renderer::ResourceTracker::get_state(Handle<AllocatedBuffer> buffer)
 {
@@ -29,16 +31,27 @@ Cel::Renderer::ResourceTracker::set_state(Handle<AllocatedImage> handle,
 Cel::Renderer::BranchingResourceTracker
 Cel::Renderer::BranchingResourceTracker::branch_off()
 {
-    return BranchingResourceTracker(*this);
+    return { *this };
+}
+
+Cel::Renderer::ResourceTracker
+Cel::Renderer::BranchingResourceTracker::compile(ResourceTracker& original)
+{
+    auto copy = original;
+
+    for (const auto& handle : original.buffers | std::views::keys) {
+        copy.set_state(handle, state.get(handle));
+    }
+    for (const auto& handle : original.images | std::views::keys) {
+        copy.set_state(handle, state.get(handle));
+    }
+
+    return copy;
 }
 
 Cel::Renderer::BranchingResourceTracker::BranchingResourceTracker(
     const ResourceTracker& tracker)
-    : reusable(nullptr)
-    , dirty(nullptr)
-    , state(tracker.buffers, tracker.images)
-    , lastPassToAccessResource(nullptr)
-
+    : state(tracker.buffers, tracker.images)
 {
 }
 

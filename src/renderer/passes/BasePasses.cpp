@@ -63,7 +63,7 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
 }
 
 void
-Cel::Renderer::Passes::PassFriend::create_and_bind_scene_data(
+Cel::Renderer::Passes::PassFriend::create_scene_data(
     Query<With<Handle<Assets::Material>, GlobalTransform>>& entities,
     Query<With<Camera, GlobalTransform>>& camera,
     Resource<SceneData>& sceneData,
@@ -116,78 +116,11 @@ Cel::Renderer::Passes::PassFriend::create_and_bind_scene_data(
                               .materialIndex = mat.index };
     }
 
-    VkDescriptorSetLayout baseDescLayout;
-    {
-        DescriptorLayoutBuilder builder;
-
-        builder.add_binding(
-            0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL);
-
-        VkDescriptorSetLayoutBinding textures{
-            .binding = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .descriptorCount = MAX_VARIABLE_DESCRIPTOR_ARRAY,
-            .stageFlags = VK_SHADER_STAGE_ALL,
-            .pImmutableSamplers = nullptr
-        };
-
-        builder.add_binding(textures,
-                            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
-
-        baseDescLayout = builder.build(access->get_device());
-    }
-
-    VkPipelineLayout baseLayout;
-    {
-        VkPipelineLayoutCreateInfo baseLayoutCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .setLayoutCount = 1,
-            .pSetLayouts = &baseDescLayout,
-            .pushConstantRangeCount = 0,
-            .pPushConstantRanges = nullptr
-        };
-
-        vkCreatePipelineLayout(
-            access->get_device(), &baseLayoutCreateInfo, nullptr, &baseLayout);
-    }
-
-    DescriptorWriter writer;
-    {
-        writer.write_buffer(
-            0,
-            access->get_resource(Passes::sceneDataBuffer).buffer,
-            sizeof(sceneData->data),
-            0,
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-
-        if (!assetServer->textureCache.descriptors.empty()) {
-            VkWriteDescriptorSet arraySet;
-            arraySet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            arraySet.descriptorCount =
-                assetServer->textureCache.descriptors.size();
-            arraySet.dstArrayElement = 0;
-            arraySet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            arraySet.dstBinding = 1;
-            arraySet.pImageInfo = assetServer->textureCache.descriptors.data();
-            arraySet.pNext = nullptr;
-
-            writer.write(arraySet);
-        }
-    }
-
-    VkDescriptorSet baseDescSet;
     VkCommandBuffer cmd;
     {
         auto server = passServer.write();
 
         cmd = server->get_cmd_buffer(Passes::createSceneDataPass);
-
-        baseDescSet =
-            server->get_descriptor_allocator().allocate(baseDescLayout);
-
-        writer.update_set(access->get_device(), baseDescSet);
     }
 
     Utils::upload_to_buffer(
@@ -205,18 +138,6 @@ Cel::Renderer::Passes::PassFriend::create_and_bind_scene_data(
         access->get_resource(Passes::entityDataBuffer),
         0,
         access->get_resource(Passes::entityDataStagingBuffer));
-
-    vkCmdBindDescriptorSets(cmd,
-                            VK_PIPELINE_BIND_POINT_GRAPHICS,
-                            baseLayout,
-                            0,
-                            1,
-                            &baseDescSet,
-                            0,
-                            nullptr);
-
-    vkCmdBindIndexBuffer(
-        cmd, assetServer->indiceBuffer.buffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 }
 
 void

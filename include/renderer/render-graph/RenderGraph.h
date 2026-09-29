@@ -64,7 +64,8 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
 
     void search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
                        BranchingResourceTracker& tracker,
-                       ExecutionPlan& plan);
+                       ExecutionPlan& plan,
+                       VulkanResourceManager& manager);
 
     void add_pass_to_plan(Handle<RenderPass> handle,
                           ExecutionPlan& plan,
@@ -123,6 +124,8 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     std::unordered_set<Handle<AllocatedImage>> perFrameImages;
 
     std::vector<ExecutionPlan::ExecutePass> finalPlan;
+    ResourceTracker finalResourceState;
+
     uint32_t bestCost = UINT32_MAX;
 
     friend class PassBuilder;
@@ -135,8 +138,9 @@ Common::RelativeScheduler<Handle<RenderPass>,
 Graph::add_chain(Ts... _passes)
 {
     (void(passes.insert({ _passes.id, _passes })), ...);
-    (void(graph.add_edge(Passes::setupPass, _passes.id)), ...);
-    return add_chain(_passes.id...);
+
+    // Set setup as the first member of the chain
+    return add_chain_impl(graph, Passes::setupPass, _passes.id...);
 }
 
 template<typename... Ts>
@@ -145,8 +149,9 @@ Common::RelativeScheduler<Handle<RenderPass>,
 Graph::add_setup_chain(Ts... _passes)
 {
     (void(passes.insert({ _passes.id, _passes })), ...);
-    (void(graph.add_edge(_passes.id, Passes::setupPass)), ...);
-    return add_chain(_passes.id...);
+
+    // Add setup as the last member of the chain
+    return add_chain_impl(graph, _passes.id..., Passes::setupPass);
 }
 
 }

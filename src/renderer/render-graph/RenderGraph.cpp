@@ -71,7 +71,9 @@ Graph::compile(VulkanResourceManager& manager)
 
     auto iter = graph.iter();
 
-    search_branch(iter, tracker, plan);
+    search_branch(iter, tracker, plan, manager);
+
+    manager.tracker = finalResourceState;
 }
 
 void
@@ -99,15 +101,15 @@ void
 Graph::compile_passes(VulkanResourceManager& manager,
                       BranchingResourceTracker& tracker)
 {
-    // We mark the state as coming from a null pass, meaning it has no existing
-    // state and thus needs no synchronisation (apart from layout transition)
+    // We mark the state as coming from a base pass, the default state shows the
+    // resource is untouched
     auto create_helper = [&](auto& creates, auto& addTo, auto& perFrames) {
         for (auto& create : creates) {
             auto handle = manager.get_handle_from_requirements(
                 create.requirements,
                 Passes::HandleAllocator::get_name(create.id));
             addTo[create.id] = handle;
-            tracker.lastPassToAccessResource.set(handle, Passes::nullPass);
+            tracker.lastPassToAccessResource.set(handle, Passes::basePass);
 
             if (create.perFrame) {
                 perFrames.emplace(handle);
@@ -142,7 +144,8 @@ Graph::compile_passes(VulkanResourceManager& manager,
 void
 Graph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
                      BranchingResourceTracker& tracker,
-                     ExecutionPlan& plan)
+                     ExecutionPlan& plan,
+                     VulkanResourceManager& manager)
 {
 
     // Make a list of the passes we're selecting from
@@ -156,6 +159,7 @@ Graph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
                 bestCost = plan.cost();
 
                 finalPlan = plan.compile();
+                finalResourceState = tracker.compile(manager.tracker);
             }
             return;
         }
@@ -163,13 +167,20 @@ Graph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
         const auto greatestCriticalPath = iter.begin()->first;
 
         for (auto [length, pass] : iter) {
-
             // Only select from nodes with a matching path length
             if (length == greatestCriticalPath) {
                 nodes.push_back(pass);
             } else {
                 break;
             }
+        }
+
+        // The only case where setup should be available is when all setup
+        // passes have run, in which case it will be the only available node
+
+        if (nodes[0] == Passes::setupPass) {
+            iter.mark_finished(Passes::setupPass);
+            continue;
         }
 
         // No need to branch if it's linear
@@ -185,7 +196,7 @@ Graph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
             auto branchPlan = plan.branch_off();
 
             add_pass_to_plan(handle, branchPlan, branchIter, branchTracker);
-            search_branch(branchIter, branchTracker, branchPlan);
+            search_branch(branchIter, branchTracker, branchPlan, manager);
         }
 
         // If we do branch, there's nothing more to do here, so just break
@@ -201,7 +212,7 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
 {
     iter.mark_finished(handle);
 
-    const auto& pass = passes[handle];
+    const auto& pass = passes.at(handle);
 
     ExecutionPlan::ExecutePass execution{ .pass = handle };
 
@@ -222,7 +233,8 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
             const auto& state = tracker.state.get(read.id);
 
             // Do we need to transition the resource to this queue?
-            if (read.access.queue != state.queue) {
+            if (read.access.queue != state.queue &&
+                state.queue != VK_QUEUE_FAMILY_IGNORED) {
                 // Add queue transition
                 transfers.push_back(
                     create_transition(read.id, read.access, state, tracker));
@@ -267,13 +279,14 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
             auto state = tracker.state.get(write.id);
 
             // We always need a barrier before a write. The only exception is
-            // when this resource has no existing state, marked by nullPass.
-            // Even then images still need their layout transitioned
+            // when the resource is untouched i.e. QUEUE_FAMILY_IGNORED. Even
+            // then images still need their layout transitioned
             if (!is_write_barrier_needed(write.id, tracker)) {
                 // If unaccessed, we just need to set state
             }
             // Insert transfer else just a barrier
-            else if (write.access.queue != state.queue) {
+            else if (write.access.queue != state.queue &&
+                     state.queue != VK_QUEUE_FAMILY_IGNORED) {
                 transfers.push_back(
                     create_transition(write.id, write.access, state, tracker));
             } else {
@@ -350,7 +363,7 @@ bool
 Graph::is_write_barrier_needed(const Handle<AllocatedBuffer> handle,
                                BranchingResourceTracker& tracker)
 {
-    return tracker.lastPassToAccessResource.get(handle) != Passes::nullPass;
+    return tracker.state.get(handle).queue != VK_QUEUE_FAMILY_IGNORED;
 }
 
 bool
@@ -367,7 +380,8 @@ Graph::create_transition(const Handle<AllocatedBuffer> handle,
                          const BufferAccess& state,
                          BranchingResourceTracker& tracker)
 {
-    return { .semaphore = tracker.lastPassToAccessResource.get(handle),
+    assert(tracker.lastPassToAccessResource.get(handle) != Passes::basePass);
+    return { .signalPass = tracker.lastPassToAccessResource.get(handle),
              .barrier = { .srcStageMask = state.stages,
                           .srcAccessMask = state.access,
                           .dstStageMask = access.stages,
@@ -383,7 +397,8 @@ Graph::create_transition(const Handle<AllocatedImage> handle,
                          const ImageAccess& state,
                          BranchingResourceTracker& tracker)
 {
-    return { .semaphore = tracker.lastPassToAccessResource.get(handle),
+    assert(tracker.lastPassToAccessResource.get(handle) != Passes::basePass);
+    return { .signalPass = tracker.lastPassToAccessResource.get(handle),
              .barrier = { .srcStageMask = state.stages,
                           .srcAccessMask = state.access,
                           .dstStageMask = access.stages,
@@ -418,6 +433,8 @@ Graph::create_barrier(const Handle<AllocatedImage> handle,
              .srcAccessMask = state.access,
              .dstStageMask = access.stages,
              .dstAccessMask = access.access,
+             .oldLayout = state.layout,
+             .newLayout = access.layout,
              .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
              .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
              .handle = handle };

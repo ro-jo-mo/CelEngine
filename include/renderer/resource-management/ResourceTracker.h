@@ -5,6 +5,7 @@
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/RenderGraphTypes.h"
 
+#include <fmt/base.h>
 #include <unordered_set>
 
 namespace Cel::Renderer {
@@ -42,6 +43,9 @@ class BranchingResourceTracker
     // Create a new resource tracker representing a separate branch
     BranchingResourceTracker branch_off();
 
+    // Update the original tracker to include the changes of this branch
+    ResourceTracker compile(ResourceTracker& original);
+
     // Stores a branch of state data
     // To avoid altering the state of previous branches in the tree we store
     // pointers to the original, but only edit this copy
@@ -66,7 +70,7 @@ class BranchingResourceTracker
         [[nodiscard]] const BufValue& get(Handle<AllocatedBuffer> handle);
         [[nodiscard]] const ImgValue& get(Handle<AllocatedImage> handle);
 
-        Branch* original = nullptr;
+        Branch* original;
 
         std::unordered_map<Handle<AllocatedBuffer>, BufValue> buffers;
         std::unordered_map<Handle<AllocatedImage>, ImgValue> images;

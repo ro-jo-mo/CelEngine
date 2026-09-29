@@ -1,5 +1,6 @@
 #include "renderer/render-graph/ExecutionPlan.h"
 
+#include "common/Graph.h"
 #include "core/Error.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/render-graph/PassServer.h"
@@ -61,10 +62,14 @@ VkImageAspectFlags
 format_to_image_aspect(VkFormat format)
 {
     switch (format) {
+        // Depths
         case VK_FORMAT_D32_SFLOAT:
         case VK_FORMAT_D32_SFLOAT_S8_UINT:
             return VK_IMAGE_ASPECT_DEPTH_BIT;
+
+            // Colours
         case VK_FORMAT_R8G8B8_UNORM:
+        case VK_FORMAT_R8G8B8A8_UNORM:
         case VK_FORMAT_R16G16B16A16_SFLOAT:
             return VK_IMAGE_ASPECT_COLOR_BIT;
 
@@ -79,7 +84,7 @@ create_barrier(const ImageBarrier& barrier, VulkanResourceManager& manager)
 {
     auto& img = manager.get_resource_from_handle(barrier.handle);
 
-    return { .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+    return { .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
              .pNext = nullptr,
              .srcStageMask = barrier.srcStageMask,
              .srcAccessMask = barrier.srcAccessMask,
@@ -118,6 +123,7 @@ void
 ExecutionPlan::add_transfers(std::vector<PassSubmitInfo>& preBarriers,
                              std::vector<PassSubmitInfo>& postBarriers,
                              const std::vector<uint32_t>& passToOrder,
+                             SubmitSplitter& splitter,
                              const ExecutePass& pass,
                              PassServer& passServer,
                              VulkanResourceManager& manager)
@@ -131,11 +137,21 @@ ExecutionPlan::add_transfers(std::vector<PassSubmitInfo>& preBarriers,
 
             const auto& semaphore =
                 passServer.get_semaphore(transfer.barrier.srcQueueFamilyIndex);
+
+            splitter.add_acquire(pass.pass,
+                                 passToOrder[pass.pass.index],
+                                 transfer.barrier.srcQueueFamilyIndex,
+                                 transfer.barrier.dstQueueFamilyIndex);
+            splitter.add_release(transfer.signalPass,
+                                 passToOrder[transfer.signalPass.index],
+                                 transfer.barrier.srcQueueFamilyIndex,
+                                 transfer.barrier.dstQueueFamilyIndex);
+
             // Each pass is assigned a signal value, based on its ordering in
             // execution. If another pass relies on the semaphore, it will
             // signal it with this value
             uint64_t signalValue =
-                passToOrder[transfer.semaphore.index] + semaphore.current;
+                passToOrder[transfer.signalPass.index] + semaphore.current;
 
             pre.waitSemaphoreInfo.emplace_back(
                 VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -145,7 +161,7 @@ ExecutionPlan::add_transfers(std::vector<PassSubmitInfo>& preBarriers,
                 transfer.barrier.dstStageMask,
                 0);
 
-            auto& post = postBarriers[transfer.semaphore.index];
+            auto& post = postBarriers[transfer.signalPass.index];
 
             (post.*barrierPtr)
                 .push_back(create_barrier(transfer.barrier, manager));
@@ -163,8 +179,8 @@ ExecutionPlan::add_transfers(std::vector<PassSubmitInfo>& preBarriers,
             }
 
             // This signal semaphore represents the completion of an entire
-            // pass, and accesses to all relevant resources As such we must
-            // accumulate the stage masks
+            // pass, and accesses to all relevant resources
+            // As such we must accumulate the stage masks
             post.signalSemaphoreInfo.stageMask |= transfer.barrier.srcStageMask;
         }
     };
@@ -273,10 +289,8 @@ ExecutionPlan::record_barriers(VkCommandBuffer cmd, PassSubmitInfo& info)
     vkEndCommandBuffer(cmd);
 }
 
-void
+ExecutionPlan::SubmitData
 ExecutionPlan::create_submit_infos(
-    std::array<std::vector<VkSubmitInfo2>, QUEUE_COUNT>& submits,
-
     std::vector<ExecutePass>& plan,
     const std::unordered_map<Handle<RenderPass>, RenderPass>& passes,
     PassServer& passServer,
@@ -290,18 +304,19 @@ ExecutionPlan::create_submit_infos(
     static auto [maxPasses] =
         Passes::HandleAllocator::allocate_pass("greatest_handle");
 
-    // upper limit
     constexpr VkCommandBufferSubmitInfo defaultCmdSubmit = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
         .pNext = nullptr,
         .commandBuffer = nullptr,
         .deviceMask = 0
     };
-    std::vector recorded{ maxPasses * 3, defaultCmdSubmit };
 
-    // Barriers inserted before & after the pass
-    std::vector<PassSubmitInfo> preBarriers{ maxPasses };
-    std::vector<PassSubmitInfo> postBarriers{ maxPasses };
+    SubmitData data{ .preBarriers = std::vector<PassSubmitInfo>(maxPasses),
+                     .postBarriers = std::vector<PassSubmitInfo>(maxPasses),
+                     .recorded = std::vector(maxPasses * 3, defaultCmdSubmit) };
+
+    auto& [submits, splits, preBarriers, postBarriers, recorded] = data;
+    SubmitSplitter splitter{};
 
     // A tracker is kept marking the last pass to read a resource
     // This info is used to determine what we're merging to
@@ -312,7 +327,8 @@ ExecutionPlan::create_submit_infos(
 
     // A map of pass.id to it's place in the total execution order
     // Used to grant a stable value for timeline semaphores
-    std::vector<uint32_t> passToOrder(maxPasses);
+    // Base pass signals 1, rest signal > 1
+    std::vector<uint32_t> passToOrder(maxPasses, 1);
 
     // Just the ordering of the passes and their queues, so I don't have to load
     // the original execution back into memory for recording
@@ -325,15 +341,22 @@ ExecutionPlan::create_submit_infos(
 
         mark_trackers(renderPass, passes, bufferMergePoints, imageMergePoints);
 
-        passToOrder[pass.pass.index] = i;
+        passToOrder[pass.pass.index] += i;
         ordering[i] = { pass.pass, passes.at(pass.pass).queue };
 
         add_barriers(preBarriers, pass, manager);
-        add_transfers(
-            preBarriers, postBarriers, passToOrder, pass, passServer, manager);
+        add_transfers(preBarriers,
+                      postBarriers,
+                      passToOrder,
+                      splitter,
+                      pass,
+                      passServer,
+                      manager);
         add_merges(
             pass, preBarriers, bufferMergePoints, imageMergePoints, manager);
     }
+
+    // TODO: SET BASE PASS SUBMITS ON ALL QUEUES
 
     for (auto [pass, queue] : ordering) {
 
@@ -358,6 +381,16 @@ ExecutionPlan::create_submit_infos(
             // Record pre barriers
             const auto cmd = passServer.get_prepost_cmd_buffer(queue);
             recorded[pass.index * 3].commandBuffer = cmd;
+
+            for (const auto& res : pre.buffers) {
+                assert(res.dstQueueFamilyIndex == queue ||
+                       res.dstQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED);
+            }
+            for (const auto& res : pre.images) {
+                assert(res.dstQueueFamilyIndex == queue ||
+                       res.dstQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED);
+            }
+
             record_barriers(cmd, pre);
         }
         if (!post.buffers.empty() || !post.images.empty()) {
@@ -366,14 +399,28 @@ ExecutionPlan::create_submit_infos(
             // Record post barriers
             const auto cmd = passServer.get_prepost_cmd_buffer(queue);
             recorded[pass.index * 3 + 2].commandBuffer = cmd;
+
+            for (const auto& res : post.buffers) {
+                assert(res.srcQueueFamilyIndex == queue);
+            }
+            for (const auto& res : post.images) {
+                assert(res.srcQueueFamilyIndex == queue);
+            }
+
             record_barriers(cmd, post);
         }
 
         submit.commandBufferInfoCount = count;
         submit.pCommandBufferInfos = recorded.data() + pass.index * 3 + offset;
 
-        submit.signalSemaphoreInfoCount = 1;
-        submit.pSignalSemaphoreInfos = &post.signalSemaphoreInfo;
+        // Only set if needed
+        if (post.signalSemaphoreInfo.sType ==
+            VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO) {
+            submit.signalSemaphoreInfoCount = 1;
+            submit.pSignalSemaphoreInfos = &post.signalSemaphoreInfo;
+        } else {
+            submit.signalSemaphoreInfoCount = 0;
+        }
 
         submit.waitSemaphoreInfoCount = pre.waitSemaphoreInfo.size();
         submit.pWaitSemaphoreInfos = pre.waitSemaphoreInfo.data();
@@ -383,6 +430,10 @@ ExecutionPlan::create_submit_infos(
     for (auto& semaphore : passServer.semaphores) {
         semaphore.current += maxPasses;
     }
+
+    data.splits = splitter.compile(passServer.queues);
+
+    return data;
 }
 
 void
@@ -394,11 +445,7 @@ ExecutionPlan::execute(
     Swapchain& swapchain,
     VulkanResourceManager& manager)
 {
-
-    std::array<std::vector<VkSubmitInfo2>, QUEUE_COUNT> submits;
-
-    create_submit_infos(submits, plan, passes, passServer, manager);
-
+    // Get swapchain image
     uint32_t swapchainIndex;
     VkResult result = vkAcquireNextImageKHR(
         passServer.device,
@@ -414,6 +461,7 @@ ExecutionPlan::execute(
         return;
     }
 
+    // Record commands for the present pass
     {
         // Copy image to swapchain on the present pass
         const auto cmd = passServer.get_cmd_buffer(presentPass);
@@ -437,49 +485,82 @@ ExecutionPlan::execute(
                                        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     }
 
-    VkSemaphoreSubmitInfo swapSemInfo{
+    // Create submit infos
+    // The pres / posts / recorded are mainly here to keep the data alive until
+    // submission
+    auto [submits, splits, pres, posts, recorded] =
+        create_submit_infos(plan, passes, passServer, manager);
+
+    // The last submission should be presentation, which should wait on the
+    // acquire semaphore and signal the present semaphore swapchain semaphore
+
+    VkSemaphoreSubmitInfo acquireSemInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .pNext = nullptr,
-        .semaphore = swapchain.submitSemaphores[swapchainIndex],
+        .semaphore = passServer.acquireSemaphores[passServer.currentFrame],
         .value = 0,
-        .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .deviceIndex = 0
+    };
+    VkSemaphoreSubmitInfo presentSemInfo{
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+        .pNext = nullptr,
+        .semaphore = swapchain.presentSemaphores[swapchainIndex],
+        .value = 0,
+        .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
         .deviceIndex = 0
     };
 
     const auto presentQueue = passes.at(presentPass).queue;
 
-    for (size_t i = 0; i < QUEUE_COUNT; i++) {
+    {
+        auto& present = submits[passServer.queueToIndex[presentQueue]].back();
+        present.signalSemaphoreInfoCount = 1;
+        present.pSignalSemaphoreInfos = &presentSemInfo;
 
-        if (submits[i].empty()) {
-            continue;
+        auto& pre = pres[presentPass.index];
+
+        pre.waitSemaphoreInfo.push_back(acquireSemInfo);
+
+        present.waitSemaphoreInfoCount = pre.waitSemaphoreInfo.size();
+        present.pWaitSemaphoreInfos = pre.waitSemaphoreInfo.data();
+    }
+
+    // Finally we can actually submit our data
+
+    for (auto& split : splits) {
+
+        const auto index = passServer.queueToIndex[split.queue];
+
+        // UINT32_MAX is used as a flag for the last submit for this queue
+        // We must fill the in the info manually
+        if (split.end == UINT32_MAX) {
+
+            // Skip if we already finished this
+            if (split.start == submits[index].size()) {
+                continue;
+            }
+
+            split.end = submits[index].size();
         }
 
-        // If this is the queue we're presenting from, signal the present
-        // semaphore and fence once it's done
         VkFence fence = nullptr;
-        if (i == passServer.queueToIndex[presentQueue]) {
+        if (split.queue == presentQueue) {
             fence = passServer.fences[passServer.currentFrame];
-
-            auto& final = submits[i].back();
-
-            // The very final pass shouldn't signal any semaphores currently, so
-            // we don't need a list.
-            assert(final.signalSemaphoreInfoCount == 1);
-            final.signalSemaphoreInfoCount = 1;
-            final.pSignalSemaphoreInfos = &swapSemInfo;
         }
 
-        vk_check(vkQueueSubmit2(passServer.queues[i].queue,
-                                submits[i].size(),
-                                submits[i].data(),
+        vk_check(vkQueueSubmit2(passServer.queues[index].queue,
+                                split.end - split.start,
+                                submits[index].data() + split.start,
                                 fence));
     }
 
+    // Lastly present
     VkPresentInfoKHR presentInfo{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = nullptr,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &swapchain.submitSemaphores[swapchainIndex],
+        .pWaitSemaphores = &swapchain.presentSemaphores[swapchainIndex],
         .swapchainCount = 1,
         .pSwapchains = &swapchain.swapchain,
         .pImageIndices = &swapchainIndex,
@@ -499,4 +580,101 @@ ExecutionPlan::add_execution_to_list(ExecutionPlan* plan,
         add_execution_to_list(plan->original, list);
     }
     list.insert(list.end(), plan->execution.begin(), plan->execution.end());
+}
+
+void
+ExecutionPlan::SubmitSplitter::add_release(Handle<RenderPass> pass,
+                                           const uint32_t passOrder,
+                                           uint32_t releaseQueue,
+                                           uint32_t acquireQueue)
+{
+    releaseAndAcquires[passOrder].emplace_back(
+        pass, false, releaseQueue, acquireQueue);
+}
+
+void
+ExecutionPlan::SubmitSplitter::add_acquire(Handle<RenderPass> pass,
+                                           const uint32_t passOrder,
+                                           uint32_t releaseQueue,
+                                           uint32_t acquireQueue)
+{
+    releaseAndAcquires[passOrder].emplace_back(
+        pass, true, releaseQueue, acquireQueue);
+}
+
+std::vector<ExecutionPlan::SubmitSplitter::SubmitSplit>
+ExecutionPlan::SubmitSplitter::compile(
+    const std::array<Queue, QUEUE_COUNT>& queues)
+{
+    // if (releasingTo[i][j])
+    // if queue i is releasing a resource to queue j in this submit
+    std::array<std::array<bool, 16>, 16> releasingTo{};
+
+    // We're currently up to submit: "counters[queue]"
+    std::array<uint32_t, 16> counters{};
+    // In progress split for each queue
+    std::array<SubmitSplit, 16> splits{};
+
+    for (const auto& [i, split] : std::views::enumerate(splits)) {
+        split.queue = i;
+    }
+
+    std::vector<SubmitSplit> out;
+
+    for (const auto& transfers : releaseAndAcquires | std::views::values) {
+        for (const auto& transfer : transfers) {
+            if (transfer.isAcquire) {
+
+                // If the acquiring queue is currently has a release to the
+                // releasing queue We must split on the acquiring queue
+                if (releasingTo[transfer.acquireQueue][transfer.releaseQueue]) {
+                    splits[transfer.acquireQueue].end =
+                        counters[transfer.acquireQueue];
+
+                    out.emplace_back(splits[transfer.acquireQueue]);
+
+                    // Reset for the next split
+                    splits[transfer.acquireQueue].start =
+                        counters[transfer.acquireQueue];
+                    releasingTo[transfer.acquireQueue] = {};
+                }
+
+                counters[transfer.acquireQueue]++;
+
+            } else {
+                counters[transfer.releaseQueue]++;
+                releasingTo[transfer.releaseQueue][transfer.acquireQueue] =
+                    true;
+            }
+        }
+    }
+
+    // If queue 0 starts by acquiring from queue 1, 2
+
+    Common::Graph<uint32_t> finalSubmitGraph{};
+
+    for (const auto& queue : queues) {
+        // if currently releasing to another queue, then we must submit before
+        // them
+        finalSubmitGraph.add_node(queue.family);
+
+        for (const auto [releasingFamily, isReleasing] :
+             std::views::enumerate(releasingTo[queue.family])) {
+            if (isReleasing) {
+                finalSubmitGraph.add_edge(queue.family, releasingFamily);
+            }
+        }
+    }
+
+    const auto finalOrder = finalSubmitGraph.simple_ordering();
+
+    for (const auto queue : finalOrder) {
+
+        auto& split = splits[queue];
+        split.end = UINT32_MAX;
+
+        out.emplace_back(splits[queue]);
+    }
+
+    return out;
 }

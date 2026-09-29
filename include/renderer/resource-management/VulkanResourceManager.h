@@ -6,6 +6,9 @@
 #include <ranges>
 
 namespace Cel::Renderer {
+namespace RenderGraph {
+class Graph;
+}
 
 // Almighty tracker of all(?) allocated resources
 // I suppose I should probably move resource ownership out of the asset server
@@ -108,6 +111,8 @@ class VulkanResourceManager
     ResourceTracker tracker;
 
     VmaAllocator allocator;
+
+    friend class RenderGraph::Graph;
 };
 
 template<typename Res, typename Req>
@@ -126,6 +131,7 @@ VulkanResourceManager::ResourcePool<Res, Req>::create_handle(
     }
 
     requirements.emplace(handle, req);
+    manager.tracker.set_state(handle, Req::Access());
 
     return handle;
 }

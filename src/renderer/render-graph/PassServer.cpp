@@ -3,19 +3,20 @@
 #include "core/Config.h"
 #include "core/Error.h"
 #include "core/ThreadManager.h"
+#include "renderer/AssetServer.h"
+#include "renderer/Queues.h"
+#include "renderer/SceneData.h"
 #include "renderer/VulkanHelpers.h"
+#include "renderer/resource-management/PipelineBuilder.h"
 
 #include <ranges>
 
 Cel::Renderer::RenderGraph::PassServer::PassServer(
     VkDevice device,
-    std::array<Queue, QUEUE_COUNT>& queues)
+    const std::array<Queue, QUEUE_COUNT>& queues)
     : queues(queues)
     , device(device)
 {
-    // Sanity check
-    assert(QUEUE_COUNT == queues.size());
-
     // Create a mapping of the queues to an index
     for (const auto& [i, queue] : std::views::enumerate(queues)) {
         queueToIndex[queue.family] = i;
@@ -35,11 +36,8 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
                 Initialisers::command_pool_create_info(queue.family);
 
             for (uint32_t j = 0; j < ThreadManager::total_threads(); j++) {
-                VkCommandPool pool;
-
-                vkCreateCommandPool(device, &create, nullptr, &pool);
-
-                commandPools.emplace_back(pool);
+                vkCreateCommandPool(
+                    device, &create, nullptr, &commandPools.emplace_back());
             }
         }
     }
@@ -70,6 +68,7 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
                           &semaphoreInfo,
                           nullptr,
                           &semaphores[queue.family].semaphore);
+        semaphores[queue.family].current = 0;
     }
 
     VkFenceCreateInfo fenceInfo{ .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -86,6 +85,7 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
     }
 
     std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
         { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
@@ -131,6 +131,25 @@ Cel::Renderer::RenderGraph::PassServer::get_cmd_buffer(
         Initialisers::command_buffer_begin_info(
             VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     vkBeginCommandBuffer(cmd, &beginInfo);
+
+    // Only bind descriptor for graphics & compute
+    const auto queue = passesQueues.at(handle);
+    if (queue == Queues::graphics.family || queue == Queues::compute.family) {
+        const auto bindPoint = queue == Queues::graphics.family
+                                   ? VK_PIPELINE_BIND_POINT_GRAPHICS
+                                   : VK_PIPELINE_BIND_POINT_COMPUTE;
+
+        vkCmdBindDescriptorSets(cmd,
+                                bindPoint,
+                                PipelineBuilder::defaultPipelineLayout,
+                                0,
+                                1,
+                                &baseDescriptorSet,
+                                0,
+                                nullptr);
+
+        vkCmdBindIndexBuffer(cmd, indiceBuffer, 0, VK_INDEX_TYPE_UINT32);
+    }
 
     return cmd;
 }
@@ -178,7 +197,8 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
         imageMapping,
     const std::unordered_set<Handle<AllocatedBuffer>>& perFrameBuffers,
     const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
-    VulkanResourceManager& manager)
+    VulkanResourceManager& manager,
+    Assets::AssetServer& assetServer)
 {
     currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
     extent = _extent;
@@ -215,14 +235,22 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     // Mark command buffers as available
     for (const auto& [cmd, i] :
          passCmdBuffers[currentFrame] | std::views::values) {
+
         availableBuffers[i].push_back(cmd);
     }
     passCmdBuffers[currentFrame].clear();
 
-    for (auto cmd : prePostCommandBuffers[currentFrame]) {
-        availableBuffers[0].push_back(cmd);
+    for (const auto& queue : queues) {
+        auto index = queueToIndex[queue.family] + QUEUE_COUNT * currentFrame;
+
+        availableBuffers[queueToIndex[queue.family] *
+                             ThreadManager::total_threads() +
+                         currentFrame * QUEUE_COUNT *
+                             ThreadManager::total_threads()]
+            .append_range(prePostCommandBuffers[index]);
+
+        prePostCommandBuffers[index].clear();
     }
-    prePostCommandBuffers[currentFrame].clear();
 
     // Create a mapping from the pass handled to actual vk resources
     // Set to be freed either the next frame (if transient resource) or the next
@@ -243,13 +271,57 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
         imagesToFree[freeFrame].emplace_back(mapped);
         mappedImages.emplace(handle, manager.get_resource_from_handle(mapped));
     }
+
+    // Create the scene descriptor for this frame
+    DescriptorWriter writer;
+
+    auto textureCount =
+        static_cast<uint32_t>(assetServer.textureCache.descriptors.size());
+    {
+        writer.write_buffer(0,
+                            get_resource(Passes::sceneDataBuffer).buffer,
+                            sizeof(Passes::SceneData::data),
+                            0,
+                            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+        if (!assetServer.textureCache.descriptors.empty()) {
+            VkWriteDescriptorSet arraySet{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .pNext = nullptr,
+                .dstBinding = 1,
+                .dstArrayElement = 0,
+                .descriptorCount = textureCount,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = assetServer.textureCache.descriptors.data()
+            };
+
+            writer.write(arraySet);
+        }
+    }
+
+    VkDescriptorSetVariableDescriptorCountAllocateInfo varInfo{
+        .sType =
+            VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT,
+        .pNext = nullptr,
+        .descriptorSetCount = 1,
+        .pDescriptorCounts = &textureCount
+    };
+
+    baseDescriptorSet = get_descriptor_allocator().allocate(
+        PipelineBuilder::defaultSetLayout, &varInfo);
+
+    writer.update_set(get_device(), baseDescriptorSet);
+
+    indiceBuffer = assetServer.indiceBuffer.buffer.buffer;
 }
 
 VkCommandBuffer
 Cel::Renderer::RenderGraph::PassServer::get_prepost_cmd_buffer(
     const uint32_t queue)
 {
-    const auto index = queue * ThreadManager::total_threads();
+    const auto index =
+        queueToIndex[queue] * ThreadManager::total_threads() +
+        currentFrame * QUEUE_COUNT * ThreadManager::total_threads();
 
     if (availableBuffers[index].empty()) {
         allocate_cmd_buffers(index);
@@ -259,7 +331,8 @@ Cel::Renderer::RenderGraph::PassServer::get_prepost_cmd_buffer(
 
     availableBuffers[index].pop_back();
 
-    prePostCommandBuffers[currentFrame].push_back(cmd);
+    prePostCommandBuffers[queueToIndex[queue] + QUEUE_COUNT * currentFrame]
+        .push_back(cmd);
 
     return cmd;
 }
@@ -277,8 +350,10 @@ Cel::Renderer::RenderGraph::PassServer::get_pool_index(
     const auto queue = queueToIndex[passesQueues[handle]];
     const auto thread = ThreadManager::get_thread_id();
 
-    return currentFrame * (QUEUE_COUNT * ThreadManager::total_threads()) +
-           queue * (ThreadManager::total_threads()) + thread;
+    auto index = currentFrame * (QUEUE_COUNT * ThreadManager::total_threads()) +
+                 queue * (ThreadManager::total_threads()) + thread;
+
+    return index;
 }
 
 void
@@ -288,7 +363,7 @@ Cel::Renderer::RenderGraph::PassServer::allocate_cmd_buffers(
     const auto& pool = commandPools[index];
     auto& buffers = availableBuffers[index];
 
-    buffers.resize(CMD_BUFFERS_PER_POOL + buffers.size());
+    buffers.resize(CMD_BUFFERS_PER_POOL);
 
     const VkCommandBufferAllocateInfo allocInfo =
         Initialisers::command_buffer_allocate_info(pool, CMD_BUFFERS_PER_POOL);

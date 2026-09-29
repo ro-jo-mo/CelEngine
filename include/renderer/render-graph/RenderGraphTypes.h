@@ -95,12 +95,12 @@ struct ImageBarrier
 // justis th The full barrier data can be derived from this
 struct BufferTransfer
 {
-    Handle<RenderPass> semaphore;
+    Handle<RenderPass> signalPass;
     BufferBarrier barrier;
 };
 struct ImageTransfer
 {
-    Handle<RenderPass> semaphore;
+    Handle<RenderPass> signalPass;
     ImageBarrier barrier;
 };
 

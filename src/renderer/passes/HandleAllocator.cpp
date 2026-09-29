@@ -1,5 +1,6 @@
 #include "renderer/passes/HandleAllocator.h"
 
+#include <fmt/base.h>
 #include <mutex>
 #include <utility>
 

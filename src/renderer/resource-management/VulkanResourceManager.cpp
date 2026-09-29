@@ -112,6 +112,7 @@ Cel::Renderer::VulkanResourceManager::allocate(
         requirements.usages,
         requirements.memoryUsage,
         Passes::HandleAllocator::get_name(handle).c_str(),
+        device,
         allocator);
 }
 

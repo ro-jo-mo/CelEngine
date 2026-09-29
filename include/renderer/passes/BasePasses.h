@@ -31,7 +31,7 @@ struct PassFriend
     static void register_create_scene_data_pass(
         Resource<RenderGraph::Graph>& graph);
 
-    static void create_and_bind_scene_data(
+    static void create_scene_data(
         Query<With<Handle<Assets::Material>, GlobalTransform>>& entities,
         Query<With<Camera, GlobalTransform>>& camera,
         Resource<SceneData>& sceneData,

@@ -25,17 +25,19 @@ RenderGraph::RenderGraphPlugin::compile_graph(
     Resource<Graph>& graph,
     Resource<VulkanResourceManager>& manager,
     Resource<RenderExtent>& extent,
-    ParallelResource<PassServer>& server)
+    Resource<Assets::AssetServer>& assetServer,
+    ParallelResource<PassServer>& passServer)
 {
     graph->compile(*manager);
 
-    server.absolute()->update_frame(extent->extent,
-                                    graph->passes,
-                                    graph->bufferHandleToMapped,
-                                    graph->imageHandleToMapped,
-                                    graph->perFrameBuffers,
-                                    graph->perFrameImages,
-                                    *manager);
+    passServer.absolute()->update_frame(extent->extent,
+                                        graph->passes,
+                                        graph->bufferHandleToMapped,
+                                        graph->imageHandleToMapped,
+                                        graph->perFrameBuffers,
+                                        graph->perFrameImages,
+                                        *manager,
+                                        *assetServer);
 }
 
 static void

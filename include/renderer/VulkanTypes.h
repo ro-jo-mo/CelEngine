@@ -21,7 +21,7 @@ struct Swapchain
     std::vector<VkImageView> imageViews;
     VkFormat format;
     VkExtent2D extent;
-    std::vector<VkSemaphore> submitSemaphores;
+    std::vector<VkSemaphore> presentSemaphores;
 };
 
 struct Queue
@@ -78,21 +78,6 @@ struct AllocatedMeshBuffer
     uint32_t indexCount;
 };
 
-struct BufferRequirements
-{
-    size_t allocSize;
-    VkBufferUsageFlags2 usages;
-    VmaMemoryUsage memoryUsage;
-};
-
-struct ImageRequirements
-{
-    VkFormat format;
-    VkExtent3D extent;
-    VkImageUsageFlags usages;
-    VkImageAspectFlags aspects;
-};
-
 struct BufferAccess
 {
     VkAccessFlags2 access = VK_ACCESS_2_NONE;
@@ -106,6 +91,25 @@ struct ImageAccess
     VkPipelineStageFlags2 stages = VK_PIPELINE_STAGE_2_NONE;
     VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
     uint32_t queue = VK_QUEUE_FAMILY_IGNORED;
+};
+
+struct BufferRequirements
+{
+    size_t allocSize;
+    VkBufferUsageFlags2 usages;
+    VmaMemoryUsage memoryUsage;
+
+    using Access = BufferAccess;
+};
+
+struct ImageRequirements
+{
+    VkFormat format;
+    VkExtent3D extent;
+    VkImageUsageFlags usages;
+    VkImageAspectFlags aspects;
+
+    using Access = ImageAccess;
 };
 
 struct Pipeline

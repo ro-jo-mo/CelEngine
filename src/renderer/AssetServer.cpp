@@ -804,7 +804,9 @@ AssetServer::declare_scene_access(RenderGraph::PassBuilder& pass)
     // shaders only
     pass.read_buffer(vertexBuffer.handle,
                      VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT);
-    pass.read_buffer(indiceBuffer.handle, VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT);
+    pass.read_buffer(indiceBuffer.handle,
+                     VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT,
+                     VK_ACCESS_2_INDEX_READ_BIT);
     pass.read_buffer(materialBuffer.handle,
                      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
 

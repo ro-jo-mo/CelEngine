@@ -6,6 +6,12 @@
 
 #include <unordered_set>
 
+namespace Cel::Renderer::Assets {
+class AssetServer;
+}
+namespace Cel::Renderer::Passes {
+struct PassFriend;
+}
 namespace Cel::Renderer::RenderGraph {
 class ExecutionPlan;
 }
@@ -15,7 +21,7 @@ namespace Cel::Renderer::RenderGraph {
 class PassServer
 {
   public:
-    PassServer(VkDevice device, std::array<Queue, QUEUE_COUNT>& queues);
+    PassServer(VkDevice device, const std::array<Queue, QUEUE_COUNT>& queues);
 
     /**
      * @brief Get the cmd buffer for this render pass for recording
@@ -51,7 +57,8 @@ class PassServer
                                  Handle<AllocatedImage>>& imageMapping,
         const std::unordered_set<Handle<AllocatedBuffer>>& perFrameBuffers,
         const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
-        VulkanResourceManager& manager);
+        VulkanResourceManager& manager,
+        Assets::AssetServer& assetServer);
 
   private:
     // Returns an unused command buffer. Used purely for the pre and post pass
@@ -101,7 +108,7 @@ class PassServer
 
     std::array<DescriptorAllocator, FRAMES_IN_FLIGHT> descriptorAllocators;
 
-    std::array<std::vector<VkCommandBuffer>, FRAMES_IN_FLIGHT>
+    std::array<std::vector<VkCommandBuffer>, FRAMES_IN_FLIGHT * QUEUE_COUNT>
         prePostCommandBuffers;
 
     std::unordered_map<Handle<AllocatedBuffer>,
@@ -120,11 +127,16 @@ class PassServer
     VkExtent2D extent;
     std::unordered_map<Handle<RenderPass>, uint32_t> passesQueues;
 
-    std::array<Queue, QUEUE_COUNT>& queues;
+    std::array<Queue, QUEUE_COUNT> queues;
+
+    VkBuffer indiceBuffer;
+
+    VkDescriptorSet baseDescriptorSet;
 
     VkDevice device;
 
     friend class ExecutionPlan;
+    friend class Passes::PassFriend;
 };
 
 }

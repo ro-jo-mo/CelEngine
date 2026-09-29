@@ -25,8 +25,7 @@ class DescriptorAllocator
     void clear_pools();
     void destroy_pools();
 
-    VkDescriptorSet allocate(VkDescriptorSetLayout layout,
-                             const void* pNext = nullptr);
+    VkDescriptorSet allocate(VkDescriptorSetLayout layout, const void* pNext);
 
   private:
     VkDescriptorPool get_pool();

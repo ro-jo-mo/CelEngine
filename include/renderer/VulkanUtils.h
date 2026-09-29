@@ -10,6 +10,11 @@
 #include <vulkan/vulkan.h>
 
 namespace Cel::Renderer::Utils {
+
+// I honestly can't remember how you're supposed to handle extensions.
+// This is atleast convenient and seems to work
+inline decltype(vkSetDebugUtilsObjectNameEXT)* vkSetDebugUtilsObjectName;
+
 bool
 load_shader(const char* path, VkDevice device, VkShaderModule* outShaderModule);
 
@@ -88,6 +93,7 @@ create_buffer(Handle<AllocatedBuffer> handle,
               VmaMemoryUsage memoryUsage,
 
               const char* allocName,
+              VkDevice device,
               const VmaAllocator& allocator);
 
 [[nodiscard]] uint32_t
@@ -113,4 +119,15 @@ upload_to_buffer(VkCommandBuffer cmd,
 void
 set_scissor_and_viewport(VkCommandBuffer cmd, const VkExtent2D& extent);
 
+void
+set_resource_name(VkDevice device,
+                  VmaAllocator allocator,
+                  AllocatedImage& image,
+                  const char* name);
+
+void
+set_resource_name(VkDevice device,
+                  VmaAllocator allocator,
+                  AllocatedBuffer& image,
+                  const char* name);
 };

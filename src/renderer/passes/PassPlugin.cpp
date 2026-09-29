@@ -26,7 +26,7 @@ Cel::Renderer::Passes::PassPlugin::build(SystemScheduler scheduler,
 
     scheduler.add_chain(Render::PostUpdate,
                         create_indirect_draw_data,
-                        PassFriend::create_and_bind_scene_data);
+                        PassFriend::create_scene_data);
 
     scheduler.add_group(
         Render::PostUpdate, draw_mesh, PassFriend::upload_assets);

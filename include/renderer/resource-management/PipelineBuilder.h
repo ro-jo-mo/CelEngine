@@ -41,8 +41,13 @@ class PipelineBuilder
         bool depthWriteEnable,
         VkCompareOp op = VK_COMPARE_OP_GREATER_OR_EQUAL);
     PipelineBuilder& disable_depth_test();
-    PipelineBuilder& set_color_attachement(VkFormat format);
+    PipelineBuilder& set_color_attachment(VkFormat format);
     PipelineBuilder& set_depth_attachment(VkFormat format);
+
+    static void initialise_default_descriptor(VkDevice device);
+
+    inline static VkDescriptorSetLayout defaultSetLayout = VK_NULL_HANDLE;
+    inline static VkPipelineLayout defaultPipelineLayout = VK_NULL_HANDLE;
 
   private:
     void generate_pipeline_layout();

@@ -129,12 +129,14 @@ Cel::Renderer::Passes::register_draw_mesh_pass(
                           VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                       VK_IMAGE_ASPECT_DEPTH_BIT)
         .write_image(Passes::drawImage,
-                     VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-                     VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                     VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT |
+                         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
         .write_image(Passes::depthImage,
                      VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-                     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                     VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+                         VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                      VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
         .read_buffer(indirectBuffer,
                      VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,

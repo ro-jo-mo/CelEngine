@@ -38,6 +38,10 @@ class Graph<Key>
      */
     void add_edge(Key from, Key to);
 
+    // Generates a straightforward valid ordering of the nodes, with no
+    // additional criteria
+    std::vector<Key> simple_ordering();
+
     class Iterator;
 
     Iterator iter();
@@ -78,6 +82,42 @@ std::unordered_set<Key>&
 Graph<Key>::get_dependents(Key key)
 {
     return adjacencyList[key];
+}
+
+template<typename Key>
+std::vector<Key>
+Graph<Key>::simple_ordering()
+{
+    std::vector<Key> order;
+    order.reserve(adjacencyList.size());
+
+    std::unordered_set<Key> visited;
+
+    auto recurse = [&](const auto& key, auto&& _recurse) -> void {
+        for (const auto& dependent : get_dependents(key)) {
+            // If all dependencies for this node are already visited
+            if (std::ranges::all_of(
+                    get_dependencies(dependent),
+                    [&](const auto& val) { return visited.contains(val); })) {
+
+                order.emplace_back(dependent);
+                visited.emplace(dependent);
+
+                _recurse(dependent, _recurse);
+            }
+        }
+    };
+
+    for (const auto& [key, dependencies] : reverseAdjacencyList) {
+        if (dependencies.empty()) {
+            order.emplace_back(key);
+            visited.emplace(key);
+
+            recurse(key, recurse);
+        }
+    }
+
+    return order;
 }
 
 /**
@@ -158,7 +198,7 @@ class Graph<Key>::Iterator
     explicit Iterator(Graph& graph)
         : graph(graph)
     {
-        for (const auto& [key, reqs] : graph.adjacencyList) {
+        for (const auto& [key, reqs] : graph.reverseAdjacencyList) {
             if (reqs.empty()) {
                 calculate_critical_path_lengths(key);
                 readyNodes.emplace(criticalPaths.at(key), key);
@@ -209,7 +249,8 @@ void
 Graph<Key>::Iterator::mark_finished(Key key)
 {
     // Remove from ready nodes
-    readyNodes.erase({ criticalPaths[key], key });
+    readyNodes.erase({ criticalPaths.at(key), key });
+    finished.emplace(key);
     // Add dependents
     add_dependents(key);
 }
@@ -218,6 +259,10 @@ template<typename Key>
 void
 Graph<Key>::Iterator::calculate_unused(Key endpoint)
 {
+    // In the current state this does not work, as we'd have to introduce edges
+    // representing resource accesses. I'm not particularly sure whether I
+    // really care about culling passes currently.
+
     std::unordered_set<Key> used;
 
     auto recurse = [&](const Key key, auto&& _recurse) {
@@ -245,8 +290,8 @@ uint32_t
 Graph<Key>::Iterator::calculate_critical_path_lengths(Key root)
 {
     // i.e. passes that have no effect on the final render
-    if (criticalPaths[root] != 0) {
-        return criticalPaths[root];
+    if (criticalPaths.contains(root)) {
+        return criticalPaths.at(root);
     }
 
     const auto& dependents = graph.get_dependents(root);
@@ -257,7 +302,7 @@ Graph<Key>::Iterator::calculate_critical_path_lengths(Key root)
             std::max(calculate_critical_path_lengths(dep) + 1, greatestPath);
     }
 
-    criticalPaths[root] = greatestPath;
+    criticalPaths.emplace(root, greatestPath);
 
     return greatestPath;
 }
@@ -268,13 +313,15 @@ Graph<Key>::Iterator::add_dependents(Key key)
 {
     const auto& dependents = graph.get_dependents(key);
 
+    // No reason to read the map in the loop
+    auto depLength = criticalPaths.at(key) - 1;
+
     for (const auto& dep : dependents) {
         const auto& requirements = graph.get_dependencies(dep);
 
-        if (std::all_of(requirements.begin(), requirements.end(), [&](auto x) {
-                return finished.count(x);
-            })) {
-            readyNodes.emplace(criticalPaths[dep], key);
+        if (std::ranges::all_of(requirements,
+                                [&](auto x) { return finished.contains(x); })) {
+            readyNodes.emplace(depLength, dep);
         }
     }
 }
