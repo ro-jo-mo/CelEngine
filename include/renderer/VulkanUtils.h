@@ -13,7 +13,8 @@ namespace Cel::Renderer::Utils {
 
 // I honestly can't remember how you're supposed to handle extensions.
 // This is atleast convenient and seems to work
-inline decltype(vkSetDebugUtilsObjectNameEXT)* vkSetDebugUtilsObjectName;
+inline decltype(vkSetDebugUtilsObjectNameEXT)* vkSetDebugUtilsObjectName =
+    nullptr;
 
 bool
 load_shader(const char* path, VkDevice device, VkShaderModule* outShaderModule);
@@ -130,4 +131,11 @@ set_resource_name(VkDevice device,
                   VmaAllocator allocator,
                   AllocatedBuffer& image,
                   const char* name);
+
+void
+set_resource_name(VkDevice device,
+                  uint64_t resource,
+                  VkObjectType type,
+                  const char* name);
+
 };

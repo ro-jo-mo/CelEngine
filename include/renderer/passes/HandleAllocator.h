@@ -42,4 +42,6 @@ get_name(Handle<AllocatedImage> handle);
 std::string
 get_name(Handle<RenderGraph::RenderPass> handle);
 
+inline std::unordered_map<uint32_t, std::string> _names{};
+
 }

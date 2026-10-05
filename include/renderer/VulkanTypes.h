@@ -110,6 +110,7 @@ struct ImageRequirements
     VkImageAspectFlags aspects;
 
     using Access = ImageAccess;
+    bool operator==(const ImageRequirements& requirements) const = default;
 };
 
 struct Pipeline

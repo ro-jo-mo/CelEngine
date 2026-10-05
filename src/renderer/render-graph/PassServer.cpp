@@ -63,12 +63,27 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
         .flags = 0
     };
 
-    for (const auto queue : queues) {
+    for (const auto& queue : queues) {
         vkCreateSemaphore(device,
                           &semaphoreInfo,
                           nullptr,
                           &semaphores[queue.family].semaphore);
         semaphores[queue.family].current = 0;
+
+        std::string name;
+        if (queue.family == Queues::graphics.family) {
+            name = "graphics_semaphore";
+        } else if (queue.family == Queues::compute.family) {
+            name = "compute_semaphore";
+        } else {
+            name = "transfer_semaphore";
+        }
+
+        Utils::set_resource_name(
+            device,
+            reinterpret_cast<uint64_t>(semaphores[queue.family].semaphore),
+            VK_OBJECT_TYPE_SEMAPHORE,
+            name.c_str());
     }
 
     VkFenceCreateInfo fenceInfo{ .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -82,6 +97,14 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
         vkCreateFence(device, &fenceInfo, nullptr, &fences[i]);
         vkCreateSemaphore(
             device, &semaphoreInfo, nullptr, &acquireSemaphores[i]);
+
+        auto name = fmt::format("acquire_semaphore_{}", i);
+
+        Utils::set_resource_name(
+            device,
+            reinterpret_cast<uint64_t>(acquireSemaphores[i]),
+            VK_OBJECT_TYPE_SEMAPHORE,
+            name.c_str());
     }
 
     std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
@@ -134,7 +157,8 @@ Cel::Renderer::RenderGraph::PassServer::get_cmd_buffer(
 
     // Only bind descriptor for graphics & compute
     const auto queue = passesQueues.at(handle);
-    if (queue == Queues::graphics.family || queue == Queues::compute.family) {
+    if (!setupPasses.contains(handle) &&
+        (queue == Queues::graphics.family || queue == Queues::compute.family)) {
         const auto bindPoint = queue == Queues::graphics.family
                                    ? VK_PIPELINE_BIND_POINT_GRAPHICS
                                    : VK_PIPELINE_BIND_POINT_COMPUTE;
@@ -150,6 +174,15 @@ Cel::Renderer::RenderGraph::PassServer::get_cmd_buffer(
 
         vkCmdBindIndexBuffer(cmd, indiceBuffer, 0, VK_INDEX_TYPE_UINT32);
     }
+
+    Utils::set_resource_name(
+        device,
+        reinterpret_cast<uint64_t>(cmd),
+        VK_OBJECT_TYPE_COMMAND_BUFFER,
+        fmt::format("{}_{}",
+                    Passes::HandleAllocator::get_name(handle).c_str(),
+                    currentFrame)
+            .c_str());
 
     return cmd;
 }
@@ -176,7 +209,6 @@ Cel::Renderer::AllocatedBuffer&
 Cel::Renderer::RenderGraph::PassServer::get_resource(
     const Handle<AllocatedBuffer> handle) const
 {
-
     return mappedBuffers.at(handle);
 }
 
@@ -197,12 +229,13 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
         imageMapping,
     const std::unordered_set<Handle<AllocatedBuffer>>& perFrameBuffers,
     const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
+    const std::unordered_set<Handle<RenderPass>>& _setup_passes,
     VulkanResourceManager& manager,
     Assets::AssetServer& assetServer)
 {
     currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
     extent = _extent;
-
+    setupPasses = _setup_passes;
     passesQueues.clear();
 
     for (const auto& pass : passesInUse | std::views::values) {
@@ -214,6 +247,8 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     vk_check(
         vkWaitForFences(device, 1, &fences[currentFrame], VK_TRUE, UINT64_MAX));
     vk_check(vkResetFences(device, 1, &fences[currentFrame]));
+
+    get_descriptor_allocator().clear_pools();
 
     // Free buffers + images from the last time
     // Freeing at this point allows the resource manager to possibly reuse it
@@ -253,10 +288,13 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     }
 
     // Create a mapping from the pass handled to actual vk resources
+    //
     // Set to be freed either the next frame (if transient resource) or the next
     // occurrence of this frame (if per frame)
     const auto nextFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
 
+    mappedBuffers.clear();
+    mappedImages.clear();
     for (const auto& [handle, mapped] : bufferMapping) {
         const auto freeFrame =
             perFrameBuffers.contains(handle) ? currentFrame : nextFrame;
@@ -310,14 +348,15 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     baseDescriptorSet = get_descriptor_allocator().allocate(
         PipelineBuilder::defaultSetLayout, &varInfo);
 
-    writer.update_set(get_device(), baseDescriptorSet);
+    writer.update_set(device, baseDescriptorSet);
 
     indiceBuffer = assetServer.indiceBuffer.buffer.buffer;
 }
 
 VkCommandBuffer
 Cel::Renderer::RenderGraph::PassServer::get_prepost_cmd_buffer(
-    const uint32_t queue)
+    const uint32_t queue,
+    const char* name)
 {
     const auto index =
         queueToIndex[queue] * ThreadManager::total_threads() +
@@ -334,13 +373,18 @@ Cel::Renderer::RenderGraph::PassServer::get_prepost_cmd_buffer(
     prePostCommandBuffers[queueToIndex[queue] + QUEUE_COUNT * currentFrame]
         .push_back(cmd);
 
+    Utils::set_resource_name(device,
+                             reinterpret_cast<uint64_t>(cmd),
+                             VK_OBJECT_TYPE_COMMAND_BUFFER,
+                             name);
+
     return cmd;
 }
 
 Cel::Renderer::RenderGraph::PassServer::Semaphore&
 Cel::Renderer::RenderGraph::PassServer::get_semaphore(const uint32_t queue)
 {
-    return semaphores[queueToIndex[queue]];
+    return semaphores[queue];
 }
 
 uint32_t

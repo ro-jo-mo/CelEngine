@@ -45,7 +45,6 @@ Cel::Renderer::Passes::register_indirect_draw_data_pass(
                            VK_BUFFER_USAGE_2_INDIRECT_BUFFER_BIT,
                        VMA_MEMORY_USAGE_GPU_ONLY)
         .upload_buffer(indirectStagingBuffer, indirectBuffer);
-
     graph->add_setup_pass(pass.build());
 }
 
@@ -139,8 +138,8 @@ Cel::Renderer::Passes::register_draw_mesh_pass(
                          VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                      VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
         .read_buffer(indirectBuffer,
-                     VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
-                     VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT);
+                     VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+                     VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT);
 
     server->declare_scene_access(pass);
 

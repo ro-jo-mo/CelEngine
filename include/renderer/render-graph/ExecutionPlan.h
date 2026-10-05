@@ -61,7 +61,7 @@ class ExecutionPlan
         std::vector<VkBufferMemoryBarrier2> buffers;
         std::vector<VkImageMemoryBarrier2> images;
         VkSemaphoreSubmitInfo signalSemaphoreInfo;
-        std::vector<VkSemaphoreSubmitInfo> waitSemaphoreInfo;
+        std::array<VkSemaphoreSubmitInfo, QUEUE_COUNT> waitSemaphoreInfo{};
     };
 
     struct SubmitSplitter
@@ -129,6 +129,10 @@ class ExecutionPlan
         const std::unordered_map<Handle<AllocatedImage>, Handle<RenderPass>>&
             imageMergePoints,
         VulkanResourceManager& manager);
+
+    static void add_wait_semaphore(PassSubmitInfo& info,
+                                   VkSemaphore semaphore,
+                                   uint64_t signalValue);
 
     static void record_barriers(VkCommandBuffer cmd, PassSubmitInfo& info);
 

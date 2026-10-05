@@ -97,11 +97,10 @@ class AssetServer
         bool gltf;
     };
 
-    struct CmdCreateSampler
+    struct CmdSampler2d
     {
         size_t imageIndex;
-        size_t samplerIndex;
-        uint32_t toSet;
+        uint32_t cacheIndex;
     };
 
     void create_defaults(VulkanResourceManager& manager);
@@ -112,11 +111,8 @@ class AssetServer
 
     void load_samplers(const fastgltf::Asset& asset);
 
-    void resolve_texture_sampler(CmdCreateSampler& cmd);
-
-    void create_sampler_cmd(
+    uint32_t resolve_texture_sampler(
         fastgltf::Asset& asset,
-        uint32_t& toSet,
         const std::optional<fastgltf::TextureInfo>& textureInfo,
         size_t imageOffset,
         size_t samplerOffset);
@@ -163,7 +159,7 @@ class AssetServer
     struct CreateMeshCmd
     {};
     std::vector<CmdCreateImg> cmdCreateImgs;
-    std::vector<CmdCreateSampler> cmdCreateSamplers;
+    std::vector<CmdSampler2d> cmdAddSampler2ds;
     // Store image allocations here until they're officially created with
     // data
     std::vector<AllocatedImage> uninitialisedImages;

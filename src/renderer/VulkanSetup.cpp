@@ -4,7 +4,6 @@
 #include "../../include/renderer/resource-management/PipelineBuilder.h"
 #include "core/Error.h"
 #include "renderer/AssetServer.h"
-#include "renderer/Descriptors.h"
 #include "renderer/Queues.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanTypes.h"
@@ -240,6 +239,11 @@ init_swapchain(Resource<VulkanContext>& context,
                           &semaphoreCreateInfo,
                           nullptr,
                           &swapchain->presentSemaphores[i]);
+        Utils::set_resource_name(
+            context->device,
+            reinterpret_cast<uint64_t>(swapchain->presentSemaphores[i]),
+            VK_OBJECT_TYPE_SEMAPHORE,
+            fmt::format("present_semaphore_{}", i).c_str());
     }
 
     cleanup->push([&]() {

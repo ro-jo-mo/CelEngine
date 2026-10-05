@@ -36,6 +36,7 @@ RenderGraph::RenderGraphPlugin::compile_graph(
                                         graph->imageHandleToMapped,
                                         graph->perFrameBuffers,
                                         graph->perFrameImages,
+                                        graph->setupPasses,
                                         *manager,
                                         *assetServer);
 }

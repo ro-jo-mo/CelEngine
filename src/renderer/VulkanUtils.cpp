@@ -573,15 +573,10 @@ Cel::Renderer::Utils::set_resource_name(VkDevice device,
 {
     vmaSetAllocationName(allocator, image.allocation, name);
 
-    VkDebugUtilsObjectNameInfoEXT nameInfo{
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-        .pNext = nullptr,
-        .objectType = VK_OBJECT_TYPE_IMAGE,
-        .objectHandle = reinterpret_cast<uint64_t>(image.image),
-        .pObjectName = name
-    };
-
-    vkSetDebugUtilsObjectName(device, &nameInfo);
+    set_resource_name(device,
+                      reinterpret_cast<uint64_t>(image.image),
+                      VK_OBJECT_TYPE_IMAGE,
+                      name);
 }
 
 void
@@ -592,13 +587,28 @@ Cel::Renderer::Utils::set_resource_name(VkDevice device,
 {
     vmaSetAllocationName(allocator, buffer.allocation, name);
 
-    VkDebugUtilsObjectNameInfoEXT nameInfo{
-        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
-        .pNext = nullptr,
-        .objectType = VK_OBJECT_TYPE_BUFFER,
-        .objectHandle = reinterpret_cast<uint64_t>(buffer.buffer),
-        .pObjectName = name
-    };
+    set_resource_name(device,
+                      reinterpret_cast<uint64_t>(buffer.buffer),
+                      VK_OBJECT_TYPE_BUFFER,
+                      name);
+}
 
-    vkSetDebugUtilsObjectName(device, &nameInfo);
+void
+Cel::Renderer::Utils::set_resource_name(VkDevice device,
+                                        uint64_t resource,
+                                        VkObjectType type,
+                                        const char* name)
+{
+    if (vkSetDebugUtilsObjectName != nullptr) {
+
+        VkDebugUtilsObjectNameInfoEXT nameInfo{
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+            .pNext = nullptr,
+            .objectType = type,
+            .objectHandle = resource,
+            .pObjectName = name
+        };
+        
+        vk_check(vkSetDebugUtilsObjectName(device, &nameInfo));
+    }
 }

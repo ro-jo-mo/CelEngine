@@ -5,10 +5,6 @@
 #include <ranges>
 #include <vulkan/vulkan_core.h>
 
-
-
-
-
 Cel::Renderer::DescriptorAllocator::DescriptorAllocator(
     VkDevice device,
     const uint32_t initialSets,
@@ -216,7 +212,7 @@ Cel::Renderer::DescriptorWriter::write_image(const int binding,
 }
 
 void
-Cel::Renderer::DescriptorWriter::write_buffer(const int binding,
+Cel::Renderer::DescriptorWriter::write_buffer(uint32_t binding,
                                               VkBuffer buffer,
                                               const size_t size,
                                               const size_t offset,
@@ -227,14 +223,16 @@ Cel::Renderer::DescriptorWriter::write_buffer(const int binding,
             .buffer = buffer, .offset = offset, .range = size });
 
     VkWriteDescriptorSet write = { .sType =
-                                       VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-
-    write.dstBinding = binding;
-    write.dstSet =
-        VK_NULL_HANDLE; // left empty for now until we need to write it
-    write.descriptorCount = 1;
-    write.descriptorType = type;
-    write.pBufferInfo = &info;
+                                       VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                   .pNext = nullptr,
+                                   .dstSet = VK_NULL_HANDLE,
+                                   .dstBinding = binding,
+                                   .dstArrayElement = 0,
+                                   .descriptorCount = 1,
+                                   .descriptorType = type,
+                                   .pImageInfo = nullptr,
+                                   .pBufferInfo = &info,
+                                   .pTexelBufferView = nullptr };
 
     writes.push_back(write);
 }
@@ -282,13 +280,15 @@ Cel::Renderer::DescriptorWriter::update_set(VkDevice device,
 }
 
 uint32_t
-Cel::Renderer::TextureCache::add_texture(VkImageView imageView,
-                                         VkSampler sampler)
+Cel::Renderer::TextureCache::add_texture_uninitialised(
+    const uint32_t imageIndex,
+    VkSampler sampler)
 {
-    for (const auto& [i, descriptor] :
-         std::ranges::views::enumerate(descriptors)) {
-        if (descriptor.imageView == imageView &&
-            descriptor.sampler == sampler) {
+    for (size_t i = 0; i < descriptors.size(); i++) {
+        const auto& descriptor = descriptors[i];
+        const auto index = imageIndices[i];
+
+        if (index == imageIndex && descriptor.sampler == sampler) {
             return i;
         }
     }
@@ -297,8 +297,19 @@ Cel::Renderer::TextureCache::add_texture(VkImageView imageView,
 
     descriptors.push_back(VkDescriptorImageInfo{
         .sampler = sampler,
-        .imageView = imageView,
+        .imageView = nullptr,
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+    imageIndices.push_back(imageIndex);
 
     return i;
+}
+
+void
+Cel::Renderer::TextureCache::initialise_texture(uint32_t index,
+                                                VkImageView imageView)
+{
+    if (descriptors[index].imageView != nullptr) {
+        return;
+    }
+    descriptors[index].imageView = imageView;
 }

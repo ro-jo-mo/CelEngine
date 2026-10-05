@@ -49,35 +49,32 @@ Cel::Renderer::VulkanResourceManager::get_resource_from_handle(
 
 Cel::Renderer::BufferAccess
 Cel::Renderer::VulkanResourceManager::get_resource_state(
-    const Handle<AllocatedBuffer> handle)
+    const Handle<AllocatedBuffer> handle) const
 {
     return tracker.get_state(handle);
 }
 
 Cel::Renderer::ImageAccess
 Cel::Renderer::VulkanResourceManager::get_resource_state(
-    Handle<AllocatedImage> handle)
+    Handle<AllocatedImage> handle) const
 {
     return tracker.get_state(handle);
 }
 
 bool
 Cel::Renderer::VulkanResourceManager::does_resource_exist(
-    Handle<AllocatedBuffer> handle)
+    Handle<AllocatedBuffer> handle) const
 {
     // Has the handle been added to the pool and not been freed
-    return bufferPool.requirements.contains(handle) &&
-           std::ranges::find(bufferPool.freed, handle) !=
-               bufferPool.freed.end();
+    return bufferPool.requirements.contains(handle);
 }
 
 bool
 Cel::Renderer::VulkanResourceManager::does_resource_exist(
-    Handle<AllocatedImage> handle)
+    Handle<AllocatedImage> handle) const
 {
     // Has the handle been added to the pool and not been freed
-    return imagePool.requirements.contains(handle) &&
-           std::ranges::find(imagePool.freed, handle) != imagePool.freed.end();
+    return imagePool.requirements.contains(handle);
 }
 
 void
@@ -197,4 +194,42 @@ Cel::Renderer::VulkanResourceManager::is_compatible(
     }
 
     return true;
+}
+
+uint32_t
+Cel::Renderer::VulkanResourceManager::alias_resource(
+    const BufferRequirements& requirements)
+{
+    for (const auto& [i, buffer] : std::views::enumerate(bufferPool.freed)) {
+        auto& [allocSize, usages, memoryUsage] = get<1>(buffer);
+
+        if (usages == requirements.usages &&
+            allocSize == requirements.allocSize &&
+            memoryUsage == requirements.memoryUsage) {
+
+            return i;
+        }
+    }
+
+    return UINT32_MAX;
+}
+
+uint32_t
+Cel::Renderer::VulkanResourceManager::alias_resource(
+    const ImageRequirements& requirements)
+{
+    for (const auto& [i, image] : std::views::enumerate(imagePool.freed)) {
+        auto& [format, extent, usages, aspects] = get<1>(image);
+
+        if (aspects == requirements.aspects && format == requirements.format &&
+            usages == requirements.usages &&
+            extent.width == requirements.extent.width &&
+            extent.height == requirements.extent.height &&
+            extent.depth == requirements.extent.depth) {
+
+            return i;
+        }
+    }
+
+    return UINT32_MAX;
 }

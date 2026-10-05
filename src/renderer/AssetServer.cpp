@@ -22,11 +22,6 @@ using namespace Cel::Renderer::Assets;
 using namespace Cel::Renderer;
 using namespace Cel;
 
-// TEMP NOTES
-// We can use the gltf load mesh to just get the cubemap mesh
-// Uploads to the megabuffer like every other mesh
-//
-
 AssetServer::AssetServer(VulkanResourceManager& manager)
     : vertexBuffer({ .allocSize = 2 << 16,
                      .usages = VK_BUFFER_USAGE_TRANSFER_DST_BIT |
@@ -320,35 +315,32 @@ AssetServer::load_samplers(const fastgltf::Asset& asset)
     }
 }
 
-void
-AssetServer::resolve_texture_sampler(CmdCreateSampler& cmd)
-{
-    cmd.toSet = textureCache.add_texture(gltfImages[cmd.imageIndex].imageView,
-                                         samplers[cmd.samplerIndex]);
-}
-
-void
-AssetServer::create_sampler_cmd(
+uint32_t
+AssetServer::resolve_texture_sampler(
     fastgltf::Asset& asset,
-    uint32_t& toSet,
     const std::optional<fastgltf::TextureInfo>& textureInfo,
     const size_t imageOffset,
     const size_t samplerOffset)
 {
-    size_t textureIndex = 0;
+    size_t imageIndex = 0;
     size_t samplerIndex = 0;
 
     if (textureInfo.has_value()) {
         auto& texture = asset.textures[textureInfo.value().textureIndex];
 
-        textureIndex = texture.imageIndex.value() + imageOffset;
+        imageIndex = texture.imageIndex.value() + imageOffset;
 
         if (texture.samplerIndex.has_value()) {
             samplerIndex = texture.samplerIndex.value() + samplerOffset;
         }
     }
 
-    cmdCreateSamplers.emplace_back(textureIndex, samplerIndex, toSet);
+    auto index = textureCache.add_texture_uninitialised(imageIndex,
+                                                        samplers[samplerIndex]);
+
+    cmdAddSampler2ds.emplace_back(imageIndex, index);
+
+    return index;
 }
 
 void
@@ -357,6 +349,11 @@ AssetServer::load_materials(fastgltf::Asset& asset,
                             const size_t samplerOffset)
 {
     std::vector<MaterialConstants> materialList;
+
+    // Current problem
+    // Are material constants (stored on gpu) need to store an index into the
+    // sampler 2d array This constant is only obtained after creating the image
+    // Why though?? We should be able to obtain the
 
     for (auto& gltfMaterial : asset.materials) {
         // Material constants will be stored in a buffer on the gpu
@@ -378,19 +375,14 @@ AssetServer::load_materials(fastgltf::Asset& asset,
             metallicFactor, roughnessFactor, 0, 0
         };
 
-        create_sampler_cmd(asset,
-                           constants.colorTextureIndex,
-                           baseColorTexture,
-                           imageOffset,
-                           samplerOffset);
-        create_sampler_cmd(asset,
-                           constants.metalRoughnessTextureIndex,
-                           metallicRoughnessTexture,
-                           imageOffset,
-                           samplerOffset);
-        create_sampler_cmd(
+        constants.colorTextureIndex = resolve_texture_sampler(
+            asset, baseColorTexture, imageOffset, samplerOffset);
+
+        constants.metalRoughnessTextureIndex = resolve_texture_sampler(
+            asset, metallicRoughnessTexture, imageOffset, samplerOffset);
+
+        constants.normalTextureIndex = resolve_texture_sampler(
             asset,
-            constants.normalTextureIndex,
             gltfMaterial.normalTexture.transform([](const auto& info) {
                 return fastgltf::TextureInfo{ .textureIndex = info.textureIndex,
                                               .texCoordIndex =
@@ -726,6 +718,14 @@ AssetServer::register_pass(RenderGraph::PassBuilder& pass,
 
         pass.upload_image(staging, handle);
     }
+
+    for (const auto& samplerCmd : cmdAddSampler2ds) {
+        // Awful hack until i refactor asset server
+        textureCache.initialise_texture(
+            samplerCmd.cacheIndex,
+            uninitialisedImages[samplerCmd.imageIndex - gltfImages.size()]
+                .imageView);
+    }
 }
 
 void
@@ -778,7 +778,7 @@ AssetServer::flush(ParallelResource<RenderGraph::PassServer>& passServer)
 
     // Reset cmds
     cmdCreateImgs.clear();
-    cmdCreateSamplers.clear();
+    cmdAddSampler2ds.clear();
     uninitialisedImages.clear();
 
     if (vertexBuffer.current_upload_size() != 0) {
@@ -803,18 +803,22 @@ AssetServer::declare_scene_access(RenderGraph::PassBuilder& pass)
     // For now I am comfortable guaranteeing we access in the vertex & fragment
     // shaders only
     pass.read_buffer(vertexBuffer.handle,
+                     VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
                      VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT);
     pass.read_buffer(indiceBuffer.handle,
-                     VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT,
-                     VK_ACCESS_2_INDEX_READ_BIT);
+                     VK_ACCESS_2_INDEX_READ_BIT,
+                     VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT);
     pass.read_buffer(materialBuffer.handle,
+                     VK_ACCESS_2_SHADER_READ_BIT,
                      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT);
 
     // Scene data buffers. Managed elsewhere, but only filled with data of
     // actual renderables.
     pass.read_buffer(Passes::entityDataBuffer,
+                     VK_ACCESS_2_SHADER_READ_BIT,
                      VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
     pass.read_buffer(Passes::sceneDataBuffer,
+                     VK_ACCESS_2_SHADER_READ_BIT,
                      VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
 
     // I'd like to restructure the asset server at a later stage
@@ -827,9 +831,9 @@ AssetServer::declare_scene_access(RenderGraph::PassBuilder& pass)
     // stage
     for (const auto& image : gltfImages) {
         pass.read_image(image.handle,
+                        VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
                         VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 }
 

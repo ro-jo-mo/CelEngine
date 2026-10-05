@@ -42,21 +42,24 @@ PassBuilder::create_image(const Handle<AllocatedImage> image,
 
 PassBuilder&
 PassBuilder::read_buffer(const Handle<AllocatedBuffer> buffer,
-                         VkPipelineStageFlags2 stages,
-                         VkAccessFlags2 flags)
+                         VkAccessFlags2 access,
+                         VkPipelineStageFlags2 stages)
 {
-    pass.bufferReads.emplace_back(buffer, BufferAccess{ flags, stages });
+    pass.bufferReads.emplace_back(
+        buffer, BufferAccess{ .access = access, .stages = stages });
 
     return *this;
 }
 
 PassBuilder&
 PassBuilder::read_image(Handle<AllocatedImage> image,
+                        VkAccessFlags2 access,
                         VkPipelineStageFlags2 stages,
-                        VkImageLayout layout,
-                        VkAccessFlags2 flags)
+                        VkImageLayout layout)
 {
-    pass.imageReads.emplace_back(image, ImageAccess{ flags, stages, layout });
+    pass.imageReads.emplace_back(
+        image,
+        ImageAccess{ .access = access, .stages = stages, .layout = layout });
 
     return *this;
 }
@@ -65,11 +68,8 @@ PassBuilder::write_buffer(Handle<AllocatedBuffer> buffer,
                           VkAccessFlags2 access,
                           VkPipelineStageFlags2 stages)
 {
-    pass.bufferWrites.emplace_back(buffer,
-                                   BufferAccess{
-                                       access,
-                                       stages,
-                                   });
+    pass.bufferWrites.emplace_back(
+        buffer, BufferAccess{ .access = access, .stages = stages });
 
     return *this;
 }
@@ -80,7 +80,9 @@ PassBuilder::write_image(const Handle<AllocatedImage> image,
                          VkPipelineStageFlags2 stages,
                          VkImageLayout layout)
 {
-    pass.imageWrites.emplace_back(image, ImageAccess{ access, stages, layout });
+    pass.imageWrites.emplace_back(
+        image,
+        ImageAccess{ .access = access, .stages = stages, .layout = layout });
 
     return *this;
 }
@@ -104,6 +106,14 @@ PassBuilder&
 PassBuilder::upload_image(Handle<AllocatedBuffer> staging,
                           Handle<AllocatedImage> uploadTo)
 {
+    write_buffer(staging,
+                 VK_ACCESS_2_HOST_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
+                 VK_PIPELINE_STAGE_2_HOST_BIT | VK_PIPELINE_STAGE_2_COPY_BIT);
+
+    write_image(uploadTo,
+                VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                VK_PIPELINE_STAGE_2_COPY_BIT,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     return *this;
 }
@@ -120,7 +130,7 @@ RenderPass
 PassBuilder::build()
 {
     // Basic validity checks
-    
+
     if (pass.queue == UINT32_MAX) {
         // I think I'll actually set the queue in build as a parameter instead
         throw_error("Pass: {} does not have a queue set",

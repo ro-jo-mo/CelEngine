@@ -39,13 +39,14 @@ class VulkanResourceManager
     AllocatedImage& get_resource_from_handle(Handle<AllocatedImage> handle,
                                              bool strictAliasing = false);
 
-    BufferAccess get_resource_state(Handle<AllocatedBuffer> handle);
+    BufferAccess get_resource_state(Handle<AllocatedBuffer> handle) const;
 
-    ImageAccess get_resource_state(Handle<AllocatedImage> handle);
+    ImageAccess get_resource_state(Handle<AllocatedImage> handle) const;
 
-    bool does_resource_exist(Handle<AllocatedBuffer> handle);
+    [[nodiscard]] bool does_resource_exist(
+        Handle<AllocatedBuffer> handle) const;
 
-    bool does_resource_exist(Handle<AllocatedImage> handle);
+    [[nodiscard]] bool does_resource_exist(Handle<AllocatedImage> handle) const;
 
     /**
      * This resource is no longer in use and can be safely deleted
@@ -63,6 +64,11 @@ class VulkanResourceManager
 
     static bool is_compatible(const ImageRequirements& actual,
                               const ImageRequirements& requested);
+
+    // Return an index to the best match for these requirements
+    // UINT32_MAX means no match
+    uint32_t alias_resource(const BufferRequirements& requirements);
+    uint32_t alias_resource(const ImageRequirements& requirements);
 
     // Not happy with this naming. Not obvious that it takes zero ownership.
     [[nodiscard]] AllocatedBuffer allocate(
@@ -86,17 +92,20 @@ class VulkanResourceManager
 
         Res& get_or_allocate(Handle<Res> handle);
 
+        Res& alias(Handle<Res> handle, uint32_t index);
+
         void free(Handle<Res> handle);
 
         void flush();
 
       private:
         std::unordered_map<Handle<Res>, Req> requirements;
-        // A handle is reusable only if it has been freed and the pool has been
-        // flushed
+        // We reuse handles that have been freed
         std::vector<Handle<Res>> reusableHandles;
+
         // A handle is freed when the user marks it as free
-        std::vector<Handle<Res>> freed;
+        // Then the allocated resource is added to "freed
+        std::vector<std::tuple<Res, Req, typename Req::Access>> freed;
 
         std::unordered_map<Handle<Res>, Res> allocations;
 
@@ -131,7 +140,7 @@ VulkanResourceManager::ResourcePool<Res, Req>::create_handle(
     }
 
     requirements.emplace(handle, req);
-    manager.tracker.set_state(handle, Req::Access());
+    manager.tracker.set_state(handle, typename Req::Access());
 
     return handle;
 }
@@ -145,45 +154,56 @@ VulkanResourceManager::ResourcePool<Res, Req>::get_or_allocate(
         return allocations.at(handle);
     }
 
-    // Attempt to alias TODO
-    uint32_t bestFit = UINT32_MAX;
+    auto index = manager.alias_resource(requirements.at(handle));
 
-    for (const auto& freeRes : freed) {
-        if (is_compatible(requirements.at(freeRes), requirements.at(handle))) {
-            // Check if best fit, mark reused ...
-        }
+    if (index != UINT32_MAX) {
+        return alias(handle, index);
     }
 
     // Else allocate new
     allocations.emplace(handle, manager.allocate(handle));
-    // Set state (if does not exist)
+
+    // Set state to none
     manager.tracker.set_state(handle, {});
 
     return allocations.at(handle);
 }
 
 template<typename Res, typename Req>
+Res&
+VulkanResourceManager::ResourcePool<Res, Req>::alias(Handle<Res> handle,
+                                                     uint32_t index)
+{
+    auto& tuple = freed[index];
+
+    auto& res = (*allocations.emplace(handle, get<0>(tuple)).first).second;
+
+    manager.tracker.set_state(handle, get<2>(tuple));
+
+    freed.erase(freed.begin() + index);
+
+    return res;
+}
+
+template<typename Res, typename Req>
 void
 VulkanResourceManager::ResourcePool<Res, Req>::free(Handle<Res> handle)
 {
-    freed.push_back(handle);
+    freed.emplace_back(allocations.at(handle),
+                       requirements.at(handle),
+                       manager.tracker.get_state(handle));
+
+    reusableHandles.push_back(handle);
+    requirements.erase(handle);
+    allocations.erase(handle);
 }
 
 template<typename Res, typename Req>
 void
 VulkanResourceManager::ResourcePool<Res, Req>::flush()
 {
-    for (const auto& handle : freed) {
-        if (!allocations.contains(handle)) {
-            continue;
-        }
-
-        auto& res = allocations.at(handle);
-
+    for (const auto& res : freed) {
         manager.deallocate(res);
-
-        reusableHandles.push_back(handle);
-        allocations.erase(handle);
     }
 
     freed.clear();

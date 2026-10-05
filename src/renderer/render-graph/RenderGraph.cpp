@@ -1,5 +1,6 @@
 #include "renderer/render-graph/RenderGraph.h"
 
+#include "renderer/Queues.h"
 #include "renderer/render-graph/ExecutionPlan.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/ResourceTracker.h"
@@ -23,6 +24,8 @@ Cel::Common::RelativeScheduler<Cel::Handle<RenderPass>,
 Graph::add_setup_pass(const RenderPass& pass)
 {
     passes.emplace(pass.id, pass);
+    setupPasses.insert(pass.id);
+
     graph.add_edge(pass.id, Passes::setupPass);
     return add_system(pass.id);
 }
@@ -49,12 +52,27 @@ Graph::compile(VulkanResourceManager& manager)
     // Someone needs to check when a resource is last used, so it can be reused
 
     // The setup pass is a dummy pass, but still needs initialisation
-    passes[Passes::setupPass] = { .id = Passes::setupPass };
+    passes.emplace(Passes::setupPass, Passes::setupPass);
 
-    auto tracker = manager.branch_tracker();
+    // Add the specialisations for each queue for resource transfers
+    add_setup_chain(RenderPass{ .id = Passes::basePassGraphics,
+                                .queue = Queues::graphics.family },
+                    RenderPass{ .id = Passes::basePassCompute,
+                                .queue = Queues::compute.family },
+                    RenderPass{ .id = Passes::basePassTransfer,
+                                .queue = Queues::transfer.family });
+
+    for (const auto& [pass, node] : graph.reverseAdjacencyList) {
+
+        // If this node is a root node, run after base pass
+        if (node.empty() && pass != Passes::basePassGraphics &&
+            pass != Passes::basePassCompute &&
+            pass != Passes::basePassTransfer) {
+            graph.add_edge(Passes::basePassTransfer, pass);
+        }
+    }
 
     // Set last pass in graph
-
     graph.add_node(presentPass);
 
     for (const auto& [pass, node] : graph.adjacencyList) {
@@ -65,6 +83,8 @@ Graph::compile(VulkanResourceManager& manager)
         }
     }
 
+    auto tracker = manager.branch_tracker();
+
     compile_passes(manager, tracker);
 
     ExecutionPlan plan{};
@@ -74,6 +94,13 @@ Graph::compile(VulkanResourceManager& manager)
     search_branch(iter, tracker, plan, manager);
 
     manager.tracker = finalResourceState;
+
+    for (const auto& pass : finalPlan) {
+        fmt::println("{} {}",
+                     Passes::HandleAllocator::get_name(pass.pass),
+                     pass.pass.index);
+    }
+    fmt::println("end");
 }
 
 void
@@ -159,7 +186,7 @@ Graph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
                 bestCost = plan.cost();
 
                 finalPlan = plan.compile();
-                finalResourceState = tracker.compile(manager.tracker);
+                tracker.compile(manager.tracker, finalResourceState);
             }
             return;
         }
@@ -278,6 +305,11 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
         for (const auto& write : writes) {
             auto state = tracker.state.get(write.id);
 
+            if (bufferHandleToMapped.at(Passes::sceneDataBuffer).index ==
+                write.id.index) {
+                fmt::println("here");
+            }
+
             // We always need a barrier before a write. The only exception is
             // when the resource is untouched i.e. QUEUE_FAMILY_IGNORED. Even
             // then images still need their layout transitioned
@@ -370,7 +402,7 @@ bool
 Graph::is_write_barrier_needed(Handle<AllocatedImage> handle,
                                BranchingResourceTracker& tracker)
 {
-    // TODO: I should be checking the image layout and last pass access here
+    // If there's no existing state, then the layout would be incorrect
     return true;
 }
 
@@ -381,7 +413,20 @@ Graph::create_transition(const Handle<AllocatedBuffer> handle,
                          BranchingResourceTracker& tracker)
 {
     assert(tracker.lastPassToAccessResource.get(handle) != Passes::basePass);
-    return { .signalPass = tracker.lastPassToAccessResource.get(handle),
+
+    auto signal = tracker.lastPassToAccessResource.get(handle);
+
+    if (signal == Passes::basePass) {
+        if (state.queue == Queues::graphics.family) {
+            signal = Passes::basePassGraphics;
+        } else if (state.queue == Queues::compute.family) {
+            signal = Passes::basePassCompute;
+        } else if (state.queue == Queues::transfer.family) {
+            signal = Passes::basePassTransfer;
+        }
+    }
+
+    return { .signalPass = signal,
              .barrier = { .srcStageMask = state.stages,
                           .srcAccessMask = state.access,
                           .dstStageMask = access.stages,
@@ -397,8 +442,19 @@ Graph::create_transition(const Handle<AllocatedImage> handle,
                          const ImageAccess& state,
                          BranchingResourceTracker& tracker)
 {
-    assert(tracker.lastPassToAccessResource.get(handle) != Passes::basePass);
-    return { .signalPass = tracker.lastPassToAccessResource.get(handle),
+    auto signal = tracker.lastPassToAccessResource.get(handle);
+
+    if (signal == Passes::basePass) {
+        if (state.queue == Queues::graphics.family) {
+            signal = Passes::basePassGraphics;
+        } else if (state.queue == Queues::compute.family) {
+            signal = Passes::basePassCompute;
+        } else if (state.queue == Queues::transfer.family) {
+            signal = Passes::basePassTransfer;
+        }
+    }
+
+    return { .signalPass = signal,
              .barrier = { .srcStageMask = state.stages,
                           .srcAccessMask = state.access,
                           .dstStageMask = access.stages,

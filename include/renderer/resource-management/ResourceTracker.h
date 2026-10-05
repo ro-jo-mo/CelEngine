@@ -14,9 +14,9 @@ namespace Cel::Renderer {
 class ResourceTracker
 {
   public:
-    BufferAccess get_state(Handle<AllocatedBuffer> buffer);
+    [[nodiscard]] BufferAccess get_state(Handle<AllocatedBuffer> buffer) const;
 
-    ImageAccess get_state(Handle<AllocatedImage> image);
+    [[nodiscard]] ImageAccess get_state(Handle<AllocatedImage> image) const;
 
     void set_state(Handle<AllocatedBuffer> handle, const BufferAccess& access);
 
@@ -44,7 +44,7 @@ class BranchingResourceTracker
     BranchingResourceTracker branch_off();
 
     // Update the original tracker to include the changes of this branch
-    ResourceTracker compile(ResourceTracker& original);
+    void compile(const ResourceTracker& original, ResourceTracker& writeTo);
 
     // Stores a branch of state data
     // To avoid altering the state of previous branches in the tree we store
@@ -170,5 +170,20 @@ BranchingResourceTracker::Branch<BufValue, ImgValue>::get(
 
     return initialImg;
 }
+
+// We must rework the tracker used by the rendergraph
+// To allow for aliasing, we must have the full resource manager as part of the
+// exploration strategy
+// In the current strategy, we can't get the actual state of an object without
+// materialising it, making it impossible to alias.
+
+// Additional notes. If exploration is single threaded, ideally we only have one
+// copy of the manager. It is mutated as we explore the graph, and changes are
+// undone as we backtrack In a multi threaded strategy, we'd make copies upto
+// the nth branch, each branch being a new thread. The individual threads would
+// then retain the same mutating strategy
+
+// I think I'll rename VulkanResourceManager to ResourceTracker.
+// Resource track can be removed, it's just a simple map
 
 }

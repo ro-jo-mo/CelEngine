@@ -173,7 +173,7 @@ BaseScheduler<Key>::add_chain_impl(Graph& graph, Keys... keys)
     auto first = std::get<0>(tuple);
     auto last = std::get<SIZE - 1>(tuple);
 
-    return RelativeScheduler<Key, Graph>{ graph, first, last };
+    return { graph, { first, last } };
 }
 }
 
@@ -212,7 +212,7 @@ RelativeScheduler<Key, Graph<Key>>
 Scheduler<Key>::add_group(Systems... systems)
 {
     (void(graph.add_node(systems)), ...);
-    return add_group_impl(graph, systems...);
+    return Detail::BaseScheduler<Key>::add_group_impl(graph, systems...);
 }
 
 template<typename Key>
@@ -221,6 +221,6 @@ RelativeScheduler<Key, Graph<Key>>
 Scheduler<Key>::add_chain(Systems... systems)
 {
     (void(graph.add_node(systems)), ...);
-    return add_chain_impl(graph, systems...);
+    return Detail::BaseScheduler<Key>::add_chain_impl(graph, systems...);
 }
 }

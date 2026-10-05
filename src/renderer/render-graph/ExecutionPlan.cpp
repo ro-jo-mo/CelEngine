@@ -79,6 +79,7 @@ format_to_image_aspect(VkFormat format)
             return 0;
     }
 }
+
 VkImageMemoryBarrier2
 create_barrier(const ImageBarrier& barrier, VulkanResourceManager& manager)
 {
@@ -99,6 +100,30 @@ create_barrier(const ImageBarrier& barrier, VulkanResourceManager& manager)
                  format_to_image_aspect(img.imageFormat)) };
 }
 
+VkBufferMemoryBarrier2
+create_barrier_no_transfer(const BufferBarrier& barrier,
+                           VulkanResourceManager& manager)
+{
+    auto res = create_barrier(barrier, manager);
+
+    res.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    res.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+    return res;
+}
+
+VkImageMemoryBarrier2
+create_barrier_no_transfer(const ImageBarrier& barrier,
+                           VulkanResourceManager& manager)
+{
+    auto res = create_barrier(barrier, manager);
+
+    res.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    res.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+    return res;
+}
+
 void
 ExecutionPlan::add_barriers(std::vector<PassSubmitInfo>& preBarriers,
                             const ExecutePass& pass,
@@ -117,6 +142,48 @@ ExecutionPlan::add_barriers(std::vector<PassSubmitInfo>& preBarriers,
     for (const auto& barrier : pass.imageBarriers) {
         imageBarriers.push_back(create_barrier(barrier, manager));
     }
+}
+
+void
+ExecutionPlan::add_wait_semaphore(PassSubmitInfo& info,
+                                  VkSemaphore semaphore,
+                                  uint64_t signalValue)
+{
+    for (auto& wait : info.waitSemaphoreInfo) {
+
+        // If we already wait on a semaphore here, and it's the same semaphore,
+        // wait for the greatest signal value
+        if (wait.sType == VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO) {
+
+            if (wait.semaphore == semaphore) {
+                wait.value = std::max(wait.value, signalValue);
+                break;
+            }
+        } // Otherwise if this semaphore hasn't been set, set it
+        else {
+            wait = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+                     .pNext = nullptr,
+                     .semaphore = semaphore,
+                     .value = signalValue,
+                     .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+                     .deviceIndex = 0 };
+            break;
+        }
+    }
+}
+
+uint32_t
+get_wait_semaphore_count(
+    const std::array<VkSemaphoreSubmitInfo, QUEUE_COUNT>& waits)
+{
+    uint32_t total = 0;
+    for (const auto& wait : waits) {
+        if (wait.sType == VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO) {
+            total++;
+        }
+    }
+
+    return total;
 }
 
 void
@@ -153,13 +220,7 @@ ExecutionPlan::add_transfers(std::vector<PassSubmitInfo>& preBarriers,
             uint64_t signalValue =
                 passToOrder[transfer.signalPass.index] + semaphore.current;
 
-            pre.waitSemaphoreInfo.emplace_back(
-                VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                nullptr,
-                semaphore.semaphore,
-                signalValue,
-                transfer.barrier.dstStageMask,
-                0);
+            add_wait_semaphore(pre, semaphore.semaphore, signalValue);
 
             auto& post = postBarriers[transfer.signalPass.index];
 
@@ -173,15 +234,10 @@ ExecutionPlan::add_transfers(std::vector<PassSubmitInfo>& preBarriers,
                     .pNext = nullptr,
                     .semaphore = semaphore.semaphore,
                     .value = signalValue,
-                    .stageMask = 0,
+                    .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                     .deviceIndex = 0
                 };
             }
-
-            // This signal semaphore represents the completion of an entire
-            // pass, and accesses to all relevant resources
-            // As such we must accumulate the stage masks
-            post.signalSemaphoreInfo.stageMask |= transfer.barrier.srcStageMask;
         }
     };
 
@@ -208,6 +264,7 @@ ExecutionPlan::add_merges(
 
         for (auto& barrier : preBarriers[mergePoint.index].buffers) {
             if (barrier.buffer == buffer) {
+
                 barrier.dstAccessMask |= merge.access;
                 barrier.dstStageMask |= merge.stages;
                 break;
@@ -223,6 +280,7 @@ ExecutionPlan::add_merges(
 
         for (auto& barrier : preBarriers[mergePoint.index].images) {
             if (barrier.image == image) {
+
                 barrier.dstAccessMask |= merge.access;
                 barrier.dstStageMask |= merge.stages;
                 break;
@@ -339,6 +397,8 @@ ExecutionPlan::create_submit_infos(
     for (const auto& [i, pass] : std::views::enumerate(plan)) {
         const auto& renderPass = passes.at(pass.pass);
 
+        auto name = Passes::HandleAllocator::get_name(pass.pass);
+
         mark_trackers(renderPass, passes, bufferMergePoints, imageMergePoints);
 
         passToOrder[pass.pass.index] += i;
@@ -356,8 +416,6 @@ ExecutionPlan::create_submit_infos(
             pass, preBarriers, bufferMergePoints, imageMergePoints, manager);
     }
 
-    // TODO: SET BASE PASS SUBMITS ON ALL QUEUES
-
     for (auto [pass, queue] : ordering) {
 
         auto& submit = submits[passServer.queueToIndex[queue]].emplace_back(
@@ -366,10 +424,19 @@ ExecutionPlan::create_submit_infos(
         auto& pre = preBarriers[pass.index];
         auto& post = postBarriers[pass.index];
 
-        recorded[pass.index * 3 + 1].commandBuffer =
-            passServer.passCmdBuffers[passServer.currentFrame].at(pass).first;
+        bool isBasePass = pass == Passes::basePassGraphics ||
+                          pass == Passes::basePassCompute ||
+                          pass == Passes::basePassTransfer;
 
-        vkEndCommandBuffer(recorded[pass.index * 3 + 1].commandBuffer);
+        if (!isBasePass) {
+            // Fails if we didn't record commands for this pass
+            recorded[pass.index * 3 + 1].commandBuffer =
+                passServer.passCmdBuffers[passServer.currentFrame]
+                    .at(pass)
+                    .first;
+
+            vkEndCommandBuffer(recorded[pass.index * 3 + 1].commandBuffer);
+        }
 
         uint32_t offset = 1;
         uint32_t count = 1;
@@ -379,17 +446,12 @@ ExecutionPlan::create_submit_infos(
             count++;
 
             // Record pre barriers
-            const auto cmd = passServer.get_prepost_cmd_buffer(queue);
-            recorded[pass.index * 3].commandBuffer = cmd;
+            const auto cmd = passServer.get_prepost_cmd_buffer(
+                queue,
+                fmt::format("pre_{}", Passes::HandleAllocator::get_name(pass))
+                    .c_str());
 
-            for (const auto& res : pre.buffers) {
-                assert(res.dstQueueFamilyIndex == queue ||
-                       res.dstQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED);
-            }
-            for (const auto& res : pre.images) {
-                assert(res.dstQueueFamilyIndex == queue ||
-                       res.dstQueueFamilyIndex == VK_QUEUE_FAMILY_IGNORED);
-            }
+            recorded[pass.index * 3].commandBuffer = cmd;
 
             record_barriers(cmd, pre);
         }
@@ -397,17 +459,22 @@ ExecutionPlan::create_submit_infos(
             count++;
 
             // Record post barriers
-            const auto cmd = passServer.get_prepost_cmd_buffer(queue);
+            const auto cmd = passServer.get_prepost_cmd_buffer(
+                queue,
+                fmt::format("post_{}", Passes::HandleAllocator::get_name(pass))
+                    .c_str());
+
             recorded[pass.index * 3 + 2].commandBuffer = cmd;
 
-            for (const auto& res : post.buffers) {
-                assert(res.srcQueueFamilyIndex == queue);
-            }
-            for (const auto& res : post.images) {
-                assert(res.srcQueueFamilyIndex == queue);
-            }
-
             record_barriers(cmd, post);
+        }
+
+        // If this is a base pass, we have no commands recorded apart from
+        // transitions
+        if (isBasePass) {
+
+            count -= 1;
+            offset = 2;
         }
 
         submit.commandBufferInfoCount = count;
@@ -422,8 +489,10 @@ ExecutionPlan::create_submit_infos(
             submit.signalSemaphoreInfoCount = 0;
         }
 
-        submit.waitSemaphoreInfoCount = pre.waitSemaphoreInfo.size();
-        submit.pWaitSemaphoreInfos = pre.waitSemaphoreInfo.data();
+        submit.waitSemaphoreInfoCount =
+            get_wait_semaphore_count(pre.waitSemaphoreInfo);
+        submit.pWaitSemaphoreInfos = pre.waitSemaphoreInfo.data(); // wait on 6,
+        // signal 4,5,6
     }
 
     // Tick cpu semaphore data
@@ -520,17 +589,26 @@ ExecutionPlan::execute(
 
         auto& pre = pres[presentPass.index];
 
-        pre.waitSemaphoreInfo.push_back(acquireSemInfo);
+        for (auto& wait : pre.waitSemaphoreInfo) {
+            if (wait.sType != VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO) {
+                wait = acquireSemInfo;
+                break;
+            }
+        }
 
-        present.waitSemaphoreInfoCount = pre.waitSemaphoreInfo.size();
+        present.waitSemaphoreInfoCount =
+            get_wait_semaphore_count(pre.waitSemaphoreInfo);
         present.pWaitSemaphoreInfos = pre.waitSemaphoreInfo.data();
     }
 
     // Finally we can actually submit our data
+    fmt::println("Submits");
 
     for (auto& split : splits) {
 
         const auto index = passServer.queueToIndex[split.queue];
+
+        VkFence fence = nullptr;
 
         // UINT32_MAX is used as a flag for the last submit for this queue
         // We must fill the in the info manually
@@ -541,12 +619,12 @@ ExecutionPlan::execute(
                 continue;
             }
 
-            split.end = submits[index].size();
-        }
+            // Only fence for the very last submit
+            if (split.queue == presentQueue) {
+                fence = passServer.fences[passServer.currentFrame];
+            }
 
-        VkFence fence = nullptr;
-        if (split.queue == presentQueue) {
-            fence = passServer.fences[passServer.currentFrame];
+            split.end = submits[index].size();
         }
 
         vk_check(vkQueueSubmit2(passServer.queues[index].queue,
@@ -567,6 +645,7 @@ ExecutionPlan::execute(
         .pResults = nullptr
     };
 
+    fmt::println("Present");
     vkQueuePresentKHR(
         passServer.queues[passServer.queueToIndex[presentQueue]].queue,
         &presentInfo);

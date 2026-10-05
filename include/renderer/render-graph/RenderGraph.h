@@ -26,6 +26,9 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
                               Common::Graph<Handle<RenderPass>>>
     add_pass(const RenderPass& pass);
 
+    // During the setup pass we do not include the default descriptor set as
+    // bound. Setup passes are typically transfer operations and such for
+    // creating scene data or indirect commands. Not graphics passes.
     Common::RelativeScheduler<Handle<RenderPass>,
                               Common::Graph<Handle<RenderPass>>>
     add_setup_pass(const RenderPass& pass);
@@ -35,12 +38,10 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     void set_present_pass(const RenderPass& pass);
 
     template<typename... Ts>
-    Common::RelativeScheduler<Handle<RenderPass>, Scheduler> add_chain(
-        Ts... _passes);
+    auto add_chain(Ts... _passes);
 
     template<typename... Ts>
-    Common::RelativeScheduler<Handle<RenderPass>, Scheduler> add_setup_chain(
-        Ts... _passes);
+    auto add_setup_chain(Ts... _passes);
 
     /**
      * Creates a plan for executing the graph
@@ -120,6 +121,8 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     std::unordered_map<Handle<AllocatedImage>, Handle<AllocatedImage>>
         imageHandleToMapped;
 
+    std::unordered_set<Handle<RenderPass>> setupPasses;
+
     std::unordered_set<Handle<AllocatedBuffer>> perFrameBuffers;
     std::unordered_set<Handle<AllocatedImage>> perFrameImages;
 
@@ -133,25 +136,25 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
 };
 
 template<typename... Ts>
-Common::RelativeScheduler<Handle<RenderPass>,
-                          Common::Scheduler<Handle<RenderPass>>>
+auto
 Graph::add_chain(Ts... _passes)
 {
     (void(passes.insert({ _passes.id, _passes })), ...);
 
     // Set setup as the first member of the chain
-    return add_chain_impl(graph, Passes::setupPass, _passes.id...);
+    return Scheduler::add_chain(Passes::setupPass, _passes.id...);
 }
 
 template<typename... Ts>
-Common::RelativeScheduler<Handle<RenderPass>,
-                          Common::Scheduler<Handle<RenderPass>>>
+auto
 Graph::add_setup_chain(Ts... _passes)
 {
     (void(passes.insert({ _passes.id, _passes })), ...);
 
+    (void(setupPasses.insert(_passes.id)), ...);
+
     // Add setup as the last member of the chain
-    return add_chain_impl(graph, _passes.id..., Passes::setupPass);
+    return Scheduler::add_chain(_passes.id..., Passes::setupPass);
 }
 
 }

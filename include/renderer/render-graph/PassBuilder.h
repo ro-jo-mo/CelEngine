@@ -63,15 +63,14 @@ class PassBuilder
     // Images require desired image layout
     // We might be able to derive image aspect ?
 
-    PassBuilder& read_buffer(
-        Handle<AllocatedBuffer> buffer,
-        VkPipelineStageFlags2 stages,
-        VkAccessFlags2 flags = VK_ACCESS_2_SHADER_READ_BIT);
+    PassBuilder& read_buffer(Handle<AllocatedBuffer> buffer,
+                             VkAccessFlags2 access,
+                             VkPipelineStageFlags2 stages);
 
     PassBuilder& read_image(Handle<AllocatedImage> image,
+                            VkAccessFlags2 access,
                             VkPipelineStageFlags2 stages,
-                            VkImageLayout layout,
-                            VkAccessFlags2 flags = VK_ACCESS_2_SHADER_READ_BIT);
+                            VkImageLayout layout);
 
     /**
      * Write to this resource. If your both reading and writing, you should

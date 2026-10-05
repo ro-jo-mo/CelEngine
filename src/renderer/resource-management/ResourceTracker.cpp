@@ -3,26 +3,28 @@
 #include <ranges>
 
 Cel::Renderer::BufferAccess
-Cel::Renderer::ResourceTracker::get_state(Handle<AllocatedBuffer> buffer)
+Cel::Renderer::ResourceTracker::get_state(
+    const Handle<AllocatedBuffer> buffer) const
 {
-    return buffers[buffer];
+    return buffers.at(buffer);
 }
 
 Cel::Renderer::ImageAccess
-Cel::Renderer::ResourceTracker::get_state(Handle<AllocatedImage> image)
+Cel::Renderer::ResourceTracker::get_state(
+    const Handle<AllocatedImage> image) const
 {
-    return images[image];
+    return images.at(image);
 }
 
 void
-Cel::Renderer::ResourceTracker::set_state(Handle<AllocatedBuffer> handle,
+Cel::Renderer::ResourceTracker::set_state(const Handle<AllocatedBuffer> handle,
                                           const BufferAccess& access)
 {
     buffers[handle] = access;
 }
 
 void
-Cel::Renderer::ResourceTracker::set_state(Handle<AllocatedImage> handle,
+Cel::Renderer::ResourceTracker::set_state(const Handle<AllocatedImage> handle,
                                           const ImageAccess& access)
 {
     images[handle] = access;
@@ -34,19 +36,17 @@ Cel::Renderer::BranchingResourceTracker::branch_off()
     return { *this };
 }
 
-Cel::Renderer::ResourceTracker
-Cel::Renderer::BranchingResourceTracker::compile(ResourceTracker& original)
+void
+Cel::Renderer::BranchingResourceTracker::compile(
+    const ResourceTracker& original,
+    ResourceTracker& writeTo)
 {
-    auto copy = original;
-
     for (const auto& handle : original.buffers | std::views::keys) {
-        copy.set_state(handle, state.get(handle));
+        writeTo.set_state(handle, state.get(handle));
     }
     for (const auto& handle : original.images | std::views::keys) {
-        copy.set_state(handle, state.get(handle));
+        writeTo.set_state(handle, state.get(handle));
     }
-
-    return copy;
 }
 
 Cel::Renderer::BranchingResourceTracker::BranchingResourceTracker(

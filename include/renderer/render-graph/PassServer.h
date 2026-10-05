@@ -57,14 +57,15 @@ class PassServer
                                  Handle<AllocatedImage>>& imageMapping,
         const std::unordered_set<Handle<AllocatedBuffer>>& perFrameBuffers,
         const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
+        const std::unordered_set<Handle<RenderPass>>& _setup_passes,
         VulkanResourceManager& manager,
         Assets::AssetServer& assetServer);
 
   private:
     // Returns an unused command buffer. Used purely for the pre and post pass
     // cmd buffers recorded during graph execution
-    VkCommandBuffer get_prepost_cmd_buffer(uint32_t queue);
-
+    VkCommandBuffer get_prepost_cmd_buffer(uint32_t queue, const char* name);
+    
     struct Semaphore
     {
         VkSemaphore semaphore;
@@ -122,6 +123,8 @@ class PassServer
         buffersToFree;
     std::array<std::vector<Handle<AllocatedImage>>, FRAMES_IN_FLIGHT>
         imagesToFree;
+
+    std::unordered_set<Handle<RenderPass>> setupPasses;
 
     uint32_t currentFrame = 0;
     VkExtent2D extent;

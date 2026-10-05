@@ -66,7 +66,7 @@ class DescriptorWriter
                      VkSampler sampler,
                      VkImageLayout layout,
                      VkDescriptorType type);
-    void write_buffer(int binding,
+    void write_buffer(uint32_t binding,
                       VkBuffer buffer,
                       size_t size,
                       size_t offset,
@@ -85,8 +85,14 @@ class DescriptorWriter
 
 struct TextureCache
 {
-    uint32_t add_texture(VkImageView imageView, VkSampler sampler);
+    uint32_t add_texture_uninitialised(uint32_t imageIndex, VkSampler sampler);
+
+    void initialise_texture(uint32_t index, VkImageView imageView);
+
     std::vector<VkDescriptorImageInfo> descriptors;
+
+  private:
+    std::vector<uint32_t> imageIndices;
 };
 
 }
