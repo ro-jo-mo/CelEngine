@@ -1,175 +1,141 @@
 #pragma once
 
+#include "VulkanResourceManager.h"
 #include "common/Handle.h"
 #include "renderer/VulkanTypes.h"
-#include "renderer/passes/Passes.h"
-#include "renderer/render-graph/RenderGraphTypes.h"
 
-#include <fmt/base.h>
-#include <unordered_set>
+#include <optional>
+#include <variant>
 
 namespace Cel::Renderer {
 
-// Tracks the current state of resources at a point in the graph
-class ResourceTracker
+// As we traverse render graph
+
+// create: this resource exists, with this state (either fresh or aliased or
+// already existing)
+// At read, this is clean
+// At write, this is dirty
+// At r/w, the state is now:
+
+// Throughout we need to be able to backtrack as we traverse
+// different branches
+
+class BranchingResourceTracker : VulkanResourceManager
 {
   public:
-    [[nodiscard]] BufferAccess get_state(Handle<AllocatedBuffer> buffer) const;
+    // As this does zero allocations, init as null
+    explicit BranchingResourceTracker(const VulkanResourceManager& manager);
 
-    [[nodiscard]] ImageAccess get_state(Handle<AllocatedImage> image) const;
+    // Decide whether this resource will be aliased or created new
+    void manifest_resource(Handle<AllocatedBuffer> handle);
+    void manifest_resource(Handle<AllocatedImage> handle);
 
-    void set_state(Handle<AllocatedBuffer> handle, const BufferAccess& access);
+    [[nodiscard]] bool is_dirty(Handle<AllocatedBuffer> handle) const;
+    [[nodiscard]] bool is_dirty(Handle<AllocatedImage> handle) const;
 
-    void set_state(Handle<AllocatedImage> handle, const ImageAccess& access);
+    void mark_dirty(Handle<AllocatedBuffer> handle);
+    void mark_dirty(Handle<AllocatedImage> handle);
 
-  protected:
-    // Track the current state of images and buffers
-    std::unordered_map<Handle<AllocatedBuffer>, BufferAccess> buffers;
-    std::unordered_map<Handle<AllocatedImage>, ImageAccess> images;
+    void mark_clean(Handle<AllocatedBuffer> handle);
+    void mark_clean(Handle<AllocatedImage> handle);
 
-    friend class BranchingResourceTracker;
-};
+    [[nodiscard]] const BufferAccess& get_state(
+        Handle<AllocatedBuffer> handle) const;
+    [[nodiscard]] const ImageAccess& get_state(
+        Handle<AllocatedImage> handle) const;
 
-// A branching version of the resource tracker that allows us to keep track of
-// resources throughout different branches
-// It is key to note if we want thread safe use, when presented with a branch
-// splitting two ways, we must branch off twice, so the original tracker is
-// untouched
-class BranchingResourceTracker
-{
-  public:
-    explicit BranchingResourceTracker(const ResourceTracker& tracker);
+    void set_state(Handle<AllocatedBuffer> handle, const BufferAccess& state);
+    void set_state(Handle<AllocatedImage> handle, const ImageAccess& state);
 
-    // Create a new resource tracker representing a separate branch
-    BranchingResourceTracker branch_off();
+    [[nodiscard]] Handle<RenderGraph::RenderPass> get_last_access(
+        Handle<AllocatedBuffer> handle) const;
+    [[nodiscard]] Handle<RenderGraph::RenderPass> get_last_access(
+        Handle<AllocatedImage> handle) const;
 
-    // Update the original tracker to include the changes of this branch
-    void compile(const ResourceTracker& original, ResourceTracker& writeTo);
+    void set_last_access(Handle<AllocatedBuffer> handle,
+                         Handle<RenderGraph::RenderPass> pass);
+    void set_last_access(Handle<AllocatedImage> handle,
+                         Handle<RenderGraph::RenderPass> pass);
 
-    // Stores a branch of state data
-    // To avoid altering the state of previous branches in the tree we store
-    // pointers to the original, but only edit this copy
-    template<typename BufValue, typename ImgValue>
-    struct Branch
-    {
-        explicit Branch(Branch* original);
+    void add_checkpoint(Handle<RenderGraph::RenderPass> handle);
 
-        // Initial values are used in the case when the value does not exist yet
-        explicit Branch(BufValue initialBuf, ImgValue initialImg);
-
-        // Special case where we inherit from our resource manager. Makes the
-        // assumption that all resources are initialised
-        explicit Branch(
-            const std::unordered_map<Handle<AllocatedBuffer>, BufValue>&
-                buffers,
-            const std::unordered_map<Handle<AllocatedImage>, ImgValue>& images);
-
-        void set(Handle<AllocatedBuffer> handle, BufValue value);
-        void set(Handle<AllocatedImage> handle, ImgValue value);
-
-        [[nodiscard]] const BufValue& get(Handle<AllocatedBuffer> handle);
-        [[nodiscard]] const ImgValue& get(Handle<AllocatedImage> handle);
-
-        Branch* original;
-
-        std::unordered_map<Handle<AllocatedBuffer>, BufValue> buffers;
-        std::unordered_map<Handle<AllocatedImage>, ImgValue> images;
-
-        BufValue initialBuf;
-        ImgValue initialImg;
-    };
-
-    // Stores whether a resource is ready to be reused
-    Branch<bool, bool> reusable{ false, false };
-
-    // Stores whether a resource has been written to, and needs flushing
-    Branch<bool, bool> dirty{ false, false };
-
-    // The current state of this resource
-    Branch<BufferAccess, ImageAccess> state;
-
-    // The last pass to read or write this resource
-    // If a resource is not here, we assume it's state is from a prior frame
-    Branch<Handle<RenderGraph::RenderPass>, Handle<RenderGraph::RenderPass>>
-        lastPassToAccessResource{ Passes::basePass, Passes::basePass };
+    void rewind();
 
   private:
-    BranchingResourceTracker(const BranchingResourceTracker& tracker);
+    std::unordered_map<Handle<AllocatedBuffer>, Handle<RenderGraph::RenderPass>>
+        lastPassToAccessBuffer;
+    std::unordered_map<Handle<AllocatedImage>, Handle<RenderGraph::RenderPass>>
+        lastPassToAccessImage;
+
+    struct ManifestBuffer
+    {
+        Handle<AllocatedBuffer> handle;
+        std::optional<
+            std::tuple<AllocatedBuffer, BufferRequirements, BufferAccess>>
+            aliased;
+    };
+    struct ManifestImage
+    {
+        Handle<AllocatedImage> handle;
+        std::optional<
+            std::tuple<AllocatedImage, ImageRequirements, ImageAccess>>
+            aliased;
+    };
+    struct MarkBuffer
+    {
+        Handle<AllocatedBuffer> handle;
+        bool marking;
+    };
+    struct MarkImage
+    {
+        Handle<AllocatedImage> handle;
+        bool marking;
+    };
+    struct SetBufferState
+    {
+        Handle<AllocatedBuffer> handle;
+        BufferAccess state;
+    };
+    struct SetImageState
+    {
+        Handle<AllocatedImage> handle;
+        ImageAccess state;
+    };
+    struct LastBufferAccess
+    {
+        Handle<AllocatedBuffer> handle;
+        Handle<RenderGraph::RenderPass> pass;
+    };
+    struct LastImageAccess
+    {
+        Handle<AllocatedImage> handle;
+        Handle<RenderGraph::RenderPass> pass;
+    };
+
+    struct Checkpoint
+    {
+        Handle<RenderGraph::RenderPass> handle;
+    };
+
+    std::vector<std::variant<ManifestBuffer,
+                             ManifestImage,
+                             MarkBuffer,
+                             MarkImage,
+                             SetBufferState,
+                             SetImageState,
+                             LastBufferAccess,
+                             LastImageAccess,
+                             Checkpoint>>
+        changeLog;
+
+    friend class VulkanResourceManager;
 };
 
-template<typename BufValue, typename ImgValue>
-BranchingResourceTracker::Branch<BufValue, ImgValue>::Branch(Branch* original)
-    : original(original)
+template<class... Ts>
+struct Overload : Ts...
 {
-}
-
-template<typename BufValue, typename ImgValue>
-BranchingResourceTracker::Branch<BufValue, ImgValue>::Branch(
-    BufValue initialBuf,
-    ImgValue initialImg)
-    : original(nullptr)
-    , initialBuf(initialBuf)
-    , initialImg(initialImg)
-{
-}
-
-template<typename BufValue, typename ImgValue>
-BranchingResourceTracker::Branch<BufValue, ImgValue>::Branch(
-    const std::unordered_map<Handle<AllocatedBuffer>, BufValue>& buffers,
-    const std::unordered_map<Handle<AllocatedImage>, ImgValue>& images)
-    : original(nullptr)
-    , buffers(buffers)
-    , images(images)
-{
-}
-
-template<typename BufValue, typename ImgValue>
-void
-BranchingResourceTracker::Branch<BufValue, ImgValue>::set(
-    Handle<AllocatedBuffer> handle,
-    BufValue value)
-{
-    buffers[handle] = value;
-}
-
-template<typename BufValue, typename ImgValue>
-void
-BranchingResourceTracker::Branch<BufValue, ImgValue>::set(
-    Handle<AllocatedImage> handle,
-    ImgValue value)
-{
-    images[handle] = value;
-}
-
-template<typename BufValue, typename ImgValue>
-const BufValue&
-BranchingResourceTracker::Branch<BufValue, ImgValue>::get(
-    Handle<AllocatedBuffer> handle)
-{
-    if (buffers.contains(handle)) {
-        return buffers[handle];
-    }
-    if (original != nullptr) {
-        return original->get(handle);
-    }
-
-    return initialBuf;
-}
-
-template<typename BufValue, typename ImgValue>
-const ImgValue&
-BranchingResourceTracker::Branch<BufValue, ImgValue>::get(
-    Handle<AllocatedImage> handle)
-{
-    if (images.contains(handle)) {
-        return images[handle];
-    }
-    if (original != nullptr) {
-        return original->get(handle);
-    }
-
-    return initialImg;
-}
+    using Ts::operator()...;
+};
 
 // We must rework the tracker used by the rendergraph
 // To allow for aliasing, we must have the full resource manager as part of the
@@ -185,5 +151,15 @@ BranchingResourceTracker::Branch<BufValue, ImgValue>::get(
 
 // I think I'll rename VulkanResourceManager to ResourceTracker.
 // Resource track can be removed, it's just a simple map
+
+// In the add_pass part of the render graph, we'll manifest the resources into
+// allocations at the "create" stage We can't actually allocate them however, as
+// that would be pointless.
+
+// Eventually I'll add logic in the render graph to reuse resources inside the
+// graph, i.e. marking resources "free" at the last point they're used This
+// version of free is not the same as ResourceTracker.free
+
+// We should store "dirtiness" in the main tracker
 
 }

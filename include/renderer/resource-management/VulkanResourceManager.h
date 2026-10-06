@@ -1,21 +1,20 @@
 #pragma once
 
-#include "ResourceTracker.h"
 #include "common/Handle.h"
+#include "renderer/passes/HandleAllocator.h"
 
 #include <ranges>
+#include <unordered_set>
 
 namespace Cel::Renderer {
+class BranchingResourceTracker;
 namespace RenderGraph {
 class Graph;
 }
 
-// Almighty tracker of all(?) allocated resources
-// I suppose I should probably move resource ownership out of the asset server
-// and to here
-// For now the main purpose is for render passes
-// Aliasing will only occur when requirements match perfectly. I'll allow the
-// render graph to manually mark a resource as aliased
+// Tracks the state of vulkan buffers & images
+// There is an assumption that the only accesses to these resources are through
+// the rendergraph
 class VulkanResourceManager
 {
   public:
@@ -39,9 +38,11 @@ class VulkanResourceManager
     AllocatedImage& get_resource_from_handle(Handle<AllocatedImage> handle,
                                              bool strictAliasing = false);
 
-    BufferAccess get_resource_state(Handle<AllocatedBuffer> handle) const;
+    [[nodiscard]] const BufferAccess& get_resource_state(
+        Handle<AllocatedBuffer> handle) const;
 
-    ImageAccess get_resource_state(Handle<AllocatedImage> handle) const;
+    [[nodiscard]] const ImageAccess& get_resource_state(
+        Handle<AllocatedImage> handle) const;
 
     [[nodiscard]] bool does_resource_exist(
         Handle<AllocatedBuffer> handle) const;
@@ -56,9 +57,11 @@ class VulkanResourceManager
 
     [[nodiscard]] BranchingResourceTracker branch_tracker() const;
 
+    void update(const BranchingResourceTracker& tracker);
+
     VkDevice device;
 
-  private:
+  protected:
     static bool is_compatible(const BufferRequirements& actual,
                               const BufferRequirements& requested);
 
@@ -83,7 +86,7 @@ class VulkanResourceManager
     class ResourcePool
     {
       public:
-        explicit ResourcePool(VulkanResourceManager& manager)
+        explicit ResourcePool(VulkanResourceManager* manager)
             : manager(manager)
         {
         }
@@ -96,9 +99,12 @@ class VulkanResourceManager
 
         void free(Handle<Res> handle);
 
+        void mark_dirty(Handle<Res> handle);
+
+        void mark_clean(Handle<Res> handle);
+
         void flush();
 
-      private:
         std::unordered_map<Handle<Res>, Req> requirements;
         // We reuse handles that have been freed
         std::vector<Handle<Res>> reusableHandles;
@@ -109,19 +115,21 @@ class VulkanResourceManager
 
         std::unordered_map<Handle<Res>, Res> allocations;
 
-        VulkanResourceManager& manager;
+        std::unordered_map<Handle<Res>, typename Req::Access> states;
 
-        friend class VulkanResourceManager;
+        // resource is dirty if in this set
+        std::unordered_set<Handle<Res>> dirty;
+
+        VulkanResourceManager* manager;
     };
 
-    ResourcePool<AllocatedBuffer, BufferRequirements> bufferPool{ *this };
-    ResourcePool<AllocatedImage, ImageRequirements> imagePool{ *this };
-
-    ResourceTracker tracker;
+    ResourcePool<AllocatedBuffer, BufferRequirements> bufferPool{ this };
+    ResourcePool<AllocatedImage, ImageRequirements> imagePool{ this };
 
     VmaAllocator allocator;
 
     friend class RenderGraph::Graph;
+    friend class BranchingResourceTracker;
 };
 
 template<typename Res, typename Req>
@@ -140,7 +148,6 @@ VulkanResourceManager::ResourcePool<Res, Req>::create_handle(
     }
 
     requirements.emplace(handle, req);
-    manager.tracker.set_state(handle, typename Req::Access());
 
     return handle;
 }
@@ -154,17 +161,17 @@ VulkanResourceManager::ResourcePool<Res, Req>::get_or_allocate(
         return allocations.at(handle);
     }
 
-    auto index = manager.alias_resource(requirements.at(handle));
+    auto index = manager->alias_resource(requirements.at(handle));
 
     if (index != UINT32_MAX) {
         return alias(handle, index);
     }
 
     // Else allocate new
-    allocations.emplace(handle, manager.allocate(handle));
+    allocations.emplace(handle, manager->allocate(handle));
 
     // Set state to none
-    manager.tracker.set_state(handle, {});
+    states.emplace(handle, typename Req::Access{});
 
     return allocations.at(handle);
 }
@@ -178,7 +185,7 @@ VulkanResourceManager::ResourcePool<Res, Req>::alias(Handle<Res> handle,
 
     auto& res = (*allocations.emplace(handle, get<0>(tuple)).first).second;
 
-    manager.tracker.set_state(handle, get<2>(tuple));
+    states.emplace(handle, get<2>(tuple));
 
     freed.erase(freed.begin() + index);
 
@@ -189,13 +196,28 @@ template<typename Res, typename Req>
 void
 VulkanResourceManager::ResourcePool<Res, Req>::free(Handle<Res> handle)
 {
-    freed.emplace_back(allocations.at(handle),
-                       requirements.at(handle),
-                       manager.tracker.get_state(handle));
+    freed.emplace_back(
+        allocations.at(handle), requirements.at(handle), states.at(handle));
 
     reusableHandles.push_back(handle);
+
     requirements.erase(handle);
     allocations.erase(handle);
+    states.erase(handle);
+}
+
+template<typename Res, typename Req>
+void
+VulkanResourceManager::ResourcePool<Res, Req>::mark_dirty(Handle<Res> handle)
+{
+    dirty.emplace(handle);
+}
+
+template<typename Res, typename Req>
+void
+VulkanResourceManager::ResourcePool<Res, Req>::mark_clean(Handle<Res> handle)
+{
+    dirty.erase(handle);
 }
 
 template<typename Res, typename Req>
@@ -203,7 +225,7 @@ void
 VulkanResourceManager::ResourcePool<Res, Req>::flush()
 {
     for (const auto& res : freed) {
-        manager.deallocate(res);
+        manager->deallocate(res);
     }
 
     freed.clear();

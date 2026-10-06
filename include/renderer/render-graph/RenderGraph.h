@@ -6,6 +6,7 @@
 #include "common/Scheduler.h"
 #include "renderer/VulkanTypes.h"
 #include "renderer/passes/Passes.h"
+#include "renderer/resource-management/ResourceTracker.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
 
 #include <unordered_map>
@@ -60,8 +61,7 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
   private:
     // Resolve the buffer and image handles to handles to actual vulkan
     // resources
-    void compile_passes(VulkanResourceManager& manager,
-                        BranchingResourceTracker& tracker);
+    void compile_passes(VulkanResourceManager& manager);
 
     void search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
                        BranchingResourceTracker& tracker,
@@ -127,7 +127,6 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
     std::unordered_set<Handle<AllocatedImage>> perFrameImages;
 
     std::vector<ExecutionPlan::ExecutePass> finalPlan;
-    ResourceTracker finalResourceState;
 
     uint32_t bestCost = UINT32_MAX;
 

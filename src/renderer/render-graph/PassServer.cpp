@@ -7,6 +7,7 @@
 #include "renderer/Queues.h"
 #include "renderer/SceneData.h"
 #include "renderer/VulkanHelpers.h"
+#include "renderer/passes/Passes.h"
 #include "renderer/resource-management/PipelineBuilder.h"
 
 #include <ranges>
@@ -220,27 +221,10 @@ Cel::Renderer::RenderGraph::PassServer::get_resource(
 }
 
 void
-Cel::Renderer::RenderGraph::PassServer::update_frame(
-    const VkExtent2D _extent,
-    const std::unordered_map<Handle<RenderPass>, RenderPass>& passesInUse,
-    const std::unordered_map<Handle<AllocatedBuffer>, Handle<AllocatedBuffer>>&
-        bufferMapping,
-    const std::unordered_map<Handle<AllocatedImage>, Handle<AllocatedImage>>&
-        imageMapping,
-    const std::unordered_set<Handle<AllocatedBuffer>>& perFrameBuffers,
-    const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
-    const std::unordered_set<Handle<RenderPass>>& _setup_passes,
-    VulkanResourceManager& manager,
-    Assets::AssetServer& assetServer)
+Cel::Renderer::RenderGraph::PassServer::release_resources(
+    VulkanResourceManager& manager)
 {
     currentFrame = (currentFrame + 1) % FRAMES_IN_FLIGHT;
-    extent = _extent;
-    setupPasses = _setup_passes;
-    passesQueues.clear();
-
-    for (const auto& pass : passesInUse | std::views::values) {
-        passesQueues.emplace(pass.id, pass.queue);
-    }
 
     // We need to wait for the frame in flight to finish before resetting cmd
     // buffers
@@ -285,6 +269,29 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
             .append_range(prePostCommandBuffers[index]);
 
         prePostCommandBuffers[index].clear();
+    }
+}
+
+void
+Cel::Renderer::RenderGraph::PassServer::update_frame(
+    const VkExtent2D _extent,
+    const std::unordered_map<Handle<RenderPass>, RenderPass>& passesInUse,
+    const std::unordered_map<Handle<AllocatedBuffer>, Handle<AllocatedBuffer>>&
+        bufferMapping,
+    const std::unordered_map<Handle<AllocatedImage>, Handle<AllocatedImage>>&
+        imageMapping,
+    const std::unordered_set<Handle<AllocatedBuffer>>& perFrameBuffers,
+    const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
+    const std::unordered_set<Handle<RenderPass>>& _setup_passes,
+    VulkanResourceManager& manager,
+    Assets::AssetServer& assetServer)
+{
+    extent = _extent;
+    setupPasses = _setup_passes;
+    passesQueues.clear();
+
+    for (const auto& pass : passesInUse | std::views::values) {
+        passesQueues.emplace(pass.id, pass.queue);
     }
 
     // Create a mapping from the pass handled to actual vk resources
@@ -376,7 +383,7 @@ Cel::Renderer::RenderGraph::PassServer::get_prepost_cmd_buffer(
     Utils::set_resource_name(device,
                              reinterpret_cast<uint64_t>(cmd),
                              VK_OBJECT_TYPE_COMMAND_BUFFER,
-                             name);
+                             fmt::format("{}_{}", name, currentFrame).c_str());
 
     return cmd;
 }

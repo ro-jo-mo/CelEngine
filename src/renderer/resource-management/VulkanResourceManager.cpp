@@ -2,6 +2,7 @@
 
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanUtils.h"
+#include "renderer/resource-management/ResourceTracker.h"
 
 Cel::Renderer::VulkanResourceManager::VulkanResourceManager(
     VkDevice device,
@@ -47,18 +48,18 @@ Cel::Renderer::VulkanResourceManager::get_resource_from_handle(
     return imagePool.get_or_allocate(handle);
 }
 
-Cel::Renderer::BufferAccess
+const Cel::Renderer::BufferAccess&
 Cel::Renderer::VulkanResourceManager::get_resource_state(
     const Handle<AllocatedBuffer> handle) const
 {
-    return tracker.get_state(handle);
+    return bufferPool.states.at(handle);
 }
 
-Cel::Renderer::ImageAccess
+const Cel::Renderer::ImageAccess&
 Cel::Renderer::VulkanResourceManager::get_resource_state(
     Handle<AllocatedImage> handle) const
 {
-    return tracker.get_state(handle);
+    return imagePool.states.at(handle);
 }
 
 bool
@@ -94,7 +95,15 @@ Cel::Renderer::VulkanResourceManager::free_resource(
 Cel::Renderer::BranchingResourceTracker
 Cel::Renderer::VulkanResourceManager::branch_tracker() const
 {
-    return BranchingResourceTracker{ tracker };
+    return BranchingResourceTracker{ *this };
+}
+
+void
+Cel::Renderer::VulkanResourceManager::update(
+    const BranchingResourceTracker& tracker)
+{
+    bufferPool = tracker.bufferPool;
+    imagePool = tracker.imagePool;
 }
 
 Cel::Renderer::AllocatedBuffer

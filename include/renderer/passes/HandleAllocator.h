@@ -3,6 +3,7 @@
 #include "../render-graph/RenderGraphTypes.h"
 #include "common/Handle.h"
 
+#include <map>
 #include <string>
 
 namespace Cel::Renderer::Passes::HandleAllocator {
@@ -42,6 +43,6 @@ get_name(Handle<AllocatedImage> handle);
 std::string
 get_name(Handle<RenderGraph::RenderPass> handle);
 
-inline std::unordered_map<uint32_t, std::string> _names{};
+inline std::map<uint32_t, std::string> _names{};
 
 }

@@ -44,6 +44,8 @@ class PassServer
     [[nodiscard]] AllocatedImage& get_resource(
         Handle<AllocatedImage> handle) const;
 
+    void release_resources(VulkanResourceManager& manager);
+
     /**
      * Set the current frame data, what passes are running this frame, the
      * mapping of pass handles to real handles
@@ -65,7 +67,7 @@ class PassServer
     // Returns an unused command buffer. Used purely for the pre and post pass
     // cmd buffers recorded during graph execution
     VkCommandBuffer get_prepost_cmd_buffer(uint32_t queue, const char* name);
-    
+
     struct Semaphore
     {
         VkSemaphore semaphore;

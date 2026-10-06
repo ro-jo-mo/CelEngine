@@ -83,17 +83,15 @@ Graph::compile(VulkanResourceManager& manager)
         }
     }
 
-    auto tracker = manager.branch_tracker();
+    compile_passes(manager);
 
-    compile_passes(manager, tracker);
+    auto tracker = manager.branch_tracker();
 
     ExecutionPlan plan{};
 
     auto iter = graph.iter();
 
     search_branch(iter, tracker, plan, manager);
-
-    manager.tracker = finalResourceState;
 
     for (const auto& pass : finalPlan) {
         fmt::println("{} {}",
@@ -125,22 +123,22 @@ Graph::reset()
 }
 
 void
-Graph::compile_passes(VulkanResourceManager& manager,
-                      BranchingResourceTracker& tracker)
+Graph::compile_passes(VulkanResourceManager& manager)
 {
     // We mark the state as coming from a base pass, the default state shows the
     // resource is untouched
-    auto create_helper = [&](auto& creates, auto& addTo, auto& perFrames) {
+    auto create_helper = [&](auto& creates, auto& mapping, auto& perFrames) {
         for (auto& create : creates) {
             auto handle = manager.get_handle_from_requirements(
                 create.requirements,
                 Passes::HandleAllocator::get_name(create.id));
-            addTo[create.id] = handle;
-            tracker.lastPassToAccessResource.set(handle, Passes::basePass);
+            mapping[create.id] = handle;
 
             if (create.perFrame) {
                 perFrames.emplace(handle);
             }
+
+            create.id = handle;
         }
     };
 
@@ -186,7 +184,7 @@ Graph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
                 bestCost = plan.cost();
 
                 finalPlan = plan.compile();
-                tracker.compile(manager.tracker, finalResourceState);
+                manager.update(tracker);
             }
             return;
         }
@@ -219,11 +217,15 @@ Graph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
         // Create a new branch for each pass
         for (const auto& handle : nodes) {
             auto branchIter = iter.branch_off();
-            auto branchTracker = tracker.branch_off();
+
+            tracker.add_checkpoint(handle);
+
             auto branchPlan = plan.branch_off();
 
-            add_pass_to_plan(handle, branchPlan, branchIter, branchTracker);
-            search_branch(branchIter, branchTracker, branchPlan, manager);
+            add_pass_to_plan(handle, branchPlan, branchIter, tracker);
+            search_branch(branchIter, tracker, branchPlan, manager);
+
+            tracker.rewind();
         }
 
         // If we do branch, there's nothing more to do here, so just break
@@ -251,13 +253,22 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
     // We can merge two barriers if and only if we're merging several reads, the
     // image layout is the same and on the same queue
 
+    auto create_helper = [&](auto& creates) {
+        for (const auto& create : creates) {
+            tracker.manifest_resource(create.id);
+        }
+    };
+
+    create_helper(pass.bufferCreates);
+    create_helper(pass.imageCreates);
+
     auto read_helper = [&](auto& reads,
                            auto& transfers,
                            auto& barriers,
                            auto& merges) {
         for (const auto& read : reads) {
 
-            const auto& state = tracker.state.get(read.id);
+            const auto& state = tracker.get_state(read.id);
 
             // Do we need to transition the resource to this queue?
             if (read.access.queue != state.queue &&
@@ -266,14 +277,14 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
                 transfers.push_back(
                     create_transition(read.id, read.access, state, tracker));
 
-                tracker.state.set(read.id, read.access);
+                tracker.set_state(read.id, read.access);
             }
             // Do we need to flush data and / or transition layout
             else if (!is_state_compatible(
                          read.id, read.access, state, tracker)) {
                 barriers.push_back(create_barrier(read.id, read.access, state));
 
-                tracker.state.set(read.id, read.access);
+                tracker.set_state(read.id, read.access);
             }
             // Do we need to merge our read flags with a prior passes barrier?
             else if (is_merge_needed(read.access, state)) {
@@ -284,11 +295,11 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
                 copy.stages |= read.access.stages;
                 copy.access |= read.access.access;
 
-                tracker.state.set(read.id, copy);
+                tracker.set_state(read.id, copy);
             }
 
-            tracker.dirty.set(read.id, false);
-            tracker.lastPassToAccessResource.set(read.id, pass.id);
+            tracker.mark_clean(read.id);
+            tracker.set_last_access(read.id, pass.id);
         }
     };
 
@@ -303,12 +314,8 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
 
     auto write_helper = [&](auto& writes, auto& transfers, auto& barriers) {
         for (const auto& write : writes) {
-            auto state = tracker.state.get(write.id);
 
-            if (bufferHandleToMapped.at(Passes::sceneDataBuffer).index ==
-                write.id.index) {
-                fmt::println("here");
-            }
+            auto state = tracker.get_state(write.id);
 
             // We always need a barrier before a write. The only exception is
             // when the resource is untouched i.e. QUEUE_FAMILY_IGNORED. Even
@@ -326,9 +333,9 @@ Graph::add_pass_to_plan(const Handle<RenderPass> handle,
                     create_barrier(write.id, write.access, state));
             }
 
-            tracker.state.set(write.id, write.access);
-            tracker.dirty.set(write.id, true);
-            tracker.lastPassToAccessResource.set(write.id, pass.id);
+            tracker.set_state(write.id, write.access);
+            tracker.mark_dirty(write.id);
+            tracker.set_last_access(write.id, pass.id);
         }
     };
 
@@ -346,7 +353,7 @@ Graph::is_state_compatible(const Handle<AllocatedBuffer> handle,
                            const BufferAccess& state,
                            BranchingResourceTracker& tracker)
 {
-    return !tracker.dirty.get(handle);
+    return !tracker.is_dirty(handle);
 }
 
 bool
@@ -355,7 +362,7 @@ Graph::is_state_compatible(const Handle<AllocatedImage> handle,
                            const ImageAccess& state,
                            BranchingResourceTracker& tracker)
 {
-    if (tracker.dirty.get(handle)) {
+    if (tracker.is_dirty(handle)) {
         return false;
     }
     if (access.layout != state.layout) {
@@ -395,7 +402,7 @@ bool
 Graph::is_write_barrier_needed(const Handle<AllocatedBuffer> handle,
                                BranchingResourceTracker& tracker)
 {
-    return tracker.state.get(handle).queue != VK_QUEUE_FAMILY_IGNORED;
+    return tracker.get_state(handle).queue != VK_QUEUE_FAMILY_IGNORED;
 }
 
 bool
@@ -412,9 +419,7 @@ Graph::create_transition(const Handle<AllocatedBuffer> handle,
                          const BufferAccess& state,
                          BranchingResourceTracker& tracker)
 {
-    assert(tracker.lastPassToAccessResource.get(handle) != Passes::basePass);
-
-    auto signal = tracker.lastPassToAccessResource.get(handle);
+    auto signal = tracker.get_last_access(handle);
 
     if (signal == Passes::basePass) {
         if (state.queue == Queues::graphics.family) {
@@ -442,7 +447,7 @@ Graph::create_transition(const Handle<AllocatedImage> handle,
                          const ImageAccess& state,
                          BranchingResourceTracker& tracker)
 {
-    auto signal = tracker.lastPassToAccessResource.get(handle);
+    auto signal = tracker.get_last_access(handle);
 
     if (signal == Passes::basePass) {
         if (state.queue == Queues::graphics.family) {

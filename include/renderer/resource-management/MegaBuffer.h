@@ -74,7 +74,7 @@ class MegaBuffer final : public PerFrameMegaBuffer
     void push_to_gpu(VkCommandBuffer cmd, const AllocatedBuffer& staging);
 
     Handle<AllocatedBuffer> handle;
-    AllocatedBuffer& buffer;
+    AllocatedBuffer buffer;
 
   private:
     std::vector<std::byte> dataToUpload;

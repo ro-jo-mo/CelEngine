@@ -28,17 +28,23 @@ RenderGraph::RenderGraphPlugin::compile_graph(
     Resource<Assets::AssetServer>& assetServer,
     ParallelResource<PassServer>& passServer)
 {
+    auto access = passServer.absolute();
+
+    // We release the resources first, so that the manager can see what's
+    // actually available during graph tr
+    access->release_resources(*manager);
+
     graph->compile(*manager);
 
-    passServer.absolute()->update_frame(extent->extent,
-                                        graph->passes,
-                                        graph->bufferHandleToMapped,
-                                        graph->imageHandleToMapped,
-                                        graph->perFrameBuffers,
-                                        graph->perFrameImages,
-                                        graph->setupPasses,
-                                        *manager,
-                                        *assetServer);
+    access->update_frame(extent->extent,
+                         graph->passes,
+                         graph->bufferHandleToMapped,
+                         graph->imageHandleToMapped,
+                         graph->perFrameBuffers,
+                         graph->perFrameImages,
+                         graph->setupPasses,
+                         *manager,
+                         *assetServer);
 }
 
 static void

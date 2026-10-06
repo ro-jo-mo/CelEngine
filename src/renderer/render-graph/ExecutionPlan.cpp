@@ -3,6 +3,7 @@
 #include "common/Graph.h"
 #include "core/Error.h"
 #include "renderer/VulkanHelpers.h"
+#include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassServer.h"
 
 using namespace Cel::Renderer;
