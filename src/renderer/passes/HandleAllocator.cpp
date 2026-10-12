@@ -10,11 +10,26 @@ namespace {
 // before any accesses.
 
 uint32_t&
-counter()
+pass_counter()
 {
     static uint32_t counter = 0;
     return counter;
 }
+
+uint32_t&
+buffer_counter()
+{
+    static uint32_t counter = 0;
+    return counter;
+}
+
+uint32_t&
+image_counter()
+{
+    static uint32_t counter = 0;
+    return counter;
+}
+
 std::mutex&
 mutex()
 {
@@ -24,28 +39,28 @@ mutex()
 
 }
 
+Cel::Handle<Cel::Renderer::RenderGraph::RenderPass>
+Cel::Renderer::Passes::HandleAllocator::allocate_pass(std::string name)
+{
+    std::lock_guard guard{ mutex() };
+    _passNames.emplace(pass_counter(), std::move(name));
+    return { pass_counter()++ };
+}
+
 Cel::Handle<Cel::Renderer::AllocatedBuffer>
 Cel::Renderer::Passes::HandleAllocator::allocate_buffer(std::string name)
 {
     std::lock_guard guard{ mutex() };
-    _names.emplace(counter(), std::move(name));
-    return { counter()++ };
+    _bufferNames.emplace(buffer_counter(), std::move(name));
+    return { buffer_counter()++ };
 }
 
 Cel::Handle<Cel::Renderer::AllocatedImage>
 Cel::Renderer::Passes::HandleAllocator::allocate_image(std::string name)
 {
     std::lock_guard guard{ mutex() };
-    _names.emplace(counter(), std::move(name));
-    return { counter()++ };
-}
-
-Cel::Handle<Cel::Renderer::RenderGraph::RenderPass>
-Cel::Renderer::Passes::HandleAllocator::allocate_pass(std::string name)
-{
-    std::lock_guard guard{ mutex() };
-    _names.emplace(counter(), std::move(name));
-    return { counter()++ };
+    _imageNames.emplace(image_counter(), std::move(name));
+    return { image_counter()++ };
 }
 
 template<>
@@ -66,21 +81,21 @@ Cel::Renderer::Passes::HandleAllocator::allocate_handle<
 
 std::string
 Cel::Renderer::Passes::HandleAllocator::get_name(
+    const Handle<RenderGraph::RenderPass> handle)
+{
+    return _passNames.at(handle.index);
+}
+
+std::string
+Cel::Renderer::Passes::HandleAllocator::get_name(
     const Handle<AllocatedBuffer> handle)
 {
-    return _names.at(handle.index);
+    return _bufferNames.at(handle.index);
 }
 
 std::string
 Cel::Renderer::Passes::HandleAllocator::get_name(
     const Handle<AllocatedImage> handle)
 {
-    return _names.at(handle.index);
-}
-
-std::string
-Cel::Renderer::Passes::HandleAllocator::get_name(
-    const Handle<RenderGraph::RenderPass> handle)
-{
-    return _names.at(handle.index);
+    return _imageNames.at(handle.index);
 }

@@ -20,6 +20,9 @@ namespace Cel::Renderer {
 // Throughout we need to be able to backtrack as we traverse
 // different branches
 
+// TODO: Its going to be very confusing if we alias a resource without renaming
+// it
+
 class BranchingResourceTracker : VulkanResourceManager
 {
   public:

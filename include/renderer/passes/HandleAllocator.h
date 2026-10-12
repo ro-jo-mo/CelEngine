@@ -13,14 +13,14 @@ namespace Cel::Renderer::Passes::HandleAllocator {
 // constexpr auto shadowTex = HandleAllocator::allocate_image("shadowTex");
 // I made it thread safe just in case
 
+Handle<RenderGraph::RenderPass>
+allocate_pass(std::string name);
+
 Handle<AllocatedBuffer>
 allocate_buffer(std::string name);
 
 Handle<AllocatedImage>
 allocate_image(std::string name);
-
-Handle<RenderGraph::RenderPass>
-allocate_pass(std::string name);
 
 template<typename T>
 Handle<T>
@@ -43,6 +43,12 @@ get_name(Handle<AllocatedImage> handle);
 std::string
 get_name(Handle<RenderGraph::RenderPass> handle);
 
-inline std::map<uint32_t, std::string> _names{};
+#pragma optimize("", off)
+inline std::map<uint32_t, std::string> _passNames{};
+
+inline std::map<uint32_t, std::string> _bufferNames{};
+
+inline std::map<uint32_t, std::string> _imageNames{};
+#pragma optimize("", on)
 
 }

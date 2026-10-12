@@ -16,13 +16,15 @@ Cel::Renderer::BranchingResourceTracker::manifest_resource(
 {
     const auto alias = alias_resource(bufferPool.requirements.at(handle));
 
+    // In the case we actually alias, we need to properly set the allocation as
+    // well. If we don't alias, then the allocation will occur at the
+    // get_resource_from_handle stage
     if (alias != UINT32_MAX) {
-        bufferPool.states.emplace(handle, std::get<2>(bufferPool.freed[alias]));
-
         changeLog.emplace_back(ManifestBuffer{
             .handle = handle, .aliased = bufferPool.freed[alias] });
 
-        bufferPool.freed.erase(bufferPool.freed.begin() + alias);
+        bufferPool.alias(handle, alias);
+
     } else {
         bufferPool.states.emplace(handle, BufferAccess{});
 
@@ -36,13 +38,15 @@ Cel::Renderer::BranchingResourceTracker::manifest_resource(
 {
     const auto alias = alias_resource(imagePool.requirements.at(handle));
 
+    // In the case we actually alias, we need to properly set the allocation as
+    // well. If we don't alias, then the allocation will occur at the
+    // get_resource_from_handle stage
     if (alias != UINT32_MAX) {
-        imagePool.states.emplace(handle, std::get<2>(imagePool.freed[alias]));
 
         changeLog.emplace_back(ManifestImage{
             .handle = handle, .aliased = imagePool.freed[alias] });
 
-        imagePool.freed.erase(imagePool.freed.begin() + alias);
+        imagePool.alias(handle, alias);
     } else {
         imagePool.states.emplace(handle, ImageAccess{});
 

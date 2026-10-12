@@ -73,31 +73,32 @@ class ExecutionPlan
             uint32_t queue;
         };
 
-        struct Transfer
+        struct Pass
         {
-            Handle<RenderPass> pass;
-            bool isAcquire;
-            uint32_t releaseQueue;
-            uint32_t acquireQueue;
+            uint32_t queue;
+            uint32_t positionInSubmit;
+
+            std::array<bool, QUEUE_COUNT> isReleasingTo;
+            std::array<bool, QUEUE_COUNT> isAcquiringFrom;
         };
 
         // We could later compile consecutive splits on the same queue into a
         // single one
         // Easy to do now actually
-        void add_release(Handle<RenderPass> pass,
-                         uint32_t passOrder,
-                         uint32_t releaseQueue,
-                         uint32_t acquireQueue);
+        void add_release_and_acquire(Handle<RenderPass> releasing,
+                                     Handle<RenderPass> acquiring,
 
-        void add_acquire(Handle<RenderPass> pass,
-                         uint32_t passOrder,
-                         uint32_t releaseQueue,
-                         uint32_t acquireQueue);
+                                     uint32_t releaseQueue,
+                                     uint32_t acquireQueue);
 
-        std::vector<SubmitSplit> compile(const std::array<Queue, 3>& queues);
+        std::vector<SubmitSplit> compile();
 
         // order -> pass & queue family
-        std::map<uint32_t, std::vector<Transfer>> releaseAndAcquires;
+        std::map<uint32_t, Pass> releaseAndAcquires;
+
+        const std::array<uint32_t, 16>& queueToIndex;
+        const std::vector<uint32_t>& passToOrder;
+        const std::vector<uint32_t>& passToQueueOrder;
     };
 
     struct SubmitData
@@ -115,7 +116,6 @@ class ExecutionPlan
 
     static void add_transfers(std::vector<PassSubmitInfo>& preBarriers,
                               std::vector<PassSubmitInfo>& postBarriers,
-                              const std::vector<uint32_t>& passToOrder,
                               SubmitSplitter& splitter,
                               const ExecutePass& pass,
                               PassServer& passServer,
