@@ -680,13 +680,13 @@ ExecutionPlan::SubmitSplitter::add_release_and_acquire(
 {
     auto& release = releaseAndAcquires[passToOrder[releasing.index]];
 
-    release.queue = queueToIndex[releaseQueue];
+    release.queue = releaseQueue;
     release.isReleasingTo[queueToIndex[acquireQueue]] = true;
     release.positionInSubmit = passToQueueOrder[releasing.index];
 
     auto& acquire = releaseAndAcquires[passToOrder[acquiring.index]];
 
-    acquire.queue = queueToIndex[acquireQueue];
+    acquire.queue = acquireQueue;
     acquire.isAcquiringFrom[queueToIndex[releaseQueue]] = true;
     acquire.positionInSubmit = passToQueueOrder[acquiring.index];
 }
@@ -719,24 +719,26 @@ ExecutionPlan::SubmitSplitter::compile()
         // As such there it's important to note the ordering of releasing and
         // acquiring, acquire comes first
 
+        const auto queue = queueToIndex[pass.queue];
+
         for (size_t i = 0; i < QUEUE_COUNT; i++) {
 
-            if (pass.isAcquiringFrom[i] && isReleasingTo[pass.queue][i]) {
+            if (pass.isAcquiringFrom[i] && isReleasingTo[queue][i]) {
                 // Insert split up to just before  this pass
-                out.push_back({ .start = upTo[pass.queue],
+                out.push_back({ .start = upTo[queue],
                                 .end = pass.positionInSubmit,
-                                .queue = pass.queue });
-                lastSplit[pass.queue] = pass.positionInSubmit;
+                                .queue = queue });
+                lastSplit[queue] = pass.positionInSubmit;
                 // Submission flushes state, resetting this
-                isReleasingTo[pass.queue] = {};
+                isReleasingTo[queue] = {};
             }
         }
 
         for (size_t i = 0; i < QUEUE_COUNT; i++) {
-            isReleasingTo[pass.queue][i] |= pass.isReleasingTo[i];
+            isReleasingTo[queue][i] |= pass.isReleasingTo[i];
         }
 
-        upTo[pass.queue] = pass.positionInSubmit;
+        upTo[queue] = pass.positionInSubmit;
     }
 
     // Last submits
