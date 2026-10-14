@@ -7,7 +7,6 @@
 #include <unordered_set>
 
 namespace Cel {
-
 // TODO: Inherit from the graph class instead of being wholly unique
 // Leave to later so scheduling doesn't get broken
 
@@ -33,6 +32,9 @@ class ScheduleGraph
      * @param to Function pointer
      */
     void add_edge(void* from, void* to);
+
+    template<typename SysA, typename SysB>
+    void add_edge(SysA src, SysB dst);
 
     /**
      * @brief Serial execution of this DAG
@@ -82,6 +84,13 @@ ScheduleGraph::add_node(System system)
         systemAllocator.allocate_system(system);
     requirements[reinterpret_cast<void*>(system)];
     adjacencyList[reinterpret_cast<void*>(system)];
+}
+
+template<typename SysA, typename SysB>
+void
+ScheduleGraph::add_edge(SysA src, SysB dst)
+{
+    add_edge(reinterpret_cast<void*>(src), reinterpret_cast<void*>(dst));
 }
 
 }

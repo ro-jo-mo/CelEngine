@@ -52,6 +52,8 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
 
     auto& submits = passes[currentQueue];
 
+    const auto startingSize = out.size();
+
     for (uint32_t i = upTo[currentQueue]; i < submits.size(); i++) {
 
         if (!submits[i]) {
@@ -81,8 +83,8 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
             // searching this branch, mark a flag that we're doing dis
             // so the other queue can't flip back
 
-            // What we do with dis???
             if (isAcquiringFrom[dependencyQueue][currentQueue]) {
+                // Cant go further
             }
 
             isAcquiringFrom[currentQueue][dependencyQueue] = true;
@@ -98,14 +100,14 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
 
                 // If we've met our target, we can submit this. Otherwise,
                 // discard
-
-                // NOTE WE COULD MEET REQUIREMENTS, AND THEN END UP NOT USING aSGPI(UAHGOIU
                 if (i >= targetSubmit) {
                     out.push_back({ .start = upTo[currentQueue],
                                     .end = i,
                                     .queue = currentQueue });
 
                     upTo[currentQueue] = i;
+                } else {
+                    out.resize(startingSize);
                 }
 
                 return;

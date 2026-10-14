@@ -3,6 +3,8 @@
 #include "IResource.h"
 
 #include <assert.h>
+#include <memory>
+#include <mutex>
 #include <shared_mutex>
 #include <utility>
 
