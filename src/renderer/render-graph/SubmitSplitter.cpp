@@ -43,13 +43,16 @@ Cel::Renderer::RenderGraph::SubmitSplitter::add_release_and_acquire(
 
 void
 Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
-    const std::vector<std::optional<Pass>>& submits,
+    uint32_t targetSubmit,
     uint32_t currentQueue,
     std::array<uint32_t, QUEUE_COUNT> upTo,
     std::array<std::array<bool, QUEUE_COUNT>, QUEUE_COUNT> isAcquiringFrom,
     std::vector<SubmitSplit>& out)
 {
-    for (size_t i = upTo[currentQueue]; i < submits.size(); i++) {
+
+    auto& submits = passes[currentQueue];
+
+    for (uint32_t i = upTo[currentQueue]; i < submits.size(); i++) {
 
         if (!submits[i]) {
             continue;
@@ -57,7 +60,7 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
 
         auto& submit = submits[i].value();
 
-        for (const auto [j, dependency] :
+        for (const auto [dependencyQueue, dependency] :
              std::views::enumerate(submit.dependsOn)) {
 
             // Has it been set?
@@ -66,7 +69,7 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
             }
 
             // Have we already met the dependency?
-            if (upTo[j] >= dependency) {
+            if (upTo[dependencyQueue] >= dependency) {
                 continue;
             }
 
@@ -79,13 +82,35 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
             // so the other queue can't flip back
 
             // What we do with dis???
-            if (isAcquiringFrom[j][currentQueue]) {
+            if (isAcquiringFrom[dependencyQueue][currentQueue]) {
             }
 
-            isAcquiringFrom[currentQueue][j] = true;
-        }
+            isAcquiringFrom[currentQueue][dependencyQueue] = true;
 
-        upTo[currentQueue] = i;
+            branch_queue(
+                dependency, dependencyQueue, upTo, isAcquiringFrom, out);
+
+            // After exploration, has the dependency been fulfilled
+            // If not, then this is the end of this submission
+            // Have we met our target?
+
+            if (upTo[dependencyQueue] < dependency) {
+
+                // If we've met our target, we can submit this. Otherwise,
+                // discard
+
+                // NOTE WE COULD MEET REQUIREMENTS, AND THEN END UP NOT USING aSGPI(UAHGOIU
+                if (i >= targetSubmit) {
+                    out.push_back({ .start = upTo[currentQueue],
+                                    .end = i,
+                                    .queue = currentQueue });
+
+                    upTo[currentQueue] = i;
+                }
+
+                return;
+            }
+        }
     }
 }
 
@@ -99,7 +124,7 @@ Cel::Renderer::RenderGraph::SubmitSplitter::compile(
     std::array<uint32_t, QUEUE_COUNT> upTo{};
 
     // Is queue i acquiring from queue j this split? isAcquiringFrom[i][j]
-    std::array<std::array<bool, QUEUE_COUNT>, QUEUE_COUNT> isAcquiringFrom;
+    std::array<std::array<bool, QUEUE_COUNT>, QUEUE_COUNT> isAcquiringFrom{};
 
     // Iter each queues submission
 

@@ -23,7 +23,7 @@ class SubmitSplitter
         uint32_t queue;
     };
 
-void add_release_and_acquire(Handle<RenderPass> releasing,
+    void add_release_and_acquire(Handle<RenderPass> releasing,
                                  Handle<RenderPass> acquiring,
 
                                  uint32_t releaseQueue,
@@ -32,7 +32,7 @@ void add_release_and_acquire(Handle<RenderPass> releasing,
     std::vector<SubmitSplit> compile(
         const std::array<size_t, QUEUE_COUNT>& submitSizes);
 
-private:
+  private:
     struct Pass
     {
         std::array<uint32_t, QUEUE_COUNT> dependsOn{ UINT32_MAX,
@@ -40,10 +40,14 @@ private:
                                                      UINT32_MAX };
     };
 
+    void branch_queue(
+        uint32_t targetSubmit,
+        uint32_t currentQueue,
+        std::array<uint32_t, QUEUE_COUNT> upTo,
+        std::array<std::array<bool, QUEUE_COUNT>, QUEUE_COUNT> isAcquiringFrom,
+        std::vector<SubmitSplit>& out);
 
-    void branch_queue();
-
-// Indexed by passToQueueOrder[pass.id]
+    // Indexed by passToQueueOrder[pass.id]
     std::array<std::vector<std::optional<Pass>>, QUEUE_COUNT> passes;
 
     const std::array<uint32_t, 16>& queueToIndex;
