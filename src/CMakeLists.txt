@@ -82,6 +82,8 @@ target_sources(${PROJECT_NAME}
         "renderer/render-graph/RenderGraphPlugin.cpp"
         "renderer/render-graph/ExecutionPlan.cpp"
         "renderer/render-graph/PassServer.cpp"
+        "renderer/render-graph/SubmitSplitter.cpp"
+
 
         "renderer/passes/HandleAllocator.cpp"
         "renderer/passes/BasePasses.cpp"
@@ -160,6 +162,7 @@ set(public_headers
         include/renderer/render-graph/RenderPass.h
         include/renderer/render-graph/AccessFlags.h
         include/renderer/render-graph/ExecutionPlan.h
+        include/renderer/render-graph/SubmitSplitter.h
 
         include/renderer/passes/HandleAllocator.h
         include/renderer/passes/Passes.h

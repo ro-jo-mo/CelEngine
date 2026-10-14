@@ -383,9 +383,9 @@ ExecutionPlan::create_submit_infos(
     // A map of pass.id to it's place in the total execution order
     // Used to grant a stable value for timeline semaphores
     // Base pass signals 1, rest signal > 1
-    std::vector<uint32_t> passToOrder(maxPasses, 1);
+    std::vector<uint32_t> passToOrder(maxPasses);
     // The total ordering within a single queue. Indexed with pass.id
-    std::vector<uint32_t> passToQueueOrder(maxPasses, 1);
+    std::vector<uint32_t> passToQueueOrder(maxPasses);
     // The total number of submits in this queue so far
     std::array<uint32_t, 16> queueTotals{};
 
@@ -406,11 +406,11 @@ ExecutionPlan::create_submit_infos(
 
         mark_trackers(renderPass, passes, bufferMergePoints, imageMergePoints);
 
-        passToOrder[pass.pass.index] += i;
+        passToOrder[pass.pass.index] = i;
 
         auto queue = passes.at(pass.pass).queue;
 
-        passToQueueOrder[pass.pass.index] += queueTotals[queue];
+        passToQueueOrder[pass.pass.index] = queueTotals[queue];
         queueTotals[queue]++;
 
         ordering[i] = { pass.pass, queue };
@@ -506,7 +506,8 @@ ExecutionPlan::create_submit_infos(
         semaphore.current += maxPasses;
     }
 
-    data.splits = splitter.compile();
+    data.splits = splitter.compile(
+        { submits[0].size(), submits[1].size(), submits[2].size() });
 
     return data;
 }
@@ -608,7 +609,6 @@ ExecutionPlan::execute(
     }
 
     // Finally we can actually submit our data
-    fmt::println("Submits");
 
     for (auto& split : splits) {
 
@@ -616,15 +616,22 @@ ExecutionPlan::execute(
 
         VkFence fence = nullptr;
 
-        //        if (/* If split.start = 0 and we have no recording for the
-        //        base pass, split.start = 1  */)
+        if (split.start == 0) {
+            // Does base pass actually have any commands recorded?
+            const auto& baseSubmit = submits[index].front();
+            if (baseSubmit.commandBufferInfoCount == 0) {
+                split.start = 1;
+            }
+        }
 
         // UINT32_MAX is used as a flag for the last submit for this queue
         // We must fill the in the info manually
         if (split.end == UINT32_MAX) {
 
+            split.end = submits[index].size();
+
             // Skip if we already finished this
-            if (split.start == submits[index].size()) {
+            if (split.start == split.end) {
                 continue;
             }
 
@@ -632,8 +639,6 @@ ExecutionPlan::execute(
             if (split.queue == presentQueue) {
                 fence = passServer.fences[passServer.currentFrame];
             }
-
-            split.end = submits[index].size();
         }
 
         vk_check(vkQueueSubmit2(passServer.queues[index].queue,
@@ -668,93 +673,4 @@ ExecutionPlan::add_execution_to_list(ExecutionPlan* plan,
         add_execution_to_list(plan->original, list);
     }
     list.insert(list.end(), plan->execution.begin(), plan->execution.end());
-}
-
-void
-ExecutionPlan::SubmitSplitter::add_release_and_acquire(
-    const Handle<RenderPass> releasing,
-    const Handle<RenderPass> acquiring,
-
-    const uint32_t releaseQueue,
-    const uint32_t acquireQueue)
-{
-    auto& release = releaseAndAcquires[passToOrder[releasing.index]];
-
-    release.queue = releaseQueue;
-    release.isReleasingTo[queueToIndex[acquireQueue]] = true;
-    release.positionInSubmit = passToQueueOrder[releasing.index];
-
-    auto& acquire = releaseAndAcquires[passToOrder[acquiring.index]];
-
-    acquire.queue = acquireQueue;
-    acquire.isAcquiringFrom[queueToIndex[releaseQueue]] = true;
-    acquire.positionInSubmit = passToQueueOrder[acquiring.index];
-}
-
-std::vector<ExecutionPlan::SubmitSplitter::SubmitSplit>
-ExecutionPlan::SubmitSplitter::compile()
-{
-    // Passes are listed in order of their occurrence in the absolute ordering
-    // For each pass (that includes a transition / acquire), we want to store
-    // the order it occur within its own queue, its own queue, and whether it
-    // releases & acquires to each of the other queues
-
-    // Is queue i releasing to j? queue[i][j]
-    std::array<std::array<bool, QUEUE_COUNT>, QUEUE_COUNT> isReleasingTo{};
-    // We are up to submit i on queue j, i = upTo[j]
-    std::array<uint32_t, QUEUE_COUNT> upTo{};
-    // The last value used for split.end, to be used for split.start
-    std::array<uint32_t, QUEUE_COUNT> lastSplit{};
-
-    std::vector<SubmitSplit> out;
-
-    for (const auto& pass : releaseAndAcquires | std::views::values) {
-        // We can release to a queue we're acquiring from, but as soon as we
-        // wish to acquire from it again, we must submit (i.e. create a split)
-
-        // There is a case where the same pass will acquire and release a
-        // resource from the same queue, i.e. a compute post process then
-        // transfer back to graphics for present
-
-        // As such there it's important to note the ordering of releasing and
-        // acquiring, acquire comes first
-
-        const auto queue = queueToIndex[pass.queue];
-
-        for (size_t i = 0; i < QUEUE_COUNT; i++) {
-
-            if (pass.isAcquiringFrom[i] && isReleasingTo[queue][i]) {
-                // Insert split up to just before  this pass
-                out.push_back({ .start = upTo[queue],
-                                .end = pass.positionInSubmit,
-                                .queue = queue });
-                lastSplit[queue] = pass.positionInSubmit;
-                // Submission flushes state, resetting this
-                isReleasingTo[queue] = {};
-            }
-        }
-
-        for (size_t i = 0; i < QUEUE_COUNT; i++) {
-            isReleasingTo[queue][i] |= pass.isReleasingTo[i];
-        }
-
-        upTo[queue] = pass.positionInSubmit;
-    }
-
-    // Last submits
-    Common::Graph<uint32_t> finalOrdering{};
-    for (size_t i = 0; i < QUEUE_COUNT; i++) {
-        for (size_t j = 0; j < QUEUE_COUNT; j++) {
-            if (isReleasingTo[i][j]) {
-                finalOrdering.add_edge(i, j);
-            }
-        }
-    }
-
-    for (const auto queue : finalOrdering.simple_ordering()) {
-        out.push_back(
-            { .start = lastSplit[queue], .end = UINT32_MAX, .queue = queue });
-    }
-
-    return out;
 }

@@ -2,6 +2,7 @@
 
 #include "../resource-management/MegaBuffer.h"
 #include "RenderGraphTypes.h"
+#include "SubmitSplitter.h"
 #include "common/Handle.h"
 
 #include <map>
@@ -62,43 +63,6 @@ class ExecutionPlan
         std::vector<VkImageMemoryBarrier2> images;
         VkSemaphoreSubmitInfo signalSemaphoreInfo;
         std::array<VkSemaphoreSubmitInfo, QUEUE_COUNT> waitSemaphoreInfo{};
-    };
-
-    struct SubmitSplitter
-    {
-        struct SubmitSplit
-        {
-            uint32_t start;
-            uint32_t end;
-            uint32_t queue;
-        };
-
-        struct Pass
-        {
-            uint32_t queue;
-            uint32_t positionInSubmit;
-
-            std::array<bool, QUEUE_COUNT> isReleasingTo;
-            std::array<bool, QUEUE_COUNT> isAcquiringFrom;
-        };
-
-        // We could later compile consecutive splits on the same queue into a
-        // single one
-        // Easy to do now actually
-        void add_release_and_acquire(Handle<RenderPass> releasing,
-                                     Handle<RenderPass> acquiring,
-
-                                     uint32_t releaseQueue,
-                                     uint32_t acquireQueue);
-
-        std::vector<SubmitSplit> compile();
-
-        // order -> pass & queue family
-        std::map<uint32_t, Pass> releaseAndAcquires;
-
-        const std::array<uint32_t, 16>& queueToIndex;
-        const std::vector<uint32_t>& passToOrder;
-        const std::vector<uint32_t>& passToQueueOrder;
     };
 
     struct SubmitData
