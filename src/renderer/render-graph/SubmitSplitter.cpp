@@ -1,5 +1,7 @@
 #include "renderer/render-graph/SubmitSplitter.h"
 
+#include <algorithm>
+#include <fmt/base.h>
 #include <ranges>
 
 Cel::Renderer::RenderGraph::SubmitSplitter::SubmitSplitter(
@@ -41,18 +43,24 @@ Cel::Renderer::RenderGraph::SubmitSplitter::add_release_and_acquire(
     }
 }
 
-void
+bool
 Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
-    uint32_t targetSubmit,
-    uint32_t currentQueue,
-    std::array<uint32_t, QUEUE_COUNT> upTo,
-    std::array<std::array<bool, QUEUE_COUNT>, QUEUE_COUNT> isAcquiringFrom,
-    std::vector<SubmitSplit>& out)
+    const uint32_t targetSubmit,
+    const uint32_t currentQueue,
+    std::array<uint32_t, QUEUE_COUNT>& _upTo,
+    std::array<std::array<bool, QUEUE_COUNT>, QUEUE_COUNT>& _isAcquiringFrom,
+    std::vector<SubmitSplit>& out,
+    const std::array<size_t, QUEUE_COUNT>& submitSizes)
 {
+    fmt::println("Exploring queue {}", currentQueue);
 
     auto& submits = passes[currentQueue];
 
-    const auto startingSize = out.size();
+    // Since we'll need to backtrack on occasion, we need to store the original
+    // data
+    const auto originalOutSize = out.size();
+    auto upTo = _upTo;
+    auto isAcquiringFrom = _isAcquiringFrom;
 
     for (uint32_t i = upTo[currentQueue]; i < submits.size(); i++) {
 
@@ -61,6 +69,8 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
         }
 
         auto& submit = submits[i].value();
+
+        fmt::println("  Submit {}", i);
 
         for (const auto [dependencyQueue, dependency] :
              std::views::enumerate(submit.dependsOn)) {
@@ -71,49 +81,78 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
             }
 
             // Have we already met the dependency?
-            if (upTo[dependencyQueue] >= dependency) {
+            if (upTo[dependencyQueue] > dependency) {
+                fmt::println("  Dependency already met");
                 continue;
-            }
-
-            // Otherwise, search through that queue execution, and see how far
-            // we can reach
-            // Then, check upTo again
-
-            // If we have a dependency, they must run first. Switch to
-            // searching this branch, mark a flag that we're doing dis
-            // so the other queue can't flip back
-
-            if (isAcquiringFrom[dependencyQueue][currentQueue]) {
-                // Cant go further
             }
 
             isAcquiringFrom[currentQueue][dependencyQueue] = true;
 
-            branch_queue(
-                dependency, dependencyQueue, upTo, isAcquiringFrom, out);
+            // If this dependency is already dependent on us, or if after
+            // searching the branch we can't solve it, this split is finished
+            if (isAcquiringFrom[dependencyQueue][currentQueue] ||
+                !branch_queue(dependency,
+                              dependencyQueue,
+                              upTo,
+                              isAcquiringFrom,
+                              out,
+                              submitSizes)) {
 
-            // After exploration, has the dependency been fulfilled
-            // If not, then this is the end of this submission
-            // Have we met our target?
-
-            if (upTo[dependencyQueue] < dependency) {
+                if (isAcquiringFrom[dependencyQueue][currentQueue]) {
+                    fmt::println("  {} is acquiring from {}",
+                                 dependencyQueue,
+                                 currentQueue);
+                } else {
+                    fmt::println("  Failed to reach target {} on {}",
+                                 dependency,
+                                 dependencyQueue);
+                }
 
                 // If we've met our target, we can submit this. Otherwise,
                 // discard
                 if (i >= targetSubmit) {
+                    fmt::println("  Reached target {}", targetSubmit);
+
                     out.push_back({ .start = upTo[currentQueue],
                                     .end = i,
                                     .queue = currentQueue });
 
                     upTo[currentQueue] = i;
-                } else {
-                    out.resize(startingSize);
+
+                    // After finalising a submit on this queue, we're no longer
+                    // acquiring from anywhere
+                    isAcquiringFrom[currentQueue] = {};
+
+                    // Commit changes
+                    _isAcquiringFrom = isAcquiringFrom;
+                    _upTo = upTo;
+
+                    return true;
                 }
 
-                return;
+                fmt::println("  Failed to reach target {}", targetSubmit);
+
+                // Discard changes if not committing
+                out.resize(originalOutSize);
+
+                return false;
             }
         }
     }
+
+    // In the case we arrive at the end, add split to the end of this queue
+    out.push_back({ .start = upTo[currentQueue],
+                    .end = UINT32_MAX,
+                    .queue = currentQueue });
+
+    // Mark the queue as finished
+    upTo[currentQueue] = UINT32_MAX;
+
+    // Commit changes
+    _isAcquiringFrom = isAcquiringFrom;
+    _upTo = upTo;
+
+    return true;
 }
 
 std::vector<Cel::Renderer::RenderGraph::SubmitSplitter::SubmitSplit>
@@ -130,9 +169,19 @@ Cel::Renderer::RenderGraph::SubmitSplitter::compile(
 
     // Iter each queues submission
 
-    size_t counter = 0;
+    uint32_t counter = 0;
     while (true) {
-        auto& submits = passes[counter];
+
+        if (std::ranges::all_of(upTo,
+                                [](auto val) { return val == UINT32_MAX; })) {
+            break;
+        }
+
+        if (upTo[counter] == UINT32_MAX) {
+            continue;
+        }
+
+        branch_queue(0, counter, upTo, isAcquiringFrom, out, submitSizes);
 
         counter++;
         counter %= QUEUE_COUNT;

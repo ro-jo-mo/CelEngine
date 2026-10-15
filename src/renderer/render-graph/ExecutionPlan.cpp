@@ -389,10 +389,9 @@ ExecutionPlan::create_submit_infos(
     // The total number of submits in this queue so far
     std::array<uint32_t, 16> queueTotals{};
 
-    SubmitSplitter splitter{ .queueToIndex = passServer.queueToIndex,
-                             .passToOrder = passToOrder,
-                             .passToQueueOrder = passToQueueOrder };
-
+    SubmitSplitter splitter{
+        maxPasses, passServer.queueToIndex, passToOrder, passToQueueOrder
+    };
     // Just the ordering of the passes and their queues, so I don't have to load
     // the original execution back into memory for recording
     std::vector<std::pair<Handle<RenderPass>, uint32_t>> ordering{
@@ -612,13 +611,11 @@ ExecutionPlan::execute(
 
     for (auto& split : splits) {
 
-        const auto index = passServer.queueToIndex[split.queue];
-
         VkFence fence = nullptr;
 
         if (split.start == 0) {
             // Does base pass actually have any commands recorded?
-            const auto& baseSubmit = submits[index].front();
+            const auto& baseSubmit = submits[split.queue].front();
             if (baseSubmit.commandBufferInfoCount == 0) {
                 split.start = 1;
             }
@@ -628,7 +625,7 @@ ExecutionPlan::execute(
         // We must fill the in the info manually
         if (split.end == UINT32_MAX) {
 
-            split.end = submits[index].size();
+            split.end = submits[split.queue].size();
 
             // Skip if we already finished this
             if (split.start == split.end) {
@@ -636,14 +633,14 @@ ExecutionPlan::execute(
             }
 
             // Only fence for the very last submit
-            if (split.queue == presentQueue) {
+            if (split.queue == passServer.queueToIndex[presentQueue]) {
                 fence = passServer.fences[passServer.currentFrame];
             }
         }
 
-        vk_check(vkQueueSubmit2(passServer.queues[index].queue,
+        vk_check(vkQueueSubmit2(passServer.queues[split.queue].queue,
                                 split.end - split.start,
-                                submits[index].data() + split.start,
+                                submits[split.queue].data() + split.start,
                                 fence));
     }
 

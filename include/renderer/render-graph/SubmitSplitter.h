@@ -8,6 +8,7 @@
 
 namespace Cel::Renderer::RenderGraph {
 
+// All usage of "queue" inside this class is a value mapped 0..QUEUE_COUNT, not actual queue family values
 class SubmitSplitter
 {
   public:
@@ -20,6 +21,7 @@ class SubmitSplitter
     {
         uint32_t start;
         uint32_t end;
+// In the this case, the queue value is already mapped to 0..QUEUE_COUNT
         uint32_t queue;
     };
 
@@ -32,6 +34,9 @@ class SubmitSplitter
     std::vector<SubmitSplit> compile(
         const std::array<size_t, QUEUE_COUNT>& submitSizes);
 
+    const std::vector<uint32_t>& passToOrder;
+    const std::vector<uint32_t>& passToQueueOrder;
+
   private:
     struct Pass
     {
@@ -40,18 +45,17 @@ class SubmitSplitter
                                                      UINT32_MAX };
     };
 
-    void branch_queue(
-        uint32_t targetSubmit,
-        uint32_t currentQueue,
-        std::array<uint32_t, QUEUE_COUNT> upTo,
-        std::array<std::array<bool, QUEUE_COUNT>, QUEUE_COUNT> isAcquiringFrom,
-        std::vector<SubmitSplit>& out);
+    bool branch_queue(uint32_t targetSubmit,
+                      uint32_t currentQueue,
+                      std::array<uint32_t, QUEUE_COUNT>& _upTo,
+                      std::array<std::array<bool, QUEUE_COUNT>, QUEUE_COUNT>&
+                          _isAcquiringFrom,
+                      std::vector<SubmitSplit>& out,
+                      const std::array<size_t, QUEUE_COUNT>& submitSizes);
 
     // Indexed by passToQueueOrder[pass.id]
     std::array<std::vector<std::optional<Pass>>, QUEUE_COUNT> passes;
 
     const std::array<uint32_t, 16>& queueToIndex;
-    const std::vector<uint32_t>& passToOrder;
-    const std::vector<uint32_t>& passToQueueOrder;
 };
 }
