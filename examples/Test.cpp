@@ -37,7 +37,8 @@ void
 SpawnAsset(Resource<World>& world,
            Resource<Renderer::Assets::AssetServer>& server)
 {
-    auto handle = server->load_gltf_asset("../../examples/assets/horse.glb");
+    auto handle =
+        server->load_gltf_asset("../../examples/assets/defaultcube.glb");
 
     // Spawn a parent class that we rotate for fun (test transform propagation)
     world->spawn(RotateMe{}).with_children([&](ChildBuilder builder) {
@@ -48,7 +49,7 @@ SpawnAsset(Resource<World>& world,
         server->add_asset_to_entity(child.get(), handle, world);
     });
     server->add_asset_to_entity(
-        world->spawn(Position{ 0, 0, 5 }, Scale{ 0.01 }).get(), handle, world);
+        world->spawn(Position{ 0, 0, 5 }, Scale{ 1.0 }).get(), handle, world);
 }
 
 void

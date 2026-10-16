@@ -159,10 +159,13 @@ Cel::Renderer::Passes::draw_mesh(
 
     auto access = passServer.partial_read();
 
+    VkClearValue clear{ .color = VkClearColorValue{
+                            .float32 = { 0.0, 0.0, 0.0, 0.0 } } };
+
     // Rendering info setup
     VkRenderingAttachmentInfo colourAttachment = Initialisers::attachment_info(
         access->get_resource(Passes::drawImage).imageView,
-        nullptr,
+        &clear,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     VkRenderingAttachmentInfo depthAttachment =

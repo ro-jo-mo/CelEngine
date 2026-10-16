@@ -39,8 +39,9 @@ vertexMain(VSInput in)
 float4
 fragmentMain(VSOutput in)
 {
-  Sampler2D colorTex =
-    allTextures[scene.materialBuffer[in.matIndex].colorTextureIndex];
+  // Sampler2D colorTex =  allTextures[scene.materialBuffer[in.matIndex].colorTextureIndex];
 
-  return colorTex.Sample(in.uv);
+float4 color = float4(1.0,0.0,0.0,1.0);
+
+  return color;
 }

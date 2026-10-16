@@ -10,6 +10,7 @@ namespace Cel::Renderer {
 
 // Specialisation of a mega buffer, where it's reset each frame and holds no
 // reference to a buffer
+// Reinspecting this now, I am not sure why this exists
 class PerFrameMegaBuffer
 {
   public:
