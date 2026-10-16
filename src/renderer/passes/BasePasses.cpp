@@ -134,7 +134,7 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
     Utils::upload_to_buffer(
         cmd,
         entityData.data(),
-        entityData.size(),
+        entityData.size() * sizeof(PerEntityGpuData),
         access->get_resource(Passes::entityDataBuffer),
         0,
         access->get_resource(Passes::entityDataStagingBuffer));

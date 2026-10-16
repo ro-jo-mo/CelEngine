@@ -94,7 +94,8 @@ Cel::Renderer::Passes::create_indirect_draw_data(
 
     Utils::upload_to_buffer(cmd,
                             indirectCalls.data(),
-                            sizeof(VkDrawIndexedIndirectCommand),
+                            indirectCalls.size() *
+                                sizeof(VkDrawIndexedIndirectCommand),
                             access->get_resource(indirectBuffer),
                             0,
                             access->get_resource(indirectStagingBuffer));

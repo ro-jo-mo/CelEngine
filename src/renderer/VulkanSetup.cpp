@@ -50,6 +50,8 @@ init_vulkan(Resource<VulkanContext>& context,
 
     VkPhysicalDeviceFeatures features10{};
     features10.multiDrawIndirect = true;
+    features10.drawIndirectFirstInstance = true;
+    features10.shaderSampledImageArrayDynamicIndexing = true;
 
     VkPhysicalDeviceVulkan11Features features11{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES
@@ -59,6 +61,7 @@ init_vulkan(Resource<VulkanContext>& context,
     VkPhysicalDeviceVulkan12Features features12{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES
     };
+    features12.shaderSampledImageArrayNonUniformIndexing = true;
     features12.bufferDeviceAddress = true;
     features12.descriptorIndexing = true;
     features12.descriptorBindingPartiallyBound = true;
@@ -171,9 +174,11 @@ init_vulkan(Resource<VulkanContext>& context,
         throw_error("Unable to find a sufficient device (gpu)");
     }
     if (!computeFound) {
+        fmt::println("No compute queue found");
         Queues::compute = Queues::graphics;
     }
     if (!transferFound) {
+        fmt::println("No transfer queue found");
         Queues::transfer = Queues::graphics;
     }
 
