@@ -18,9 +18,6 @@ using namespace Cel;
 struct RotateMe
 {};
 
-struct MyAsset
-{};
-
 struct PlayerCamera
 {
     float totalX = 0;
@@ -28,32 +25,31 @@ struct PlayerCamera
 };
 
 void
-SpawnCamera(Resource<World>& world)
+spawn_camera(Resource<World>& world)
 {
     world->spawn(Renderer::Camera::Camera3d(90, 0.1, 1000), PlayerCamera{});
 }
 
 void
-SpawnAsset(Resource<World>& world,
-           Resource<Renderer::Assets::AssetServer>& server)
+spawn_asset(Resource<World>& world,
+            Resource<Renderer::Assets::AssetServer>& server)
 {
-    auto handle =
-        server->load_gltf_asset("../../examples/assets/defaultcube.glb");
+    auto handle = server->load_gltf_asset("../../examples/assets/horse.glb");
 
     // Spawn a parent class that we rotate for fun (test transform propagation)
-    world->spawn(RotateMe{}).with_children([&](ChildBuilder builder) {
-        // astoundingly large horse
-        // In order to view it we must bring it to a 100th scale
-        auto child = builder.spawn(
-            Position{ 0, 0, -1 }, Scale{ 0.01 }, MyAsset{}, RotateMe{});
-        server->add_asset_to_entity(child.get(), handle, world);
-    });
+    // world->spawn(RotateMe{}).with_children([&](ChildBuilder builder) {
+    // astoundingly large horse
+    // In order to view it we must bring it to a 100th scale
+    // auto child =
+    //  builder.spawn(Position{ 0, 0, -1 }, Scale{ 0.01 }, RotateMe{});
+    // server->add_asset_to_entity(child.get(), handle, world);
+    //  });
     server->add_asset_to_entity(
-        world->spawn(Position{ 0, 0, 5 }, Scale{ 1.0 }).get(), handle, world);
+        world->spawn(Position{ 0, 0, 10 }, Scale{ 0.01 }).get(), handle, world);
 }
 
 void
-SpinIt(Query<With<RotateMe, Rotation>>& query, Resource<Time>& time)
+spin_it(Query<With<RotateMe, Rotation>>& query, Resource<Time>& time)
 {
     const auto rot = glm::angleAxis(time->delta_time(), glm::vec3(0, 1, 0));
     for (auto [_, rotation] : query) {
@@ -62,7 +58,7 @@ SpinIt(Query<With<RotateMe, Rotation>>& query, Resource<Time>& time)
 }
 
 void
-CameraController(
+camera_controller(
     Query<With<Renderer::Camera, PlayerCamera, Rotation, Position>>& query,
     Resource<Input::Input>& input,
     Resource<Renderer::Window>& window,
@@ -125,17 +121,19 @@ class MyPlugin : public Plugin
     void build(SystemScheduler scheduler,
                ResourceManager& resourceManager) override
     {
-        scheduler.add_system(Startup::Start, SpawnCamera);
-        scheduler.add_system(Startup::Start, SpawnAsset);
+        scheduler.add_system(Startup::Start, spawn_camera);
+        scheduler.add_system(Startup::Start, spawn_asset);
 
-        scheduler.add_system(MainUpdate::Update, SpinIt);
-        scheduler.add_system(MainUpdate::Last, CameraController);
+        scheduler.add_system(MainUpdate::Update, spin_it);
+        scheduler.add_system(MainUpdate::Last, camera_controller);
     }
 };
 
 int
 main()
 {
+    static_assert(sizeof(GlobalTransform) > 0);
+
     App ecs;
     ecs.add_plugin<CorePlugin>()
         .add_plugin<Renderer::RenderPlugin>()

@@ -92,13 +92,6 @@ Graph::compile(VulkanResourceManager& manager)
     auto iter = graph.iter();
 
     search_branch(iter, tracker, plan, manager);
-
-    for (const auto& pass : finalPlan) {
-        fmt::println("{} {}",
-                     Passes::HandleAllocator::get_name(pass.pass),
-                     pass.pass.index);
-    }
-    fmt::println("end");
 }
 
 void

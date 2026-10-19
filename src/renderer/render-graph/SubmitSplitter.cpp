@@ -52,7 +52,6 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
     std::vector<SubmitSplit>& out,
     const std::array<size_t, QUEUE_COUNT>& submitSizes)
 {
-    fmt::println("Exploring queue {}", currentQueue);
 
     auto& submits = passes[currentQueue];
 
@@ -70,8 +69,6 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
 
         auto& submit = submits[i].value();
 
-        fmt::println("  Submit {}", i);
-
         for (const auto [dependencyQueue, dependency] :
              std::views::enumerate(submit.dependsOn)) {
 
@@ -82,7 +79,7 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
 
             // Have we already met the dependency?
             if (upTo[dependencyQueue] > dependency) {
-                fmt::println("  Dependency already met");
+
                 continue;
             }
 
@@ -98,20 +95,9 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
                               out,
                               submitSizes)) {
 
-                if (isAcquiringFrom[dependencyQueue][currentQueue]) {
-                    fmt::println("  {} is acquiring from {}",
-                                 dependencyQueue,
-                                 currentQueue);
-                } else {
-                    fmt::println("  Failed to reach target {} on {}",
-                                 dependency,
-                                 dependencyQueue);
-                }
-
                 // If we've met our target, we can submit this. Otherwise,
                 // discard
                 if (i >= targetSubmit) {
-                    fmt::println("  Reached target {}", targetSubmit);
 
                     out.push_back({ .start = upTo[currentQueue],
                                     .end = i,
@@ -129,8 +115,6 @@ Cel::Renderer::RenderGraph::SubmitSplitter::branch_queue(
 
                     return true;
                 }
-
-                fmt::println("  Failed to reach target {}", targetSubmit);
 
                 // Discard changes if not committing
                 out.resize(originalOutSize);

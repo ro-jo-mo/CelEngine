@@ -35,7 +35,7 @@ class Camera
     static Camera Camera2d();
     /**
      * Constructs a new perspective camera with the specified vertical
-     * fov
+     * @param fov vertical field of view in degrees
      * @return New 3D camera object
      */
     static Camera Camera3d(float fov, float nearPlane, float farPlane);

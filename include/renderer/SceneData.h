@@ -13,7 +13,7 @@ struct SceneData
     {
         VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress materialBufferAddress;
-        VkDeviceAddress perEntityBufferAddress;
+        VkDeviceAddress entityBufferAddress;
         glm::mat4 viewMatrix;
         glm::mat4 projectionMatrix;
         glm::mat4 viewProjMatrix;

@@ -15,8 +15,6 @@ Cel::Renderer::PerFrameMegaBuffer::allocate(const void* data,
 {
     if (uploadOffset == UINT32_MAX) {
         uploadOffset = currentUsage;
-        fmt::println("Upload offset {}", uploadOffset);
-        fmt::println("Current usage {}", currentUsage);
     }
 
     auto newSize = size;

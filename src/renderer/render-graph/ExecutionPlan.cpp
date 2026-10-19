@@ -655,8 +655,7 @@ ExecutionPlan::execute(
         .pImageIndices = &swapchainIndex,
         .pResults = nullptr
     };
-
-    fmt::println("Present");
+    
     vkQueuePresentKHR(
         passServer.queues[passServer.queueToIndex[presentQueue]].queue,
         &presentInfo);

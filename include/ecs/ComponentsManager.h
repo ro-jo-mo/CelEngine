@@ -6,6 +6,8 @@
 #include <typeindex>
 #include <unordered_map>
 
+#include <fmt/core.h>
+
 namespace Cel {
 /**
  * @brief The overarching components storage for the entire engine. Stores every

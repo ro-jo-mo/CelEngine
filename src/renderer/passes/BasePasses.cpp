@@ -78,9 +78,9 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
         .buffer = assetServer->vertexBuffer.buffer.buffer
     };
-    VkBufferDeviceAddressInfo indiceInfo{
+    VkBufferDeviceAddressInfo entityInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = assetServer->indiceBuffer.buffer.buffer
+        .buffer = access->get_resource(entityDataBuffer).buffer
     };
     VkBufferDeviceAddressInfo materialInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -88,15 +88,17 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
     };
 
     const auto vertexAddress =
-        vkGetBufferDeviceAddress(assetServer->device, &vertInfo);
-    const auto indiceAddress =
-        vkGetBufferDeviceAddress(assetServer->device, &indiceInfo);
+        vkGetBufferDeviceAddress(access->get_device(), &vertInfo);
+
     const auto materialAddress =
-        vkGetBufferDeviceAddress(assetServer->device, &materialInfo);
+        vkGetBufferDeviceAddress(access->get_device(), &materialInfo);
+
+    const auto entityAddress =
+        vkGetBufferDeviceAddress(access->get_device(), &entityInfo);
 
     sceneData->data = { .vertexBufferAddress = vertexAddress,
-                        .materialBufferAddress = indiceAddress,
-                        .perEntityBufferAddress = materialAddress,
+                        .materialBufferAddress = materialAddress,
+                        .entityBufferAddress = entityAddress,
                         .viewMatrix = cam.get_view_matrix(),
                         .projectionMatrix =
                             cam.get_projection_matrix(access->get_extent()),
