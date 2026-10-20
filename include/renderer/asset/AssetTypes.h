@@ -58,10 +58,9 @@ struct Mesh
 
 struct SceneAsset
 {
-    std::string name;
     std::vector<SceneAsset> children;
     glm::mat4 localTransform;
-    std::optional<Mesh> model;
+    std::optional<Mesh> mesh;
 };
 
 struct SharedAssetData

@@ -4,6 +4,8 @@
 #include "../VulkanUtils.h"
 #include "common/Handle.h"
 
+#include <string>
+
 namespace Cel::Renderer {
 class VulkanResourceManager;
 }

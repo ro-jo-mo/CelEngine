@@ -5,6 +5,7 @@
 #include "renderer/VulkanUtils.h"
 
 #include <core/Config.h>
+#include <filesystem>
 #include <fstream>
 #include <ranges>
 #include <spirv_reflect.h>

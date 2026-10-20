@@ -2,6 +2,7 @@
 
 #include "ecs/ResourceManager.h"
 #include "passes/HandleAllocator.h"
+#include "resource-management/DeletionQueue.h"
 
 namespace Cel::Renderer {
 namespace Asset {

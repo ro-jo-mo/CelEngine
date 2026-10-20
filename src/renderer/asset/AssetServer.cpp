@@ -173,7 +173,7 @@ AssetServer::load_models(fastgltf::Asset& asset, size_t materialOffset)
                         });
                 }
 
-                newModel.primitives.push_back(meshes.size());
+                newModel.primitives.emplace_back(meshes.size());
 
                 Primitive newMesh{};
                 newMesh.firstIndex = indiceBuffer.allocate(

@@ -4,10 +4,12 @@
 
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <ranges>
 #include <stb_image.h>
 
-void
+Cel::Renderer::Asset::GltfLoader::GltfData
 Cel::Renderer::Asset::GltfLoader::prepare(std::string file,
                                           GltfLabel::Scene label)
 {
@@ -45,9 +47,9 @@ Cel::Renderer::Asset::GltfLoader::prepare(std::string file,
     load_samplers(asset, data);
     load_materials(asset, data);
     load_images(asset, data);
+    load_nodes(asset, data);
 
-    auto models = load_models(asset, materialOffset);
-    SceneAsset newAsset = load_nodes(asset, models);
+    return data;
 }
 
 void
@@ -56,7 +58,7 @@ Cel::Renderer::Asset::GltfLoader::commit()
 }
 
 static VkFilter
-ExtractFilter(const fastgltf::Filter filter)
+extract_filter(const fastgltf::Filter filter)
 {
     switch (filter) {
         // nearest samplers
@@ -75,7 +77,7 @@ ExtractFilter(const fastgltf::Filter filter)
 }
 
 static VkSamplerMipmapMode
-ExtractMipMap(const fastgltf::Filter filter)
+extract_mip_map(const fastgltf::Filter filter)
 {
     switch (filter) {
         case fastgltf::Filter::NearestMipMapNearest:
@@ -101,12 +103,12 @@ Cel::Renderer::Asset::GltfLoader::load_samplers(const fastgltf::Asset& asset,
         sampler.maxLod = VK_LOD_CLAMP_NONE;
         sampler.minLod = 0;
 
-        sampler.magFilter = ExtractFilter(
+        sampler.magFilter = extract_filter(
             gltfSampler.magFilter.value_or(fastgltf::Filter::Nearest));
-        sampler.minFilter = ExtractFilter(
+        sampler.minFilter = extract_filter(
             gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
 
-        sampler.mipmapMode = ExtractMipMap(
+        sampler.mipmapMode = extract_mip_map(
             gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
 
         VkSampler newSampler;
@@ -310,4 +312,68 @@ Cel::Renderer::Asset::GltfLoader::load_images(fastgltf::Asset& asset,
 
         data.images.emplace_back(img, size);
     }
+}
+
+void
+Cel::Renderer::Asset::GltfLoader::load_nodes(fastgltf::Asset& asset,
+                                             GltfData& data)
+{
+    auto& scene = asset.scenes[asset.defaultScene.value_or(0)];
+
+    std::vector<SceneAsset> roots;
+    roots.reserve(scene.nodeIndices.size());
+
+    for (const auto& index : scene.nodeIndices) {
+        roots.push_back(load_scene_tree(index, asset, data));
+    }
+
+    std::vector<size_t> rootIds(roots.size());
+
+    SceneAsset root = { .children = roots, .localTransform = glm::mat4(1.0f) };
+
+    data.scene = { .children = roots, .localTransform = glm::mat4x4(1.0f) };
+}
+
+Cel::Renderer::Asset::SceneAsset
+Cel::Renderer::Asset::GltfLoader::load_scene_tree(const size_t nodeIndex,
+                                                  fastgltf::Asset& asset,
+                                                  GltfData& data)
+{
+    auto node = asset.nodes[nodeIndex];
+
+    SceneAsset newNode{};
+    newNode.children.reserve(node.children.size());
+
+    if (node.meshIndex.has_value()) {
+        newNode.mesh = data.meshes[node.meshIndex.value()];
+    }
+
+    std::visit(
+        fastgltf::visitor{
+            [&](fastgltf::TRS& trs) {
+                glm::vec3 t = { trs.translation.x(),
+                                trs.translation.y(),
+                                trs.translation.z() };
+                glm::quat r = {
+                    trs.rotation.w(),
+                    trs.rotation.x(),
+                    trs.rotation.y(),
+                    trs.rotation.z(),
+                };
+                glm::vec3 s = { trs.scale.x(), trs.scale.y(), trs.scale.z() };
+
+                newNode.localTransform = glm::translate(glm::mat4(1.0f), t) *
+                                         glm::mat4_cast(glm::quat(r)) *
+                                         glm::scale(glm::mat4(1.0f), s);
+            },
+            [&](fastgltf::math::fmat4x4& mat) {
+                memcpy(&newNode.localTransform, mat.data(), sizeof(mat));
+            } },
+        node.transform);
+
+    for (auto const child : node.children) {
+        newNode.children.push_back(load_scene_tree(child, asset, data));
+    }
+
+    return newNode;
 }

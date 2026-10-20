@@ -18,6 +18,8 @@ namespace Cel::Renderer::Asset {
 
 class GltfLoader
 {
+    struct GltfData;
+
   public:
     /**
      * Does the initial loading of the asset, preparing the data for use
@@ -26,7 +28,7 @@ class GltfLoader
      * @param file
      * @param label
      */
-    void prepare(std::string file, GltfLabel::Scene label);
+    GltfData prepare(std::string file, GltfLabel::Scene label);
 
     /**
      * Finalises the changes, adding them to shared storage
@@ -42,6 +44,7 @@ class GltfLoader
         std::vector<MaterialConstants> materials;
         std::vector<VkSampler> samplers;
         std::vector<std::pair<void*, VkExtent3D>> images;
+        SceneAsset scene;
     };
 
     static void load_meshes(fastgltf::Asset& asset, GltfData& data);
@@ -51,6 +54,12 @@ class GltfLoader
     static void load_materials(fastgltf::Asset& asset, GltfData& data);
 
     static void load_images(fastgltf::Asset& asset, GltfData& data);
+
+    static void load_nodes(fastgltf::Asset& asset, GltfData& data);
+
+    static SceneAsset load_scene_tree(size_t nodeIndex,
+                                      fastgltf::Asset& asset,
+                                      GltfData& data);
 
     std::vector<GltfData> processing;
 
