@@ -11,7 +11,7 @@ class Camera;
 }
 struct GlobalTransform;
 }
-namespace Cel::Renderer::Assets {
+namespace Cel::Renderer::Asset {
 class AssetServer;
 struct Material;
 }
@@ -32,21 +32,20 @@ struct PassFriend
         Resource<RenderGraph::Graph>& graph);
 
     static void create_scene_data(
-        Query<With<Handle<Assets::Material>, GlobalTransform>>& entities,
+        Query<With<Handle<Asset::Material>, GlobalTransform>>& entities,
         Query<With<Camera, GlobalTransform>>& camera,
         Resource<SceneData>& sceneData,
-        Resource<Assets::AssetServer>& server,
+        Resource<Asset::AssetServer>& server,
         ParallelResource<RenderGraph::PassServer>& passServer);
 
     static void register_asset_upload_pass(
-        Resource<Assets::AssetServer>& server,
+        Resource<Asset::AssetServer>& server,
         Resource<VulkanResourceManager>& manager,
         Resource<RenderGraph::Graph>& graph);
 
     static void upload_assets(
-        Resource<Assets::AssetServer>& assetServer,
+        Resource<Asset::AssetServer>& assetServer,
         ParallelResource<RenderGraph::PassServer>& passServer);
-
 };
 
 }

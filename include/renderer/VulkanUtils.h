@@ -1,7 +1,7 @@
 #pragma once
 
-#include "AssetTypes.h"
 #include "VulkanTypes.h"
+#include "asset/AssetTypes.h"
 #include "ecs/Resource.h"
 
 #include <functional>

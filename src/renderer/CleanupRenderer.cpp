@@ -11,7 +11,7 @@ Cel::Renderer::cleanup_renderer(Resource<FinalCleanup>& cleanup,
 }
 
 void
-Cel::Renderer::cleanup_asset_server(Resource<Assets::AssetServer>& assetServer)
+Cel::Renderer::cleanup_asset_server(Resource<Asset::AssetServer>& assetServer)
 {
     assetServer->cleanup();
 }

@@ -1,6 +1,6 @@
 #include "renderer/passes/DrawMeshes.h"
 
-#include "renderer/AssetServer.h"
+#include "../../../include/renderer/asset/AssetServer.h"
 #include "renderer/Queues.h"
 #include "renderer/SceneData.h"
 #include "renderer/VulkanHelpers.h"
@@ -50,10 +50,10 @@ Cel::Renderer::Passes::register_indirect_draw_data_pass(
 
 void
 Cel::Renderer::Passes::create_indirect_draw_data(
-    Query<With<Entity, Handle<Assets::Mesh>, Handle<Assets::Material>>>&
+    Query<With<Entity, Handle<Asset::Mesh>, Handle<Asset::Material>>>&
         renderables,
     ParallelResource<RenderGraph::PassServer>& passServer,
-    Resource<Assets::AssetServer>& assetServer,
+    Resource<Asset::AssetServer>& assetServer,
     Resource<SceneData>& scene)
 {
     std::vector<VkDrawIndexedIndirectCommand> indirectCalls;
@@ -103,7 +103,7 @@ Cel::Renderer::Passes::create_indirect_draw_data(
 
 void
 Cel::Renderer::Passes::register_draw_mesh_pass(
-    Resource<Assets::AssetServer>& server,
+    Resource<Asset::AssetServer>& server,
     Resource<RenderGraph::Graph>& graph,
     Resource<RenderExtent>& extent)
 {
@@ -149,7 +149,7 @@ Cel::Renderer::Passes::register_draw_mesh_pass(
 
 void
 Cel::Renderer::Passes::draw_mesh(
-    Query<With<Entity, Handle<Assets::Mesh>, Handle<Assets::Material>>>&
+    Query<With<Entity, Handle<Asset::Mesh>, Handle<Asset::Material>>>&
         renderables,
     ParallelResource<RenderGraph::PassServer>& passServer)
 {

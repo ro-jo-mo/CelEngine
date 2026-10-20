@@ -1,9 +1,9 @@
 #include "renderer/VulkanSetup.h"
 
+#include "../../include/renderer/asset/AssetServer.h"
 #include "../../include/renderer/resource-management/DeletionQueue.h"
 #include "../../include/renderer/resource-management/PipelineBuilder.h"
 #include "core/Error.h"
-#include "renderer/AssetServer.h"
 #include "renderer/Queues.h"
 #include "renderer/VulkanHelpers.h"
 #include "renderer/VulkanTypes.h"
@@ -268,7 +268,7 @@ Renderer::initialise_renderer(Resource<VulkanContext>& context,
                               Resource<Window>& window,
                               Resource<Swapchain>& swapchain,
                               Resource<VulkanResourceManager>& manager,
-                              Resource<Assets::AssetServer>& server,
+                              Resource<Asset::AssetServer>& server,
                               Resource<FinalCleanup>& cleanup)
 {
     init_vulkan(context, allocator, window, cleanup);

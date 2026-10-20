@@ -1,6 +1,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 
-#include "renderer/AssetServer.h"
+#include "../../../include/renderer/asset/AssetServer.h"
 
 #include "core/Error.h"
 #include "renderer/VulkanUtils.h"
@@ -18,7 +18,7 @@
 #include <ranges>
 #include <stb_image.h>
 
-using namespace Cel::Renderer::Assets;
+using namespace Cel::Renderer::Asset;
 using namespace Cel::Renderer;
 using namespace Cel;
 
@@ -719,8 +719,10 @@ AssetServer::register_pass(RenderGraph::PassBuilder& pass,
         pass.upload_image(staging, handle);
     }
 
+
     for (const auto& samplerCmd : cmdAddSampler2ds) {
         // Awful hack until i refactor asset server
+    // This only works as long as the only images are from gltf loading
         textureCache.initialise_texture(
             samplerCmd.cacheIndex,
             uninitialisedImages[samplerCmd.imageIndex - gltfImages.size()]

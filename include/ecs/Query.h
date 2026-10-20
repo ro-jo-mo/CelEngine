@@ -13,6 +13,7 @@
 #include <memory>
 #include <tuple>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace Cel {
@@ -75,6 +76,9 @@ class Query;
 template<typename... Include, typename... Exclude>
 class Query<With<Include...>, Without<Exclude...>> : public IQuery
 {
+    template<typename T>
+    using ComponentRefT = std::conditional_t<std::is_same_v<T, Entity>, T, T&>;
+
   public:
     explicit Query(ComponentsManager& components_manager)
         : manager(components_manager)
@@ -91,7 +95,7 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
      * @param entity Entity to retrieve
      * @return Retrieved entity components
      */
-    std::tuple<Include&...> get(Entity entity);
+    auto get(Entity entity);
 
     /**
      * @brief Checks whether this query contains the entity i.e. can
@@ -99,13 +103,13 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
      * @param entity Entity to check
      * @return True if this query contains "entity"
      */
-    bool has(Entity entity) const;
+    [[nodiscard]] bool has(Entity entity) const;
 
     /**
      * @brief Size of this query
      * @return Number of entities in this query
      */
-    size_t size() const;
+    [[nodiscard]] size_t size() const;
 
     /**
      * Iterator used for query iteration
@@ -126,7 +130,7 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
      * @return Retrieved component
      */
     template<typename Component>
-    Component& get_component_or_entity(Entity& entity);
+    ComponentRefT<Component> get_component_or_entity(Entity& entity);
 
     std::tuple<std::shared_ptr<ComponentArray<std::remove_const_t<Include>>>...>
         includedComponentArrays;
@@ -136,7 +140,7 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
 };
 
 template<typename... Include, typename... Exclude>
-inline void
+void
 Query<With<Include...>, Without<Exclude...>>::update_query()
 {
     auto getEntityLists = [](auto&... componentArrays) {
@@ -200,10 +204,11 @@ Query<With<Include...>, Without<Exclude...>>::update_query()
 }
 
 template<typename... Include, typename... Exclude>
-std::tuple<Include&...>
+auto
 Query<With<Include...>, Without<Exclude...>>::get(Entity entity)
 {
-    return std::tuple<Include&...>(get_component_or_entity<Include>(entity)...);
+    return std::tuple<ComponentRefT<Include>...>(
+        get_component_or_entity<Include>(entity)...);
 }
 
 template<typename... Include, typename... Exclude>
@@ -221,12 +226,12 @@ Query<With<Include...>, Without<Exclude...>>::size() const
 
 template<typename... Include, typename... Exclude>
 template<typename Component>
-Component&
+Query<With<Include...>, Without<Exclude...>>::template ComponentRefT<Component>
 Query<With<Include...>, Without<Exclude...>>::get_component_or_entity(
     Entity& entity)
 {
     if constexpr (std::is_same_v<Component, Entity>) {
-        return (entity);
+        return entity;
     }
     return std::get<
                std::shared_ptr<ComponentArray<std::remove_const_t<Component>>>>(
@@ -242,11 +247,9 @@ class Query<With<Include...>, Without<Exclude...>>::Iterator
 
     using Iter = std::unordered_set<Entity>::iterator;
 
-    Iterator(Iter currentIter,
-             Iter endIter,
-             Query<With<Include...>, Without<Exclude...>>& viewRef)
-        : current(currentIter)
-        , end(endIter)
+    Iterator(Iter currentIter, Iter endIter, Query& viewRef)
+        : current(std::move(currentIter))
+        , end(std::move(endIter))
         , view(viewRef) {};
 
     bool operator!=(const Iterator& other) const
@@ -265,7 +268,7 @@ class Query<With<Include...>, Without<Exclude...>>::Iterator
         return *this;
     }
 
-    std::tuple<Include&...> operator*()
+    std::tuple<ComponentRefT<Include>...> operator*()
     {
         ref = *current;
         return view.get(ref);

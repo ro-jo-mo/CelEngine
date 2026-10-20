@@ -30,10 +30,6 @@ inline const auto depthImage = HandleAllocator::allocate_image("depth_image");
 // The typical render passes I expect all programs to have are also stored here,
 // to simplify includes
 
-// Bind descriptors pass
-inline const auto bindDescriptorsPass =
-    HandleAllocator::allocate_pass("bind_descriptors_pass");
-
 inline const auto createSceneDataPass =
     HandleAllocator::allocate_pass("create_scene_data_pass");
 inline const auto sceneDataBuffer =

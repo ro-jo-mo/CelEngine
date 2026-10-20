@@ -1,7 +1,7 @@
 #include "../include/renderer/RenderPlugin.h"
+#include "../include/renderer/asset/AssetServer.h"
 #include "core/App.h"
 #include "core/CorePlugin.h"
-#include "renderer/AssetServer.h"
 #include "renderer/Camera.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -32,18 +32,18 @@ spawn_camera(Resource<World>& world)
 
 void
 spawn_asset(Resource<World>& world,
-            Resource<Renderer::Assets::AssetServer>& server)
+            Resource<Renderer::Asset::AssetServer>& server)
 {
     auto handle = server->load_gltf_asset("../../examples/assets/horse.glb");
 
     // Spawn a parent class that we rotate for fun (test transform propagation)
-    // world->spawn(RotateMe{}).with_children([&](ChildBuilder builder) {
-    // astoundingly large horse
-    // In order to view it we must bring it to a 100th scale
-    // auto child =
-    //  builder.spawn(Position{ 0, 0, -1 }, Scale{ 0.01 }, RotateMe{});
-    // server->add_asset_to_entity(child.get(), handle, world);
-    //  });
+    world->spawn(RotateMe{}).with_children([&](ChildBuilder builder) {
+        // astoundingly large horse
+        // In order to view it we must bring it to a 100th scale
+        auto child =
+            builder.spawn(Position{ 0, 0, -1 }, Scale{ 0.01 }, RotateMe{});
+        server->add_asset_to_entity(child.get(), handle, world);
+    });
     server->add_asset_to_entity(
         world->spawn(Position{ 0, 0, 10 }, Scale{ 0.01 }).get(), handle, world);
 }

@@ -1,6 +1,6 @@
 #pragma once
-#include "AssetServer.h"
 #include "VulkanTypes.h"
+#include "asset/AssetServer.h"
 #include "ecs/System.h"
 #include "resource-management/DeletionQueue.h"
 
@@ -11,6 +11,6 @@ cleanup_renderer(Resource<FinalCleanup>& cleanup,
                  Resource<VulkanContext>& context);
 
 void
-cleanup_asset_server(Resource<Assets::AssetServer>& assetServer);
+cleanup_asset_server(Resource<Asset::AssetServer>& assetServer);
 
 }

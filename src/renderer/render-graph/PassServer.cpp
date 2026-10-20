@@ -1,9 +1,9 @@
 #include "renderer/render-graph/PassServer.h"
 
+#include "../../../include/renderer/asset/AssetServer.h"
 #include "core/Config.h"
 #include "core/Error.h"
 #include "core/ThreadManager.h"
-#include "renderer/AssetServer.h"
 #include "renderer/Queues.h"
 #include "renderer/SceneData.h"
 #include "renderer/VulkanHelpers.h"
@@ -284,7 +284,7 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
     const std::unordered_set<Handle<RenderPass>>& _setup_passes,
     VulkanResourceManager& manager,
-    Assets::AssetServer& assetServer)
+    Asset::AssetServer& assetServer)
 {
     extent = _extent;
     setupPasses = _setup_passes;

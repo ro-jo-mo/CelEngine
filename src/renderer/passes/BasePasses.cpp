@@ -1,6 +1,6 @@
 #include "renderer/passes/BasePasses.h"
 
-#include "renderer/AssetServer.h"
+#include "../../../include/renderer/asset/AssetServer.h"
 #include "renderer/Camera.h"
 #include "renderer/Queues.h"
 #include "renderer/SceneData.h"
@@ -64,10 +64,10 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
 
 void
 Cel::Renderer::Passes::PassFriend::create_scene_data(
-    Query<With<Handle<Assets::Material>, GlobalTransform>>& entities,
+    Query<With<Handle<Asset::Material>, GlobalTransform>>& entities,
     Query<With<Camera, GlobalTransform>>& camera,
     Resource<SceneData>& sceneData,
-    Resource<Assets::AssetServer>& assetServer,
+    Resource<Asset::AssetServer>& assetServer,
     ParallelResource<RenderGraph::PassServer>& passServer)
 {
     const auto& [cam, camTrans] = *camera.begin();
@@ -144,7 +144,7 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
 
 void
 Cel::Renderer::Passes::PassFriend::register_asset_upload_pass(
-    Resource<Assets::AssetServer>& server,
+    Resource<Asset::AssetServer>& server,
     Resource<VulkanResourceManager>& manager,
     Resource<RenderGraph::Graph>& graph)
 {
@@ -158,7 +158,7 @@ Cel::Renderer::Passes::PassFriend::register_asset_upload_pass(
 
 void
 Cel::Renderer::Passes::PassFriend::upload_assets(
-    Resource<Assets::AssetServer>& assetServer,
+    Resource<Asset::AssetServer>& assetServer,
     ParallelResource<RenderGraph::PassServer>& passServer)
 {
     assetServer->flush(passServer);

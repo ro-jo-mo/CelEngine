@@ -2,6 +2,7 @@
 
 #include "Types.h"
 #include <array>
+#include <assert.h>
 #include <core/Config.h>
 #include <unordered_map>
 
@@ -13,6 +14,7 @@ namespace Cel {
 class IComponentArray
 {
   public:
+    virtual ~IComponentArray() = default;
     /**
      * The only command we require to be run on every component array.
      * Hence why it is located in the interface
@@ -90,13 +92,22 @@ template<typename T>
 void
 ComponentArray<T>::remove_component(const Entity entity)
 {
+    assert(has_component(entity));
+
     auto index = entityToComponent[entity];
     // Swap the last element of the array to the deleted components place
     // This keeps the array tightly packed
     auto last = --totalComponents;
+
     components[index] = components[last];
 
-    componentToEntity.erase(index);
+    // Update the mapping for the entity we're swapping
+    auto swappedEntity = componentToEntity[last];
+
+    entityToComponent[swappedEntity] = index;
+    componentToEntity[index] = swappedEntity;
+
+    // Lastly remove this entity from the map
     entityToComponent.erase(entity);
 }
 
@@ -104,6 +115,7 @@ template<typename T>
 T&
 ComponentArray<T>::get_component(const Entity entity)
 {
+    assert(has_component(entity));
     auto index = entityToComponent[entity];
     return components[index];
 }

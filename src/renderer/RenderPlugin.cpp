@@ -15,7 +15,7 @@ Renderer::RenderPlugin::build(SystemScheduler scheduler,
 {
     resourceManager.insert_resource<FinalCleanup>();
     resourceManager.insert_resource<RenderExtent>();
-    resourceManager.insert_resource_as_null<Assets::AssetServer>();
+    resourceManager.insert_resource_as_null<Asset::AssetServer>();
     resourceManager.insert_resource_as_null<VulkanResourceManager>();
     resourceManager.insert_resource_as_null<Swapchain>();
     resourceManager.insert_resource_as_null<Window>();

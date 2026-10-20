@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../core/World.h"
-#include "Descriptors.h"
-#include "VulkanTypes.h"
+#include "../../core/World.h"
+#include "../Descriptors.h"
+#include "../VulkanTypes.h"
+#include "../resource-management/MegaBuffer.h"
+#include "AssetTypes.h"
 #include "common/Handle.h"
 #include "ecs/Types.h"
-#include "renderer/AssetTypes.h"
-#include "resource-management/MegaBuffer.h"
 
 namespace Cel::Renderer::RenderGraph {
 class PassServer;
@@ -17,12 +17,12 @@ struct RenderPass;
 // Pre declarations
 namespace Cel::Renderer {
 class Camera;
-namespace Assets {
+namespace Asset {
 class AssetServer;
 }
 struct DrawData;
 void
-cleanup_asset_server(Resource<Assets::AssetServer>& assetServer);
+cleanup_asset_server(Resource<Asset::AssetServer>& assetServer);
 }
 
 namespace Cel::Renderer::Passes {
@@ -31,7 +31,7 @@ struct SceneData;
 
 }
 
-namespace Cel::Renderer::Assets {
+namespace Cel::Renderer::Asset {
 
 // Comments:
 

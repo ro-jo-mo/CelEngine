@@ -6,7 +6,7 @@
 
 #include <unordered_set>
 
-namespace Cel::Renderer::Assets {
+namespace Cel::Renderer::Asset {
 class AssetServer;
 }
 namespace Cel::Renderer::Passes {
@@ -61,7 +61,7 @@ class PassServer
         const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
         const std::unordered_set<Handle<RenderPass>>& _setup_passes,
         VulkanResourceManager& manager,
-        Assets::AssetServer& assetServer);
+        Asset::AssetServer& assetServer);
 
   private:
     // Returns an unused command buffer. Used purely for the pre and post pass

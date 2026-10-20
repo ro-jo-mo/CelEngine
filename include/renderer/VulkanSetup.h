@@ -4,7 +4,7 @@
 #include "passes/HandleAllocator.h"
 
 namespace Cel::Renderer {
-namespace Assets {
+namespace Asset {
 class AssetServer;
 }
 class VulkanResourceManager;
@@ -17,6 +17,6 @@ initialise_renderer(Resource<VulkanContext>& context,
                     Resource<Window>& window,
                     Resource<Swapchain>& swapchain,
                     Resource<VulkanResourceManager>& manager,
-                    Resource<Assets::AssetServer>& server,
+                    Resource<Asset::AssetServer>& server,
                     Resource<FinalCleanup>& cleanup);
 }

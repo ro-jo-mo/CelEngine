@@ -72,7 +72,7 @@ target_sources(${PROJECT_NAME}
         "renderer/VulkanSetup.cpp"
         "renderer/VulkanHelpers.cpp"
         "renderer/VulkanUtils.cpp"
-        "renderer/AssetServer.cpp"
+        "renderer/asset/AssetServer.cpp"
         "renderer/Descriptors.cpp"
         "renderer/Camera.cpp"
         "renderer/SceneData.cpp"
@@ -142,14 +142,15 @@ set(public_headers
 
         include/input/Input.h
 
-        include/renderer/AssetServer.h
+        include/renderer/asset/AssetServer.h
+        include/renderer/asset/AssetTypes.h
+
         include/renderer/RenderPlugin.h
         include/renderer/VulkanSetup.h
         include/renderer/Window.h
         include/renderer/VulkanHelpers.h
         include/renderer/VulkanTypes.h
         include/renderer/VulkanUtils.h
-        include/renderer/AssetTypes.h
         include/renderer/Descriptors.h
         include/renderer/Camera.h
         include/renderer/Queues.h

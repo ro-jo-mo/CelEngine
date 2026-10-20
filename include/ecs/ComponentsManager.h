@@ -77,6 +77,7 @@ ComponentsManager::register_component()
     if (componentArrays.contains(typeid(T))) {
         return;
     }
+
     componentArrays[typeid(T)] = std::make_shared<ComponentArray<T>>();
 }
 

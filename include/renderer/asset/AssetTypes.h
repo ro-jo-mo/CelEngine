@@ -6,7 +6,7 @@
 #include <glm/vec4.hpp>
 #include <vulkan/vulkan.h>
 
-namespace Cel::Renderer::Assets {
+namespace Cel::Renderer::Asset {
 
 struct ImageAsset
 {};
