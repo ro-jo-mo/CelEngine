@@ -1,13 +1,9 @@
 #pragma once
 
-#include "VulkanTypes.h"
-#include "asset/AssetTypes.h"
-#include "ecs/Resource.h"
+#include "RenderTypes.h"
 
-#include <functional>
 #include <ktx.h>
 #include <vk_mem_alloc.h>
-#include <vulkan/vulkan.h>
 
 namespace Cel::Renderer::Utils {
 

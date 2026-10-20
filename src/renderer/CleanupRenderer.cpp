@@ -1,5 +1,5 @@
 #include "renderer/CleanupRenderer.h"
-#include "renderer/VulkanTypes.h"
+#include "renderer/RenderTypes.h"
 
 void
 Cel::Renderer::cleanup_renderer(Resource<FinalCleanup>& cleanup,

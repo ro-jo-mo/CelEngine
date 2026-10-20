@@ -1,5 +1,6 @@
 #pragma once
-#include "../VulkanTypes.h"
+
+#include "../RenderTypes.h"
 #include "../VulkanUtils.h"
 #include "common/Handle.h"
 

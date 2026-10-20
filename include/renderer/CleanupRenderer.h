@@ -1,5 +1,5 @@
 #pragma once
-#include "VulkanTypes.h"
+#include "RenderTypes.h"
 #include "asset/AssetServer.h"
 #include "ecs/System.h"
 #include "resource-management/DeletionQueue.h"

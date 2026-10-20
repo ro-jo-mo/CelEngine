@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/Handle.h"
-#include "renderer/VulkanTypes.h"
+#include "renderer/RenderTypes.h"
 
 #include <vulkan/vulkan_core.h>
 

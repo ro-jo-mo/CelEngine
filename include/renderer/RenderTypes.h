@@ -2,7 +2,6 @@
 
 #include "Descriptors.h"
 #include "common/Handle.h"
-#include "resource-management/DeletionQueue.h"
 
 #include <glm/glm.hpp>
 #include <vector>
@@ -70,14 +69,6 @@ struct AllocatedImage
     VkFormat imageFormat;
 };
 
-struct AllocatedMeshBuffer
-{
-    AllocatedBuffer indexBuffer;
-    AllocatedBuffer vertexBuffer;
-    VkDeviceAddress vertexBufferAddress;
-    uint32_t indexCount;
-};
-
 struct BufferAccess
 {
     VkAccessFlags2 access = VK_ACCESS_2_NONE;
@@ -110,7 +101,6 @@ struct ImageRequirements
     VkImageAspectFlags aspects;
 
     using Access = ImageAccess;
-    bool operator==(const ImageRequirements& requirements) const = default;
 };
 
 struct Pipeline

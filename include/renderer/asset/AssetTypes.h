@@ -4,7 +4,6 @@
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
-#include <vulkan/vulkan.h>
 
 namespace Cel::Renderer::Asset {
 
@@ -38,26 +37,40 @@ struct MaterialConstants
     uint32_t normalTextureIndex;
 };
 
-// Probably change this to handles later
-struct Model
+struct CpuPrimitive
 {
-    std::vector<uint32_t> meshes;
-    std::vector<std::optional<uint32_t>> materials;
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
 };
 
-struct Mesh
+struct Primitive
 {
     uint32_t firstIndex;
     uint32_t indexCount;
     int32_t vertexOffset;
 };
 
-struct AssetNode
+struct Mesh
+{
+    std::vector<Handle<Primitive>> primitives;
+    std::vector<std::optional<uint32_t>> materials;
+};
+
+struct SceneAsset
 {
     std::string name;
-    std::vector<AssetNode> children;
+    std::vector<SceneAsset> children;
     glm::mat4 localTransform;
-    std::optional<Model> model;
+    std::optional<Mesh> model;
+};
+
+struct SharedAssetData
+{
+    VkDevice device;
+    MegaBuffer vertexBuffer;
+    MegaBuffer indexBuffer;
+    MegaBuffer materialBuffer;
+    TextureCache textures;
 };
 
 }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "VulkanTypes.h"
+#include "RenderTypes.h"
 
 namespace Cel::Renderer::Queues {
 

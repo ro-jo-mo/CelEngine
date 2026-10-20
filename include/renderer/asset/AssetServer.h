@@ -2,7 +2,7 @@
 
 #include "../../core/World.h"
 #include "../Descriptors.h"
-#include "../VulkanTypes.h"
+#include "../RenderTypes.h"
 #include "../resource-management/MegaBuffer.h"
 #include "AssetTypes.h"
 #include "common/Handle.h"
@@ -61,10 +61,10 @@ class AssetServer
   public:
     explicit AssetServer(VulkanResourceManager& manager);
 
-    Handle<AssetNode> load_gltf_asset(const char* filepath);
+    Handle<SceneAsset> load_gltf_asset(const char* filepath);
 
     void add_asset_to_entity(Entity entity,
-                             Handle<AssetNode> handle,
+                             Handle<SceneAsset> handle,
                              Resource<World>& world) const;
 
     Handle<ImageAsset> load_ktx(const std::string& filepath);
@@ -85,7 +85,7 @@ class AssetServer
 
     [[nodiscard]] Material get_material(Handle<Material> material) const;
 
-    [[nodiscard]] Mesh get_mesh(Handle<Mesh> mesh) const;
+    [[nodiscard]] Primitive get_mesh(Handle<Primitive> mesh) const;
 
   private:
     // Commands
@@ -121,10 +121,10 @@ class AssetServer
                         size_t imageOffset,
                         size_t samplerOffset);
 
-    AssetNode load_nodes(fastgltf::Asset& asset, std::vector<Model>& models);
+    SceneAsset load_nodes(fastgltf::Asset& asset, std::vector<Mesh>& models);
 
-    std::vector<Model> load_models(fastgltf::Asset& asset,
-                                   size_t materialOffset);
+    std::vector<Mesh> load_models(fastgltf::Asset& asset,
+                                  size_t materialOffset);
 
     void cleanup();
 
@@ -133,11 +133,11 @@ class AssetServer
 
     void flush(ParallelResource<RenderGraph::PassServer>& passServer);
 
-    std::unordered_map<const char*, Handle<AssetNode>> pathToAssetMap;
+    std::unordered_map<const char*, Handle<SceneAsset>> pathToAssetMap;
 
     // Assets, buffers, descriptors are coupled
     // These might be combined into a single struct later?
-    std::vector<AssetNode> assets;
+    std::vector<SceneAsset> assets;
     std::vector<DescriptorAllocator> allocators;
 
     // Colour, RoughnessMetallic, Normal textures
@@ -148,7 +148,7 @@ class AssetServer
     std::vector<VkSampler> samplers;
 
     // The CPU side data is purely for indexing into the mega buffers
-    std::vector<Mesh> meshes;
+    std::vector<Primitive> meshes;
     std::vector<Material> materials;
 
     // Staging buffers are a per frame resource (cpu to gpu)

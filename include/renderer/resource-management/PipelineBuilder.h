@@ -1,6 +1,6 @@
 #pragma once
 
-#include "renderer/VulkanTypes.h"
+#include "renderer/RenderTypes.h"
 
 #include <map>
 #include <spirv_reflect.h>

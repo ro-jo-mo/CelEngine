@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../core/Running.h"
-#include "VulkanTypes.h"
+#include "RenderTypes.h"
 #include "ecs/System.h"
 
 #include <SDL3/SDL.h>

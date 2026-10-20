@@ -90,13 +90,13 @@ AssetServer::create_defaults(VulkanResourceManager& manager)
     samplers.push_back(defaultSampler);
 }
 
-std::vector<Model>
+std::vector<Mesh>
 AssetServer::load_models(fastgltf::Asset& asset, size_t materialOffset)
 {
-    std::vector<Model> models;
+    std::vector<Mesh> models;
 
     for (const auto& gltfMesh : asset.meshes) {
-        Model newModel;
+        Mesh newModel;
 
         for (const auto& gltfPrimitive : gltfMesh.primitives) {
             std::vector<Vertex> vertices;
@@ -173,9 +173,9 @@ AssetServer::load_models(fastgltf::Asset& asset, size_t materialOffset)
                         });
                 }
 
-                newModel.meshes.push_back(meshes.size());
+                newModel.primitives.push_back(meshes.size());
 
-                Mesh newMesh{};
+                Primitive newMesh{};
                 newMesh.firstIndex = indiceBuffer.allocate(
                     indices.data(), indices.size() * sizeof(uint32_t));
                 newMesh.indexCount = indices.size();
@@ -198,8 +198,8 @@ AssetServer::load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage)
     std::vector<std::byte> imageData;
 
     auto ErrorMsg = [&](const char* ext) {
-        (throw_error("Error loading gltf image. Attempted to use {}",
-                     std::move(ext)));
+        throw_error("Error loading gltf image. Attempted to use {}",
+                    std::move(ext));
     };
 
     std::visit(
@@ -253,40 +253,6 @@ AssetServer::load_images(fastgltf::Asset& asset)
 {
     for (auto& image : asset.images) {
         load_image(asset, image);
-    }
-}
-
-VkFilter
-ExtractFilter(const fastgltf::Filter filter)
-{
-    switch (filter) {
-        // nearest samplers
-        case fastgltf::Filter::Nearest:
-        case fastgltf::Filter::NearestMipMapNearest:
-        case fastgltf::Filter::NearestMipMapLinear:
-            return VK_FILTER_NEAREST;
-
-            // linear samplers
-        case fastgltf::Filter::Linear:
-        case fastgltf::Filter::LinearMipMapNearest:
-        case fastgltf::Filter::LinearMipMapLinear:
-        default:
-            return VK_FILTER_LINEAR;
-    }
-}
-
-VkSamplerMipmapMode
-ExtractMipMap(const fastgltf::Filter filter)
-{
-    switch (filter) {
-        case fastgltf::Filter::NearestMipMapNearest:
-        case fastgltf::Filter::LinearMipMapNearest:
-            return VK_SAMPLER_MIPMAP_MODE_NEAREST;
-
-        case fastgltf::Filter::NearestMipMapLinear:
-        case fastgltf::Filter::LinearMipMapLinear:
-        default:
-            return VK_SAMPLER_MIPMAP_MODE_LINEAR;
     }
 }
 
@@ -400,14 +366,14 @@ AssetServer::load_materials(fastgltf::Asset& asset,
     }
 }
 
-AssetNode
+SceneAsset
 create_node_tree(const size_t nodeIndex,
                  fastgltf::Asset& asset,
-                 std::vector<Model>& models)
+                 std::vector<Mesh>& models)
 {
     auto node = asset.nodes[nodeIndex];
 
-    AssetNode newNode{};
+    SceneAsset newNode{};
     newNode.children.reserve(node.children.size());
     newNode.name = node.name;
     if (node.meshIndex.has_value()) {
@@ -444,14 +410,14 @@ create_node_tree(const size_t nodeIndex,
     return newNode;
 }
 
-AssetNode
-AssetServer::load_nodes(fastgltf::Asset& asset, std::vector<Model>& models)
+SceneAsset
+AssetServer::load_nodes(fastgltf::Asset& asset, std::vector<Mesh>& models)
 {
     // A scene may have several root nodes
     // Return a list of root nodes? The roots contain their children
     auto& scene = asset.scenes[asset.defaultScene.value_or(0)];
 
-    std::vector<AssetNode> roots;
+    std::vector<SceneAsset> roots;
     roots.reserve(scene.nodeIndices.size());
 
     for (const auto& index : scene.nodeIndices) {
@@ -460,14 +426,14 @@ AssetServer::load_nodes(fastgltf::Asset& asset, std::vector<Model>& models)
 
     std::vector<size_t> rootIds(roots.size());
 
-    AssetNode root = { .name = "",
-                       .children = roots,
-                       .localTransform = glm::mat4(1.0f) };
+    SceneAsset root = { .name = "",
+                        .children = roots,
+                        .localTransform = glm::mat4(1.0f) };
 
     return root;
 }
 
-Handle<AssetNode>
+Handle<SceneAsset>
 AssetServer::load_gltf_asset(const char* filepath)
 {
     std::filesystem::path path = filepath;
@@ -515,7 +481,7 @@ AssetServer::load_gltf_asset(const char* filepath)
     load_materials(asset, imageOffset, samplerOffset);
 
     auto models = load_models(asset, materialOffset);
-    AssetNode newAsset = load_nodes(asset, models);
+    SceneAsset newAsset = load_nodes(asset, models);
 
     assets.push_back(std::move(newAsset));
     allocators.push_back(std::move(descriptorAllocator));
@@ -525,8 +491,8 @@ AssetServer::load_gltf_asset(const char* filepath)
 
 void
 add_node_hierarchy_to_entity(const Entity entity,
-                             const Handle<AssetNode> handle,
-                             const AssetNode& node,
+                             const Handle<SceneAsset> handle,
+                             const SceneAsset& node,
                              Resource<World>& world)
 {
     // reuse global transform functions for decomposition
@@ -535,7 +501,7 @@ add_node_hierarchy_to_entity(const Entity entity,
     auto child = world->spawn(Position{ transform.get_translation() },
                               Rotation{ transform.get_rotation() },
                               Scale{ transform.get_scale() },
-                              Handle<AssetNode>{ handle });
+                              Handle<SceneAsset>{ handle });
 
     world->add_child(entity, child.get());
 
@@ -545,7 +511,7 @@ add_node_hierarchy_to_entity(const Entity entity,
             // Add all meshes as child entities
             for (const auto& [mesh, material] :
                  std::ranges::views::zip(meshes, materials)) {
-                parent.spawn(Handle<Mesh>{ .index = mesh },
+                parent.spawn(Handle<Primitive>{ .index = mesh },
                              Handle<Material>{ .index = material.value_or(0) });
             }
         });
@@ -558,7 +524,7 @@ add_node_hierarchy_to_entity(const Entity entity,
 
 void
 AssetServer::add_asset_to_entity(const Entity entity,
-                                 const Handle<AssetNode> handle,
+                                 const Handle<SceneAsset> handle,
                                  Resource<World>& world) const
 {
     const auto& node = assets[handle.index];
@@ -571,8 +537,8 @@ AssetServer::get_material(const Handle<Material> material) const
     return materials[material.index];
 }
 
-Mesh
-AssetServer::get_mesh(const Handle<Mesh> mesh) const
+Primitive
+AssetServer::get_mesh(const Handle<Primitive> mesh) const
 {
     return meshes[mesh.index];
 }
@@ -719,10 +685,9 @@ AssetServer::register_pass(RenderGraph::PassBuilder& pass,
         pass.upload_image(staging, handle);
     }
 
-
     for (const auto& samplerCmd : cmdAddSampler2ds) {
         // Awful hack until i refactor asset server
-    // This only works as long as the only images are from gltf loading
+        // This only works as long as the only images are from gltf loading
         textureCache.initialise_texture(
             samplerCmd.cacheIndex,
             uninitialisedImages[samplerCmd.imageIndex - gltfImages.size()]

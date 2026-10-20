@@ -2,7 +2,7 @@
 
 #include "VulkanResourceManager.h"
 #include "common/Handle.h"
-#include "renderer/VulkanTypes.h"
+#include "renderer/RenderTypes.h"
 
 #include <optional>
 #include <variant>
