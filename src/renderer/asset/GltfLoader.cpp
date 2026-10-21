@@ -9,7 +9,7 @@
 #include <ranges>
 #include <stb_image.h>
 
-Cel::Renderer::Asset::GltfLoader::GltfData
+void
 Cel::Renderer::Asset::GltfLoader::prepare(std::string file,
                                           GltfLabel::Scene label)
 {
@@ -49,11 +49,24 @@ Cel::Renderer::Asset::GltfLoader::prepare(std::string file,
     load_images(asset, data);
     load_nodes(asset, data);
 
-    return data;
+    std::unique_lock guard{ processingLock };
+    processing.push_back(data);
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::commit()
+Cel::Renderer::Asset::GltfLoader::flush()
+{
+    std::unique_lock guard{ processingLock };
+
+    for (auto& data : processing) {
+        commit(data);
+    }
+
+    processing.clear();
+}
+
+void
+Cel::Renderer::Asset::GltfLoader::commit(GltfData& data)
 {
 }
 

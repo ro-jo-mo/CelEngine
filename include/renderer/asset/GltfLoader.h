@@ -28,13 +28,12 @@ class GltfLoader
      * @param file
      * @param label
      */
-    GltfData prepare(std::string file, GltfLabel::Scene label);
+    void prepare(std::string file, GltfLabel::Scene label);
 
     /**
-     * Finalises the changes, adding them to shared storage
-     * Single threaded access
+     *
      */
-    void commit();
+    void flush();
 
   private:
     struct GltfData
@@ -46,6 +45,12 @@ class GltfLoader
         std::vector<std::pair<void*, VkExtent3D>> images;
         SceneAsset scene;
     };
+
+    /**
+     * Finalises the changes, adding them to shared storage
+     * Single threaded access
+     */
+    void commit(GltfData& data);
 
     static void load_meshes(fastgltf::Asset& asset, GltfData& data);
 
@@ -61,6 +66,7 @@ class GltfLoader
                                       fastgltf::Asset& asset,
                                       GltfData& data);
 
+    std::mutex processingLock;
     std::vector<GltfData> processing;
 
     SharedAssetData& shared;
