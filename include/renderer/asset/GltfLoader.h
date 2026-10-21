@@ -20,23 +20,15 @@ class GltfLoader
     struct GltfData;
 
   public:
-    /**
-     * Does the initial loading of the asset, preparing the data for use
-     * The data created here is kept exclusively here until commit
-     * Can be launched asynchronously
-     * @param file
-     * @param label
-     */
-    void prepare(std::string file, GltfLabel::Scene label);
+    auto load_gltf(std::string file);
 
-    /**
-     *
-     */
     void flush_cpu(VulkanResourceManager& manager, SharedAssetData& shared);
 
   private:
     struct GltfData
     {
+        Handle<SceneAsset> handle;
+
         std::vector<Mesh> meshes;
         std::vector<CpuPrimitive> primitives;
         // image,sampler indices
@@ -48,16 +40,29 @@ class GltfLoader
         std::vector<VkSampler> samplers;
         std::vector<std::pair<void*, VkExtent3D>> images;
         SceneAsset scene;
-
-        uint32_t imageOffset;
-        uint32_t samplerOffset;
     };
+
+    /**
+     * Does the initial loading of the asset, preparing the data for use
+     * The data created here is kept exclusively here until commit
+     * Can be launched asynchronously
+     * @param file
+     * @param label
+     */
+    void prepare(Handle<SceneAsset> handle,
+                 std::string file,
+                 GltfLabel::Scene label);
 
     /**
      * Finalises the changes, adding them to shared storage
      * Single threaded access
      */
     void commit(GltfData& data,
+            uint32_t imageOffset,
+                uint32_t samplerOffset,
+                uint32_t primitiveOffset,
+                uint32_t materialOffset,
+
                 VulkanResourceManager& manager,
                 SharedAssetData& shared);
 
@@ -78,8 +83,11 @@ class GltfLoader
     std::mutex processingLock;
     std::vector<GltfData> processing;
 
+    std::vector<SceneAsset> scenes;
+
     std::vector<AllocatedImage> images;
     std::vector<VkSampler> samplers;
+    std::vector<Primitive> primitives;
 
     VkDevice device;
 };

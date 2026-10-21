@@ -7,11 +7,13 @@
 #include <fastgltf/tools.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <mutex>
 #include <ranges>
 #include <stb_image.h>
 
 void
-Cel::Renderer::Asset::GltfLoader::prepare(std::string file,
+Cel::Renderer::Asset::GltfLoader::prepare(Handle<SceneAsset> handle,
+                                          std::string file,
                                           GltfLabel::Scene label)
 {
     std::filesystem::path path = file;
@@ -42,7 +44,7 @@ Cel::Renderer::Asset::GltfLoader::prepare(std::string file,
         asset = std::move(result.get());
     }
 
-    GltfData data{};
+    GltfData data{ .handle = handle };
 
     load_meshes(asset, data);
     load_samplers(asset, data);
@@ -63,6 +65,8 @@ Cel::Renderer::Asset::GltfLoader::flush_cpu(VulkanResourceManager& manager,
     for (auto& data : processing) {
 
         data.imageOffset = images.size();
+        data.samplerOffset = samplers.size();
+        data.primitiveOffset = primitives.size();
         shared.commit(data, manager, shared);
     }
 
@@ -72,10 +76,13 @@ Cel::Renderer::Asset::GltfLoader::flush_cpu(VulkanResourceManager& manager,
 
 void
 Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
+                                         uint32_t imageOffset,
+                                         uint32_t samplerOffset,
+                                         uint32_t primitiveOffset,
+                                         uint32_t materialOffset,
                                          VulkanResourceManager& manager,
                                          SharedAssetData& shared)
 {
-
     for (const auto& [_, extent] : data.images) {
 
         ImageRequirements requirements{ .format = VK_FORMAT_R8G8B8A8_UNORM,
@@ -101,19 +108,20 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
         if (img == UINT32_MAX) {
             img = defaultImg;
         } else {
-            img += data.imageOffset;
+            img += imageOffset;
         }
 
         if (sampler == UINT32_MAX) {
             sampler = 0;
         } else {
-            sampler += data.samplerOffset;
+            sampler += samplerOffset;
         }
 
         set = shared.textures.add_texture(images[img].imageView,
                                           samplers[sampler]);
     };
 
+    // Set the index into texture array for materials
     for (const auto& [i, material] : std::views::enumerate(data.materials)) {
         add_texture(data.textureSamplers[i], material.colorTextureIndex, 0);
 
@@ -129,9 +137,42 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
                                    data.materials.size() *
                                        sizeof(MaterialConstants));
 
-    // TODO: Store the scene tree somewhere
-    // Upload vertices + indices
-    // This will involve converting cpu primitive to gpu primitive
+    // Convert the cpu mesh data to offsets in the gpu buffers
+    for (const auto& cpuPrim : data.primitives) {
+        auto& primitive = primitives.emplace_back();
+
+        primitive.firstIndex = shared.indexBuffer.allocate(
+            cpuPrim.indices.data(), cpuPrim.indices.size() * sizeof(uint32_t));
+
+        primitive.indexCount = cpuPrim.indices.size();
+
+        primitive.vertexOffset = shared.vertexBuffer.allocate(
+            cpuPrim.vertices.data(), cpuPrim.vertices.size() * sizeof(Vertex));
+    }
+
+    // Remap meshes to committed primitives
+    auto remap_tree = [&](SceneAsset& scene, auto&& _remap_tree) -> void {
+        if (scene.mesh.has_value()) {
+            auto& mesh = scene.mesh.value();
+
+            for (const auto& [prim, mat] :
+                 std::views::zip(mesh.primitives, mesh.materials)) {
+                prim.index += primitiveOffset;
+
+                if (mat.has_value()) {
+                    mat = mat.value() + materialOffset;
+                }
+            }
+        }
+
+        for (auto& child : scene.children) {
+            _remap_tree(child, _remap_tree);
+        }
+    };
+
+    remap_tree(data.scene, remap_tree);
+
+    scenes[data.handle.index] = data.scene;
 }
 
 static VkFilter

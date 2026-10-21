@@ -1,5 +1,7 @@
 #pragma once
 
+#include <variant>
+
 namespace Cel::Renderer::Asset::GltfLabel {
 
 struct Scene
@@ -18,5 +20,7 @@ struct Node
 {
     size_t i;
 };
+
+using Label = std::variant<Scene, Mesh, Material, Node>;
 
 }
