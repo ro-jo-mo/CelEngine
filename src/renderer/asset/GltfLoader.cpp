@@ -1,6 +1,7 @@
 #include "renderer/asset/GltfLoader.h"
 
 #include "core/Error.h"
+#include "renderer/resource-management/VulkanResourceManager.h"
 
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>
@@ -54,20 +55,83 @@ Cel::Renderer::Asset::GltfLoader::prepare(std::string file,
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::flush()
+Cel::Renderer::Asset::GltfLoader::flush_cpu(VulkanResourceManager& manager,
+                                            SharedAssetData& shared)
 {
     std::unique_lock guard{ processingLock };
 
     for (auto& data : processing) {
-        commit(data);
+
+        data.imageOffset = images.size();
+        shared.commit(data, manager, shared);
     }
 
+    // DON'T CLEAR HERE. WAIT UNTIL PASS FOR GPU PUSH
     processing.clear();
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::commit(GltfData& data)
+Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
+                                         VulkanResourceManager& manager,
+                                         SharedAssetData& shared)
 {
+
+    for (const auto& [_, extent] : data.images) {
+
+        ImageRequirements requirements{ .format = VK_FORMAT_R8G8B8A8_UNORM,
+                                        .extent = extent,
+                                        .usages =
+                                            VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                            VK_IMAGE_USAGE_SAMPLED_BIT,
+                                        .aspects = VK_IMAGE_ASPECT_COLOR_BIT };
+
+        const auto handle =
+            manager.get_handle_from_requirements(requirements, "gltf_image");
+
+        images.push_back(manager.get_resource_from_handle(handle));
+    }
+
+    // We only really store samplers to delete later
+    // If we delayed creation to now we could de duplicate
+    samplers.append_range(data.samplers);
+
+    auto add_texture = [&](auto& pair, auto& set, uint32_t defaultImg) {
+        auto [img, sampler] = pair;
+
+        if (img == UINT32_MAX) {
+            img = defaultImg;
+        } else {
+            img += data.imageOffset;
+        }
+
+        if (sampler == UINT32_MAX) {
+            sampler = 0;
+        } else {
+            sampler += data.samplerOffset;
+        }
+
+        set = shared.textures.add_texture(images[img].imageView,
+                                          samplers[sampler]);
+    };
+
+    for (const auto& [i, material] : std::views::enumerate(data.materials)) {
+        add_texture(data.textureSamplers[i], material.colorTextureIndex, 0);
+
+        add_texture(data.textureSamplers[i + 1],
+                    material.metalRoughnessTextureIndex,
+                    0);
+
+        add_texture(
+            data.textureSamplers[i + 2], material.normalTextureIndex, 0);
+    }
+
+    shared.materialBuffer.allocate(data.materials.data(),
+                                   data.materials.size() *
+                                       sizeof(MaterialConstants));
+
+    // TODO: Store the scene tree somewhere
+    // Upload vertices + indices
+    // This will involve converting cpu primitive to gpu primitive
 }
 
 static VkFilter
@@ -125,7 +189,7 @@ Cel::Renderer::Asset::GltfLoader::load_samplers(const fastgltf::Asset& asset,
             gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
 
         VkSampler newSampler;
-        vkCreateSampler(shared.device, &sampler, nullptr, &newSampler);
+        vkCreateSampler(device, &sampler, nullptr, &newSampler);
 
         data.samplers.push_back(newSampler);
     }
@@ -137,10 +201,28 @@ Cel::Renderer::Asset::GltfLoader::load_materials(fastgltf::Asset& asset,
 {
 
     data.materials.reserve(asset.materials.size());
+    data.textureSamplers.reserve(asset.materials.size() * 3);
+
+    auto resolve = [&](const auto& textInfo) {
+        // While 0 represents the index into samplers for the default, as we +
+        // offset these values, we need a flag
+
+        auto& [image, sampler] =
+            data.textureSamplers.emplace_back(UINT32_MAX, UINT32_MAX);
+
+        if (textInfo.has_value()) {
+            auto& texture = asset.textures[textInfo.value().textureIndex];
+
+            image = texture.imageIndex.value();
+
+            if (texture.samplerIndex.has_value()) {
+                sampler = texture.samplerIndex.value();
+            }
+        }
+    };
+
     for (auto& gltfMaterial : asset.materials) {
-        // Material constants will be stored in a buffer on the gpu
-        // The material will then contain the buffer index and offset for these
-        // constants
+
         auto& constants = data.materials.emplace_back();
 
         const auto& [baseColorFactor,
@@ -158,19 +240,11 @@ Cel::Renderer::Asset::GltfLoader::load_materials(fastgltf::Asset& asset,
             metallicFactor, roughnessFactor, 0, 0
         };
 
-        if (baseColorTexture.has_value()) {
-            constants.colorTextureIndex = baseColorTexture.value().textureIndex;
-        };
+        resolve(baseColorTexture);
 
-        if (metallicRoughnessTexture.has_value()) {
-            constants.metalRoughnessTextureIndex =
-                metallicRoughnessTexture.value().textureIndex;
-        };
+        resolve(metallicRoughnessTexture);
 
-        if (gltfMaterial.normalTexture.has_value()) {
-            constants.normalTextureIndex =
-                gltfMaterial.normalTexture.value().textureIndex;
-        }
+        resolve(gltfMaterial.normalTexture);
     }
 }
 

@@ -280,15 +280,10 @@ Cel::Renderer::DescriptorWriter::update_set(VkDevice device,
 }
 
 uint32_t
-Cel::Renderer::TextureCache::add_texture_uninitialised(
-    const uint32_t imageIndex,
-    VkSampler sampler)
+Cel::Renderer::TextureCache::add_texture(VkImageView view, VkSampler sampler)
 {
-    for (size_t i = 0; i < descriptors.size(); i++) {
-        const auto& descriptor = descriptors[i];
-        const auto index = imageIndices[i];
-
-        if (index == imageIndex && descriptor.sampler == sampler) {
+    for (const auto& [i, descriptor] : std::views::enumerate(descriptors)) {
+        if (descriptor.imageView == view && descriptor.sampler == sampler) {
             return i;
         }
     }
@@ -297,19 +292,8 @@ Cel::Renderer::TextureCache::add_texture_uninitialised(
 
     descriptors.push_back(VkDescriptorImageInfo{
         .sampler = sampler,
-        .imageView = nullptr,
+        .imageView = view,
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
-    imageIndices.push_back(imageIndex);
 
     return i;
-}
-
-void
-Cel::Renderer::TextureCache::initialise_texture(uint32_t index,
-                                                VkImageView imageView)
-{
-    if (descriptors[index].imageView != nullptr) {
-        return;
-    }
-    descriptors[index].imageView = imageView;
 }

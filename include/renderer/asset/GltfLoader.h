@@ -4,7 +4,6 @@
 #include "GltfLabels.h"
 #include "renderer/resource-management/MegaBuffer.h"
 
-#include <optional>
 #include <string>
 
 namespace Cel::Renderer::Asset {
@@ -33,24 +32,34 @@ class GltfLoader
     /**
      *
      */
-    void flush();
+    void flush_cpu(VulkanResourceManager& manager, SharedAssetData& shared);
 
   private:
     struct GltfData
     {
         std::vector<Mesh> meshes;
         std::vector<CpuPrimitive> primitives;
+        // image,sampler indices
+        std::vector<std::pair<uint32_t, uint32_t>> textureSamplers;
+        // Texture indices are unset until commit
+        // Based on the result of adding textureSamplers to the texture cache
         std::vector<MaterialConstants> materials;
+
         std::vector<VkSampler> samplers;
         std::vector<std::pair<void*, VkExtent3D>> images;
         SceneAsset scene;
+
+        uint32_t imageOffset;
+        uint32_t samplerOffset;
     };
 
     /**
      * Finalises the changes, adding them to shared storage
      * Single threaded access
      */
-    void commit(GltfData& data);
+    void commit(GltfData& data,
+                VulkanResourceManager& manager,
+                SharedAssetData& shared);
 
     static void load_meshes(fastgltf::Asset& asset, GltfData& data);
 
@@ -69,7 +78,10 @@ class GltfLoader
     std::mutex processingLock;
     std::vector<GltfData> processing;
 
-    SharedAssetData& shared;
+    std::vector<AllocatedImage> images;
+    std::vector<VkSampler> samplers;
+
+    VkDevice device;
 };
 
 }

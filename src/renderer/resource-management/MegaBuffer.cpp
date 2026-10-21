@@ -1,5 +1,6 @@
 #include "renderer/resource-management/MegaBuffer.h"
 
+#include "renderer/VulkanUtils.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
 
 #include <fmt/base.h>

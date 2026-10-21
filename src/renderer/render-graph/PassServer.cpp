@@ -7,6 +7,7 @@
 #include "renderer/Queues.h"
 #include "renderer/SceneData.h"
 #include "renderer/VulkanHelpers.h"
+#include "renderer/VulkanUtils.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/resource-management/PipelineBuilder.h"
 

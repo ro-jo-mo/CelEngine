@@ -85,14 +85,9 @@ class DescriptorWriter
 
 struct TextureCache
 {
-    uint32_t add_texture_uninitialised(uint32_t imageIndex, VkSampler sampler);
-
-    void initialise_texture(uint32_t index, VkImageView imageView);
+    uint32_t add_texture(VkImageView view, VkSampler sampler);
 
     std::vector<VkDescriptorImageInfo> descriptors;
-
-  private:
-    std::vector<uint32_t> imageIndices;
 };
 
 }

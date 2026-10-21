@@ -1,5 +1,7 @@
 #pragma once
 
+#include "renderer/resource-management/MegaBuffer.h"
+
 #include <fastgltf/types.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/vec3.hpp>
@@ -65,7 +67,7 @@ struct SceneAsset
 
 struct SharedAssetData
 {
-    VkDevice device;
+    VkDevice device{};
     MegaBuffer vertexBuffer;
     MegaBuffer indexBuffer;
     MegaBuffer materialBuffer;

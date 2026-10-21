@@ -3,6 +3,7 @@
 #include "common/Graph.h"
 #include "core/Error.h"
 #include "renderer/VulkanHelpers.h"
+#include "renderer/VulkanUtils.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassServer.h"
 
@@ -655,7 +656,7 @@ ExecutionPlan::execute(
         .pImageIndices = &swapchainIndex,
         .pResults = nullptr
     };
-    
+
     vkQueuePresentKHR(
         passServer.queues[passServer.queueToIndex[presentQueue]].queue,
         &presentInfo);
