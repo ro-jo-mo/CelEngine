@@ -28,7 +28,7 @@ class PassBuilder
     explicit PassBuilder(const Handle<RenderPass> id);
 
     /**
-     * @brief Creates a *per frame* buffer
+     * @brief Creates a buffer
      * @param buffer
      * @param allocSize
      * @param usages
@@ -41,7 +41,7 @@ class PassBuilder
                                VmaMemoryUsage memoryUsage);
 
     /**
-     * @brief Creates a *per frame* image
+     * @brief Creates a image
      * Likely less used than create_buffer, as per frame images are rarely
      * needed
      * @param buffer

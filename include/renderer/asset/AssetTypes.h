@@ -2,7 +2,6 @@
 
 #include "renderer/resource-management/MegaBuffer.h"
 
-#include <fastgltf/types.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
@@ -23,6 +22,7 @@ struct Vertex
     float uv_y;
 };
 
+// TODO probably replace this with handle. Rename MaterialConstants -> Material
 // Index into the material constants buffer
 struct Material
 {
@@ -55,6 +55,8 @@ struct Primitive
 struct Mesh
 {
     std::vector<Handle<Primitive>> primitives;
+    // TODO This probably shouldn't be optional. Replace with some default
+    // material
     std::vector<std::optional<uint32_t>> materials;
 };
 

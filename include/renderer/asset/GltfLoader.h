@@ -2,10 +2,16 @@
 
 #include "AssetTypes.h"
 #include "GltfLabels.h"
+#include "renderer/passes/StagingPool.h"
+#include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/MegaBuffer.h"
 
+#include <fastgltf/types.hpp>
 #include <string>
 
+namespace Cel::Renderer::RenderGraph {
+class PassBuilder;
+}
 namespace Cel::Renderer::Asset {
 
 // Gltf -> Scene
@@ -22,7 +28,11 @@ class GltfLoader
   public:
     auto load_gltf(std::string file);
 
-    void flush_cpu(VulkanResourceManager& manager, SharedAssetData& shared);
+    void flush_cpu(VulkanResourceManager& manager,
+                   SharedAssetData& shared,
+                   RenderGraph::PassBuilder& pass);
+
+    void flush_gpu(VkCommandBuffer cmd, const RenderGraph::PassServer& server);
 
   private:
     struct GltfData
@@ -40,6 +50,8 @@ class GltfLoader
         std::vector<VkSampler> samplers;
         std::vector<std::pair<void*, VkExtent3D>> images;
         SceneAsset scene;
+
+        uint32_t imageOffset;
     };
 
     /**
@@ -58,13 +70,13 @@ class GltfLoader
      * Single threaded access
      */
     void commit(GltfData& data,
-            uint32_t imageOffset,
                 uint32_t samplerOffset,
                 uint32_t primitiveOffset,
                 uint32_t materialOffset,
 
                 VulkanResourceManager& manager,
-                SharedAssetData& shared);
+                SharedAssetData& shared,
+                RenderGraph::PassBuilder& pass);
 
     static void load_meshes(fastgltf::Asset& asset, GltfData& data);
 
@@ -88,6 +100,9 @@ class GltfLoader
     std::vector<AllocatedImage> images;
     std::vector<VkSampler> samplers;
     std::vector<Primitive> primitives;
+    std::vector<Material> materials;
+
+    StagingPool stagingPool;
 
     VkDevice device;
 };

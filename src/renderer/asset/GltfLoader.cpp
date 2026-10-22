@@ -1,6 +1,8 @@
 #include "renderer/asset/GltfLoader.h"
 
 #include "core/Error.h"
+#include "renderer/render-graph/PassBuilder.h"
+#include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
 
 #include <fastgltf/core.hpp>
@@ -58,32 +60,66 @@ Cel::Renderer::Asset::GltfLoader::prepare(Handle<SceneAsset> handle,
 
 void
 Cel::Renderer::Asset::GltfLoader::flush_cpu(VulkanResourceManager& manager,
-                                            SharedAssetData& shared)
+                                            SharedAssetData& shared,
+                                            RenderGraph::PassBuilder& pass)
 {
-    std::unique_lock guard{ processingLock };
+    // We maintain a lock until we've completely finished with this batch
+    processingLock.lock();
+    stagingPool.reset();
 
     for (auto& data : processing) {
-
         data.imageOffset = images.size();
-        data.samplerOffset = samplers.size();
-        data.primitiveOffset = primitives.size();
-        shared.commit(data, manager, shared);
+
+        commit(data,
+               samplers.size(),
+               primitives.size(),
+               materials.size() * sizeof(MaterialConstants),
+
+               manager,
+               shared,
+               pass);
+    }
+}
+
+void
+Cel::Renderer::Asset::GltfLoader::flush_gpu(
+    VkCommandBuffer cmd,
+    const RenderGraph::PassServer& server)
+{
+    // Resetting simply ticks the handles back to the start of the list.
+    // As we iterate in the same order, this gives us the same handle for each
+    // image
+    stagingPool.reset();
+
+    for (const auto& data : processing) {
+
+        auto offset = data.imageOffset;
+        for (const auto& imgData : data.images | std::views::keys) {
+            auto staging = server.get_resource(stagingPool.get_handle());
+
+            Utils::upload_image_asset(imgData, cmd, images[offset], staging);
+
+            stbi_image_free(imgData);
+            offset++;
+        }
     }
 
-    // DON'T CLEAR HERE. WAIT UNTIL PASS FOR GPU PUSH
+    // Finally we can clear the processed data and unlock
     processing.clear();
+    processingLock.unlock();
 }
 
 void
 Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
-                                         uint32_t imageOffset,
                                          uint32_t samplerOffset,
                                          uint32_t primitiveOffset,
                                          uint32_t materialOffset,
+
                                          VulkanResourceManager& manager,
-                                         SharedAssetData& shared)
+                                         SharedAssetData& shared,
+                                         RenderGraph::PassBuilder& pass)
 {
-    for (const auto& [_, extent] : data.images) {
+    for (const auto& extent : data.images | std::views::values) {
 
         ImageRequirements requirements{ .format = VK_FORMAT_R8G8B8A8_UNORM,
                                         .extent = extent,
@@ -96,6 +132,16 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
             manager.get_handle_from_requirements(requirements, "gltf_image");
 
         images.push_back(manager.get_resource_from_handle(handle));
+
+        const auto stagingHandle = stagingPool.get_handle();
+        pass.create_buffer(
+            stagingHandle,
+            true,
+            Utils::calculate_image_size(extent, VK_FORMAT_R8G8B8A8_UNORM),
+            VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
+            VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+        pass.upload_image(stagingHandle, handle);
     }
 
     // We only really store samplers to delete later
@@ -108,7 +154,7 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
         if (img == UINT32_MAX) {
             img = defaultImg;
         } else {
-            img += imageOffset;
+            img += data.imageOffset;
         }
 
         if (sampler == UINT32_MAX) {
@@ -133,9 +179,13 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
             data.textureSamplers[i + 2], material.normalTextureIndex, 0);
     }
 
-    shared.materialBuffer.allocate(data.materials.data(),
-                                   data.materials.size() *
-                                       sizeof(MaterialConstants));
+    uint32_t materialBufferOffset = shared.materialBuffer.allocate(
+        data.materials.data(),
+        data.materials.size() * sizeof(MaterialConstants));
+
+    for (uint32_t i = 0; i < data.materials.size(); i++) {
+        materials.emplace_back(materialBufferOffset + i);
+    }
 
     // Convert the cpu mesh data to offsets in the gpu buffers
     for (const auto& cpuPrim : data.primitives) {
