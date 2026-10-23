@@ -5,6 +5,7 @@
 #include "../RenderTypes.h"
 #include "../resource-management/MegaBuffer.h"
 #include "AssetTypes.h"
+#include "GltfLoader.h"
 #include "common/Handle.h"
 #include "ecs/Types.h"
 
@@ -59,17 +60,7 @@ namespace Cel::Renderer::Asset {
 class AssetServer
 {
   public:
-    explicit AssetServer(VulkanResourceManager& manager);
-
-    Handle<SceneAsset> load_gltf_asset(const char* filepath);
-
-    void add_asset_to_entity(Entity entity,
-                             Handle<SceneAsset> handle,
-                             Resource<World>& world) const;
-
-    Handle<ImageAsset> load_ktx(const std::string& filepath);
-
-    AllocatedImage& get_image_from_handle(Handle<ImageAsset> handle);
+    explicit AssetServer(VulkanResourceManager& manager, SharedAssetData);
 
     /**
      * Registers that this render pass accesses loaded assets.
@@ -79,53 +70,14 @@ class AssetServer
      */
     void declare_scene_access(RenderGraph::PassBuilder& pass);
 
-    void declare_access_to_images(
-        RenderGraph::PassBuilder& pass,
-        const std::vector<Handle<ImageAsset>>& images);
+    void flush_cpu(VulkanResourceManager& manager,
+                   SharedAssetData& shared,
+                   RenderGraph::PassBuilder& pass);
 
-    [[nodiscard]] Material get_material(Handle<Material> material) const;
-
-    [[nodiscard]] Primitive get_mesh(Handle<Primitive> mesh) const;
+    void flush_gpu(SharedAssetData& shared,
+                   ParallelResource<RenderGraph::PassServer>& server);
 
   private:
-    // Commands
-    struct CmdCreateImg
-    {
-        void* data;
-        VkExtent3D extent;
-        bool ktx;
-        bool gltf;
-    };
-
-    struct CmdSampler2d
-    {
-        size_t imageIndex;
-        uint32_t cacheIndex;
-    };
-
-    void create_defaults(VulkanResourceManager& manager);
-
-    void load_image(fastgltf::Asset& asset, fastgltf::Image& gltfImage);
-
-    void load_images(fastgltf::Asset& asset);
-
-    void load_samplers(const fastgltf::Asset& asset);
-
-    uint32_t resolve_texture_sampler(
-        fastgltf::Asset& asset,
-        const std::optional<fastgltf::TextureInfo>& textureInfo,
-        size_t imageOffset,
-        size_t samplerOffset);
-
-    void load_materials(fastgltf::Asset& asset,
-                        size_t imageOffset,
-                        size_t samplerOffset);
-
-    SceneAsset load_nodes(fastgltf::Asset& asset, std::vector<Mesh>& models);
-
-    std::vector<Mesh> load_models(fastgltf::Asset& asset,
-                                  size_t materialOffset);
-
     void cleanup();
 
     void register_pass(RenderGraph::PassBuilder& pass,
@@ -133,55 +85,7 @@ class AssetServer
 
     void flush(ParallelResource<RenderGraph::PassServer>& passServer);
 
-    std::unordered_map<const char*, Handle<SceneAsset>> pathToAssetMap;
-
-    // Assets, buffers, descriptors are coupled
-    // These might be combined into a single struct later?
-    std::vector<SceneAsset> assets;
-    std::vector<DescriptorAllocator> allocators;
-
-    // Colour, RoughnessMetallic, Normal textures
-    std::vector<AllocatedImage> gltfImages;
-    // General purpose images
-    std::vector<AllocatedImage> loadedImages;
-    // Image samplers
-    std::vector<VkSampler> samplers;
-
-    // The CPU side data is purely for indexing into the mega buffers
-    std::vector<Primitive> meshes;
-    std::vector<Material> materials;
-
-    // Staging buffers are a per frame resource (cpu to gpu)
-    // As such we wish to leave lifetime entirely to the render graph
-    // We reserve a healthy number of handles at startup
-    std::vector<Handle<AllocatedBuffer>> reservedBufferHandles;
-
-    struct CreateMeshCmd
-    {};
-    std::vector<CmdCreateImg> cmdCreateImgs;
-    std::vector<CmdSampler2d> cmdAddSampler2ds;
-    // Store image allocations here until they're officially created with
-    // data
-    std::vector<AllocatedImage> uninitialisedImages;
-
-    MegaBuffer vertexBuffer;
-    MegaBuffer indiceBuffer;
-    MegaBuffer materialBuffer;
-
-    DescriptorWriter descriptorWriter;
-    TextureCache textureCache;
-
-    VkDevice device;
-
-    // ========================================================================
-
-    // Beloved lack of module level access permissions. What a fantastic
-    // language design!
-    friend struct Cel::Renderer::DrawData;
-    friend void Renderer::cleanup_asset_server(
-        Resource<AssetServer>& assetServer);
-    friend struct Passes::PassFriend;
-    friend class RenderGraph::PassServer;
+    GltfLoader gltfLoader;
 };
 
 }

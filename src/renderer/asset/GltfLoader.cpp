@@ -13,10 +13,30 @@
 #include <ranges>
 #include <stb_image.h>
 
+Cel::Handle<Cel::Renderer::Asset::SceneAsset>
+Cel::Renderer::Asset::GltfLoader::load_gltf(std::string file,
+                                            GltfLabel::Scene label)
+{
+    const Handle<SceneAsset> handle{ static_cast<uint32_t>(scenes.size() - 1) };
+
+    scenes.emplace_back();
+
+    prepare(handle, file, label);
+
+    return handle;
+}
+
+Cel::Handle<Cel::Renderer::Asset::MeshAsset>
+Cel::Renderer::Asset::GltfLoader::load_gltf(std::string file,
+                                            GltfLabel::Mesh label)
+{
+    return {};
+}
+
 void
 Cel::Renderer::Asset::GltfLoader::prepare(Handle<SceneAsset> handle,
                                           std::string file,
-                                          GltfLabel::Scene label)
+                                          GltfLabel::Label label)
 {
     std::filesystem::path path = file;
 

@@ -44,12 +44,6 @@ inline const auto entityDataStagingBuffer =
 // Asset server pass
 inline const auto uploadAssetsPass =
     HandleAllocator::allocate_pass("upload_assets_pass");
-inline const auto vertexStagingBuffer =
-    HandleAllocator::allocate_buffer("vertex_staging_buffer");
-inline const auto indiceStagingBuffer =
-    HandleAllocator::allocate_buffer("indice_staging_buffer");
-inline const auto materialStagingBuffer =
-    HandleAllocator::allocate_buffer("material_staging_buffer");
 
 inline const auto drawMeshPass =
     HandleAllocator::allocate_pass("draw_mesh_pass");

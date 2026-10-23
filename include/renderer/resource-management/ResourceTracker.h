@@ -134,12 +134,6 @@ class BranchingResourceTracker : VulkanResourceManager
     friend class VulkanResourceManager;
 };
 
-template<class... Ts>
-struct Overload : Ts...
-{
-    using Ts::operator()...;
-};
-
 // We must rework the tracker used by the rendergraph
 // To allow for aliasing, we must have the full resource manager as part of the
 // exploration strategy

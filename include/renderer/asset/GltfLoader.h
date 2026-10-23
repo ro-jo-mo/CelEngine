@@ -2,6 +2,7 @@
 
 #include "AssetTypes.h"
 #include "GltfLabels.h"
+#include "common/Misc.h"
 #include "renderer/passes/StagingPool.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/MegaBuffer.h"
@@ -26,7 +27,8 @@ class GltfLoader
     struct GltfData;
 
   public:
-    auto load_gltf(std::string file);
+    Handle<SceneAsset> load_gltf(std::string file, GltfLabel::Scene label);
+    Handle<MeshAsset> load_gltf(std::string file, GltfLabel::Mesh label);
 
     void flush_cpu(VulkanResourceManager& manager,
                    SharedAssetData& shared,
@@ -63,7 +65,7 @@ class GltfLoader
      */
     void prepare(Handle<SceneAsset> handle,
                  std::string file,
-                 GltfLabel::Scene label);
+                 GltfLabel::Label label);
 
     /**
      * Finalises the changes, adding them to shared storage

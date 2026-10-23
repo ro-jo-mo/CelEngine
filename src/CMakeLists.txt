@@ -141,6 +141,7 @@ set(public_headers
         include/common/Graph.h
         include/common/Handle.h
         include/common/Scheduler.h
+        include/common/Misc.h
 
         include/input/Input.h
 

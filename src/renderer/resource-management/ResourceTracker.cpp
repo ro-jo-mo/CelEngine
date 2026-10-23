@@ -1,5 +1,6 @@
 #include "renderer/resource-management/ResourceTracker.h"
 
+#include "common/Misc.h"
 #include "renderer/passes/Passes.h"
 
 Cel::Renderer::BranchingResourceTracker::BranchingResourceTracker(
