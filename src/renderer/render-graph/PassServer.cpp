@@ -21,7 +21,9 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
 {
     // Create a mapping of the queues to an index
     for (const auto& [i, queue] : std::views::enumerate(queues)) {
-        queueToIndex[queue.family] = i;
+        if (queue.isDedicated) {
+            queueToIndex[queue.family] = i;
+        }
     }
 
     // Initialise pools
@@ -285,7 +287,7 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
     const std::unordered_set<Handle<RenderPass>>& _setup_passes,
     VulkanResourceManager& manager,
-    Asset::AssetServer& assetServer)
+    Asset::SharedAssetData& shared)
 {
     extent = _extent;
     setupPasses = _setup_passes;
@@ -322,7 +324,7 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     DescriptorWriter writer;
 
     auto textureCount =
-        static_cast<uint32_t>(assetServer.textureCache.descriptors.size());
+        static_cast<uint32_t>(shared.textures.descriptors.size());
     {
         writer.write_buffer(0,
                             get_resource(Passes::sceneDataBuffer).buffer,
@@ -330,7 +332,7 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
                             0,
                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-        if (!assetServer.textureCache.descriptors.empty()) {
+        if (!shared.textures.descriptors.empty()) {
             VkWriteDescriptorSet arraySet{
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                 .pNext = nullptr,
@@ -338,7 +340,7 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
                 .dstArrayElement = 0,
                 .descriptorCount = textureCount,
                 .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = assetServer.textureCache.descriptors.data()
+                .pImageInfo = shared.textures.descriptors.data()
             };
 
             writer.write(arraySet);
@@ -358,7 +360,7 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
 
     writer.update_set(device, baseDescriptorSet);
 
-    indiceBuffer = assetServer.indiceBuffer.buffer.buffer;
+    indiceBuffer = shared.indexBuffer.buffer.buffer;
 }
 
 VkCommandBuffer

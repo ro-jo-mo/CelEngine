@@ -148,6 +148,15 @@ Cel::Renderer::RenderGraph::SubmitSplitter::compile(
     // Which submit are we up to in this queue?
     std::array<uint32_t, QUEUE_COUNT> upTo{};
 
+    // When we don't have a dedicated queue transfer / compute, we fall back to
+    // graphics. In this case there will be 0 submits
+
+    for (uint32_t i = 0; i < QUEUE_COUNT; i++) {
+        if (submitSizes[i] == 0) {
+            upTo[i] = UINT32_MAX;
+        }
+    }
+
     // Is queue i acquiring from queue j this split? isAcquiringFrom[i][j]
     std::array<std::array<bool, QUEUE_COUNT>, QUEUE_COUNT> isAcquiringFrom{};
 

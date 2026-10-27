@@ -34,7 +34,7 @@ void
 spawn_asset(Resource<World>& world,
             Resource<Renderer::Asset::AssetServer>& server)
 {
-    auto handle = server->load_gltf_asset("../../examples/assets/horse.glb");
+    auto handle = server->load_gltf("../../examples/assets/horse.glb", {});
 
     // Spawn a parent class that we rotate for fun (test transform propagation)
     world->spawn(RotateMe{}).with_children([&](ChildBuilder builder) {
@@ -42,10 +42,10 @@ spawn_asset(Resource<World>& world,
         // In order to view it we must bring it to a 100th scale
         auto child =
             builder.spawn(Position{ 0, 0, -1 }, Scale{ 0.01 }, RotateMe{});
-        server->add_asset_to_entity(child.get(), handle, world);
+        server->add_scene_to_entity(child.get(), handle);
     });
-    server->add_asset_to_entity(
-        world->spawn(Position{ 0, 0, 10 }, Scale{ 0.01 }).get(), handle, world);
+    server->add_scene_to_entity(
+        world->spawn(Position{ 0, 0, 10 }, Scale{ 0.01 }).get(), handle);
 }
 
 void

@@ -88,9 +88,16 @@ PassBuilder::write_image(const Handle<AllocatedImage> image,
 }
 
 PassBuilder&
-PassBuilder::upload_buffer(Handle<AllocatedBuffer> staging,
+PassBuilder::upload_buffer(uint32_t uploadSize,
+                           Handle<AllocatedBuffer> staging,
                            Handle<AllocatedBuffer> uploadTo)
 {
+    create_buffer(staging,
+                  true,
+                  uploadSize,
+                  VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
+                  VMA_MEMORY_USAGE_CPU_TO_GPU);
+
     // We write to the cpu and then read for the transfer
     write_buffer(staging,
                  VK_ACCESS_2_HOST_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
@@ -103,9 +110,16 @@ PassBuilder::upload_buffer(Handle<AllocatedBuffer> staging,
 }
 
 PassBuilder&
-PassBuilder::upload_image(Handle<AllocatedBuffer> staging,
+PassBuilder::upload_image(uint32_t uploadSize,
+                          Handle<AllocatedBuffer> staging,
                           Handle<AllocatedImage> uploadTo)
 {
+    create_buffer(staging,
+                  true,
+                  uploadSize,
+                  VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
+                  VMA_MEMORY_USAGE_CPU_TO_GPU);
+
     write_buffer(staging,
                  VK_ACCESS_2_HOST_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT,
                  VK_PIPELINE_STAGE_2_HOST_BIT | VK_PIPELINE_STAGE_2_COPY_BIT);

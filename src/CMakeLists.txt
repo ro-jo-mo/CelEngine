@@ -73,9 +73,11 @@ target_sources(${PROJECT_NAME}
         "renderer/VulkanHelpers.cpp"
         "renderer/VulkanUtils.cpp"
         "renderer/asset/AssetServer.cpp"
+        "renderer/asset/GltfLoader.cpp"
         "renderer/Descriptors.cpp"
         "renderer/Camera.cpp"
         "renderer/SceneData.cpp"
+
 
         "renderer/render-graph/PassBuilder.cpp"
         "renderer/render-graph/RenderGraph.cpp"
@@ -132,6 +134,8 @@ set(public_headers
         include/core/Time.h
         include/core/Transform.h
         include/core/Hierarchy.h
+        include/core/Error.h
+        include/core/PluginManager.h
         include/core/CorePlugin.h
         include/core/Running.h
         include/core/ThreadManager.h
@@ -147,6 +151,9 @@ set(public_headers
 
         include/renderer/asset/AssetServer.h
         include/renderer/asset/AssetTypes.h
+        include/renderer/asset/GltfLabels.h
+        include/renderer/asset/GltfLoader.h
+        include/renderer/asset/ImageLoader.h
 
         include/renderer/RenderPlugin.h
         include/renderer/VulkanSetup.h
@@ -158,6 +165,8 @@ set(public_headers
         include/renderer/Camera.h
         include/renderer/Queues.h
         include/renderer/SceneData.h
+        include/renderer/CleanupRenderer.h
+        include/renderer/RenderTypes.h
 
 
         include/renderer/render-graph/RenderGraph.h
@@ -167,6 +176,8 @@ set(public_headers
         include/renderer/render-graph/AccessFlags.h
         include/renderer/render-graph/ExecutionPlan.h
         include/renderer/render-graph/SubmitSplitter.h
+        include/renderer/render-graph/PassServer.h
+        include/renderer/render-graph/RenderGraphTypes.h
 
         include/renderer/passes/HandleAllocator.h
         include/renderer/passes/Passes.h

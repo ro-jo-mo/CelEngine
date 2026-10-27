@@ -129,6 +129,7 @@ init_vulkan(Resource<VulkanContext>& context,
             graphicsFound = true;
             vkGetDeviceQueue(context->device, i, 0, &Queues::graphics.queue);
             Queues::graphics.family = i;
+            Queues::graphics.isDedicated = true;
 
             nameInfo.objectHandle =
                 reinterpret_cast<uint64_t>(Queues::graphics.queue);
@@ -145,6 +146,7 @@ init_vulkan(Resource<VulkanContext>& context,
             computeFound = true;
             vkGetDeviceQueue(context->device, i, 0, &Queues::compute.queue);
             Queues::compute.family = i;
+            Queues::compute.isDedicated = true;
 
             nameInfo.objectHandle =
                 reinterpret_cast<uint64_t>(Queues::compute.queue);
@@ -162,6 +164,7 @@ init_vulkan(Resource<VulkanContext>& context,
             transferFound = true;
             vkGetDeviceQueue(context->device, i, 0, &Queues::transfer.queue);
             Queues::transfer.family = i;
+            Queues::transfer.isDedicated = true;
 
             nameInfo.objectHandle =
                 reinterpret_cast<uint64_t>(Queues::transfer.queue);
@@ -176,10 +179,12 @@ init_vulkan(Resource<VulkanContext>& context,
     if (!computeFound) {
         fmt::println("No compute queue found");
         Queues::compute = Queues::graphics;
+        Queues::compute.isDedicated = false;
     }
     if (!transferFound) {
         fmt::println("No transfer queue found");
         Queues::transfer = Queues::graphics;
+        Queues::transfer.isDedicated = false;
     }
 
     PipelineBuilder::initialise_default_descriptor(context->device);
@@ -269,10 +274,11 @@ Renderer::initialise_renderer(Resource<VulkanContext>& context,
                               Resource<Swapchain>& swapchain,
                               Resource<VulkanResourceManager>& manager,
                               Resource<Asset::AssetServer>& server,
+                              Resource<Asset::SharedAssetData>& shared,
                               Resource<FinalCleanup>& cleanup)
 {
     init_vulkan(context, allocator, window, cleanup);
     init_swapchain(context, swapchain, cleanup);
     manager.initialise(context->device, *allocator);
-    server.initialise(*manager);
+    server.initialise(*manager, shared);
 }

@@ -31,24 +31,16 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
                     .set_queue(Queues::transfer);
 
     pass // Scene data
-        .create_buffer(Passes::sceneDataStagingBuffer,
-                       true,
-                       sizeof(SceneData::data),
-                       VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
-                       VMA_MEMORY_USAGE_CPU_TO_GPU)
         .create_buffer(Passes::sceneDataBuffer,
                        false,
                        sizeof(SceneData::data),
                        VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
                            VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT,
                        VMA_MEMORY_USAGE_GPU_ONLY)
-        .upload_buffer(Passes::sceneDataStagingBuffer, Passes::sceneDataBuffer)
+        .upload_buffer(sizeof(SceneData::data),
+                       Passes::sceneDataStagingBuffer,
+                       Passes::sceneDataBuffer)
         // Entity data
-        .create_buffer(Passes::entityDataStagingBuffer,
-                       true,
-                       sizeof(PerEntityGpuData) * MAX_ENTITIES,
-                       VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
-                       VMA_MEMORY_USAGE_CPU_TO_GPU)
         .create_buffer(Passes::entityDataBuffer,
                        false,
                        sizeof(PerEntityGpuData) * MAX_ENTITIES, // Scalar layout
@@ -56,7 +48,8 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
                            VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT |
                            VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
                        VMA_MEMORY_USAGE_GPU_ONLY)
-        .upload_buffer(Passes::entityDataStagingBuffer,
+        .upload_buffer(sizeof(PerEntityGpuData) * MAX_ENTITIES,
+                       Passes::entityDataStagingBuffer,
                        Passes::entityDataBuffer);
 
     graph->add_setup_pass(pass.build());
@@ -67,16 +60,23 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
     Query<With<Handle<Asset::Material>, GlobalTransform>>& entities,
     Query<With<Camera, GlobalTransform>>& camera,
     Resource<SceneData>& sceneData,
-    Resource<Asset::AssetServer>& assetServer,
+    Resource<Asset::SharedAssetData>& shared,
     ParallelResource<RenderGraph::PassServer>& passServer)
 {
+    VkCommandBuffer cmd;
+    {
+        auto server = passServer.write();
+
+        cmd = server->get_cmd_buffer(Passes::createSceneDataPass);
+    }
+
     const auto& [cam, camTrans] = *camera.begin();
 
     auto access = passServer.partial_read();
 
     VkBufferDeviceAddressInfo vertInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = assetServer->vertexBuffer.buffer.buffer
+        .buffer = shared->vertexBuffer.buffer.buffer
     };
     VkBufferDeviceAddressInfo entityInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -84,7 +84,7 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
     };
     VkBufferDeviceAddressInfo materialInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
-        .buffer = assetServer->materialBuffer.buffer.buffer
+        .buffer = shared->materialBuffer.buffer.buffer
     };
 
     const auto vertexAddress =
@@ -118,13 +118,6 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
                               .materialIndex = mat.index };
     }
 
-    VkCommandBuffer cmd;
-    {
-        auto server = passServer.write();
-
-        cmd = server->get_cmd_buffer(Passes::createSceneDataPass);
-    }
-
     Utils::upload_to_buffer(
         cmd,
         &sceneData->data,
@@ -132,6 +125,10 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
         access->get_resource(Passes::sceneDataBuffer),
         0,
         access->get_resource(Passes::sceneDataStagingBuffer));
+
+    if (entityData.empty()) {
+        return;
+    }
 
     Utils::upload_to_buffer(
         cmd,
@@ -146,12 +143,14 @@ void
 Cel::Renderer::Passes::PassFriend::register_asset_upload_pass(
     Resource<Asset::AssetServer>& server,
     Resource<VulkanResourceManager>& manager,
+    Resource<Asset::SharedAssetData>& shared,
+    Resource<World>& world,
     Resource<RenderGraph::Graph>& graph)
 {
     auto pass =
         RenderGraph::PassBuilder(uploadAssetsPass).set_queue(Queues::transfer);
 
-    server->register_pass(pass, manager);
+    server->flush_cpu(*manager, *world, *shared, pass);
 
     graph->add_setup_pass(pass.build());
 }
@@ -159,7 +158,8 @@ Cel::Renderer::Passes::PassFriend::register_asset_upload_pass(
 void
 Cel::Renderer::Passes::PassFriend::upload_assets(
     Resource<Asset::AssetServer>& assetServer,
+    Resource<Asset::SharedAssetData>& shared,
     ParallelResource<RenderGraph::PassServer>& passServer)
 {
-    assetServer->flush(passServer);
+    assetServer->flush_gpu(*shared, passServer);
 }

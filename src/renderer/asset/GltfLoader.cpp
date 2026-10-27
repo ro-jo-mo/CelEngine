@@ -1,6 +1,9 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 #include "renderer/asset/GltfLoader.h"
 
 #include "core/Error.h"
+#include "core/World.h"
 #include "renderer/render-graph/PassBuilder.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
@@ -13,11 +16,16 @@
 #include <ranges>
 #include <stb_image.h>
 
+Cel::Renderer::Asset::GltfLoader::GltfLoader(VkDevice device)
+    : device(device)
+{
+}
+
 Cel::Handle<Cel::Renderer::Asset::SceneAsset>
 Cel::Renderer::Asset::GltfLoader::load_gltf(std::string file,
-                                            GltfLabel::Scene label)
+                                            GltfLabel::Label label)
 {
-    const Handle<SceneAsset> handle{ static_cast<uint32_t>(scenes.size() - 1) };
+    const Handle<SceneAsset> handle{ static_cast<uint32_t>(scenes.size()) };
 
     scenes.emplace_back();
 
@@ -26,11 +34,17 @@ Cel::Renderer::Asset::GltfLoader::load_gltf(std::string file,
     return handle;
 }
 
-Cel::Handle<Cel::Renderer::Asset::MeshAsset>
-Cel::Renderer::Asset::GltfLoader::load_gltf(std::string file,
-                                            GltfLabel::Mesh label)
+Cel::Renderer::Asset::Primitive&
+Cel::Renderer::Asset::GltfLoader::get_primitive(Handle<Primitive> handle)
 {
-    return {};
+    return primitives[handle.index];
+}
+
+void
+Cel::Renderer::Asset::GltfLoader::add_scene_to_entity(Entity entity,
+                                                      Handle<SceneAsset> handle)
+{
+    scenesToSpawn.emplace_back(entity, handle);
 }
 
 void
@@ -75,11 +89,12 @@ Cel::Renderer::Asset::GltfLoader::prepare(Handle<SceneAsset> handle,
     load_nodes(asset, data);
 
     std::unique_lock guard{ processingLock };
-    processing.push_back(data);
+    processing.push_back(std::move(data));
 }
 
 void
 Cel::Renderer::Asset::GltfLoader::flush_cpu(VulkanResourceManager& manager,
+                                            World& world,
                                             SharedAssetData& shared,
                                             RenderGraph::PassBuilder& pass)
 {
@@ -99,6 +114,47 @@ Cel::Renderer::Asset::GltfLoader::flush_cpu(VulkanResourceManager& manager,
                shared,
                pass);
     }
+
+    spawn_scenes(world);
+}
+
+void
+Cel::Renderer::Asset::GltfLoader::add_scene(const Entity entity,
+                                            SceneAsset& node,
+                                            World& world)
+{
+    auto transform = GlobalTransform{ node.localTransform };
+
+    auto child = world.spawn(Position{ transform.get_translation() },
+                             Rotation{ transform.get_rotation() },
+                             Scale{ transform.get_scale() });
+
+    world.add_child(entity, child.get());
+
+    if (node.mesh.has_value()) {
+        child.with_children([&](ChildBuilder parent) {
+            auto& [prims, mats] = node.mesh.value();
+            // Add all meshes as child entities
+            for (const auto& [prim, material] :
+                 std::ranges::views::zip(prims, mats)) {
+                parent.spawn(Handle<Primitive>{ .index = prim.index },
+                             Handle<Material>{ .index = material.value_or(0) });
+            }
+        });
+    }
+
+    for (auto& childNode : node.children) {
+        add_scene(child.get(), childNode, world);
+    };
+}
+
+void
+Cel::Renderer::Asset::GltfLoader::spawn_scenes(World& world)
+{
+    for (const auto& [entity, scene] : scenesToSpawn) {
+        add_scene(entity, scenes[scene.index], world);
+    }
+    scenesToSpawn.clear();
 }
 
 void
@@ -154,14 +210,11 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
         images.push_back(manager.get_resource_from_handle(handle));
 
         const auto stagingHandle = stagingPool.get_handle();
-        pass.create_buffer(
-            stagingHandle,
-            true,
-            Utils::calculate_image_size(extent, VK_FORMAT_R8G8B8A8_UNORM),
-            VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU);
 
-        pass.upload_image(stagingHandle, handle);
+        pass.upload_image(
+            Utils::calculate_image_size(extent, VK_FORMAT_R8G8B8A8_UNORM),
+            stagingHandle,
+            handle);
     }
 
     // We only really store samplers to delete later
@@ -189,14 +242,14 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
 
     // Set the index into texture array for materials
     for (const auto& [i, material] : std::views::enumerate(data.materials)) {
-        add_texture(data.textureSamplers[i], material.colorTextureIndex, 0);
+        add_texture(data.textureSamplers[i * 3], material.colorTextureIndex, 0);
 
-        add_texture(data.textureSamplers[i + 1],
+        add_texture(data.textureSamplers[i * 3 + 1],
                     material.metalRoughnessTextureIndex,
                     0);
 
         add_texture(
-            data.textureSamplers[i + 2], material.normalTextureIndex, 0);
+            data.textureSamplers[i * 3 + 2], material.normalTextureIndex, 0);
     }
 
     uint32_t materialBufferOffset = shared.materialBuffer.allocate(
@@ -367,10 +420,10 @@ Cel::Renderer::Asset::GltfLoader::load_meshes(fastgltf::Asset& asset,
     for (const auto& gltfMesh : asset.meshes) {
         Mesh& newMesh = data.meshes.emplace_back();
 
-        for (const auto& [i, gltfPrimitive] :
-             std::views::enumerate(gltfMesh.primitives)) {
+        for (const auto& gltfPrimitive : gltfMesh.primitives) {
 
-            newMesh.primitives.push_back(i);
+            newMesh.primitives.push_back(
+                { static_cast<uint32_t>(data.primitives.size()) });
             auto& [vertices, indices] = data.primitives.emplace_back();
 
             // Associate the new mesh with a material
@@ -574,4 +627,20 @@ Cel::Renderer::Asset::GltfLoader::load_scene_tree(const size_t nodeIndex,
     }
 
     return newNode;
+}
+void
+Cel::Renderer::Asset::GltfLoader::declare_scene_access(
+    RenderGraph::PassBuilder& pass) const
+{
+    for (const auto& img : images) {
+        pass.read_image(img.handle,
+                        VK_ACCESS_2_SHADER_READ_BIT,
+                        VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    }
+}
+
+void
+Cel::Renderer::Asset::GltfLoader::cleanup()
+{
 }

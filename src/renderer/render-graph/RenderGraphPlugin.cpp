@@ -25,7 +25,7 @@ RenderGraph::RenderGraphPlugin::compile_graph(
     Resource<Graph>& graph,
     Resource<VulkanResourceManager>& manager,
     Resource<RenderExtent>& extent,
-    Resource<Asset::AssetServer>& assetServer,
+    Resource<Asset::SharedAssetData>& shared,
     ParallelResource<PassServer>& passServer)
 {
     auto access = passServer.absolute();
@@ -44,7 +44,7 @@ RenderGraph::RenderGraphPlugin::compile_graph(
                          graph->perFrameImages,
                          graph->setupPasses,
                          *manager,
-                         *assetServer);
+                         *shared);
 }
 
 static void

@@ -1,5 +1,7 @@
 #pragma once
+#include "core/App.h"
 #include "core/Plugin.h"
+#include "renderer/asset/AssetTypes.h"
 
 namespace Cel::Renderer {
 namespace Asset {
@@ -21,8 +23,8 @@ class RenderGraphPlugin final : public Plugin
     static void compile_graph(Resource<Graph>& graph,
                               Resource<VulkanResourceManager>& manager,
                               Resource<RenderExtent>& extent,
-                              Resource<Asset::AssetServer>& assetServer,
-                              ParallelResource<PassServer>& server);
+                              Resource<Asset::SharedAssetData>& shared,
+                              ParallelResource<PassServer>& passServer);
 };
 
 }

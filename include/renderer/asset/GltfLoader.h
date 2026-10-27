@@ -3,12 +3,17 @@
 #include "AssetTypes.h"
 #include "GltfLabels.h"
 #include "common/Misc.h"
+#include "ecs/Types.h"
 #include "renderer/passes/StagingPool.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/MegaBuffer.h"
 
 #include <fastgltf/types.hpp>
 #include <string>
+
+namespace Cel {
+class World;
+}
 
 namespace Cel::Renderer::RenderGraph {
 class PassBuilder;
@@ -27,14 +32,24 @@ class GltfLoader
     struct GltfData;
 
   public:
-    Handle<SceneAsset> load_gltf(std::string file, GltfLabel::Scene label);
-    Handle<MeshAsset> load_gltf(std::string file, GltfLabel::Mesh label);
+    GltfLoader(VkDevice device);
+
+    Handle<SceneAsset> load_gltf(std::string file, GltfLabel::Label label);
+
+    Primitive& get_primitive(Handle<Primitive> handle);
+
+    void add_scene_to_entity(Entity entity, Handle<SceneAsset> handle);
 
     void flush_cpu(VulkanResourceManager& manager,
+                   World& world,
                    SharedAssetData& shared,
                    RenderGraph::PassBuilder& pass);
 
     void flush_gpu(VkCommandBuffer cmd, const RenderGraph::PassServer& server);
+
+    void declare_scene_access(RenderGraph::PassBuilder& pass) const;
+
+    void cleanup();
 
   private:
     struct GltfData
@@ -80,6 +95,10 @@ class GltfLoader
                 SharedAssetData& shared,
                 RenderGraph::PassBuilder& pass);
 
+    void spawn_scenes(World& world);
+
+    static void add_scene(Entity entity, SceneAsset& node, World& world);
+
     static void load_meshes(fastgltf::Asset& asset, GltfData& data);
 
     void load_samplers(const fastgltf::Asset& asset, GltfData& data) const;
@@ -105,6 +124,8 @@ class GltfLoader
     std::vector<Material> materials;
 
     StagingPool stagingPool;
+
+    std::vector<std::pair<Entity, Handle<SceneAsset>>> scenesToSpawn;
 
     VkDevice device;
 };

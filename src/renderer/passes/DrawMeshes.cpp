@@ -33,18 +33,15 @@ Cel::Renderer::Passes::register_indirect_draw_data_pass(
     auto pass =
         RenderGraph::PassBuilder(indirectDataPass).set_queue(Queues::transfer);
 
-    pass.create_buffer(indirectStagingBuffer,
-                       true,
-                       MAX_ENTITIES * sizeof(VkDrawIndexedIndirectCommand),
-                       VK_BUFFER_USAGE_2_TRANSFER_SRC_BIT,
-                       VMA_MEMORY_USAGE_CPU_TO_GPU)
-        .create_buffer(indirectBuffer,
+    pass.create_buffer(indirectBuffer,
                        true,
                        MAX_ENTITIES * sizeof(VkDrawIndexedIndirectCommand),
                        VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
                            VK_BUFFER_USAGE_2_INDIRECT_BUFFER_BIT,
                        VMA_MEMORY_USAGE_GPU_ONLY)
-        .upload_buffer(indirectStagingBuffer, indirectBuffer);
+        .upload_buffer(MAX_ENTITIES * sizeof(VkDrawIndexedIndirectCommand),
+                       indirectStagingBuffer,
+                       indirectBuffer);
     graph->add_setup_pass(pass.build());
 }
 
@@ -56,15 +53,26 @@ Cel::Renderer::Passes::create_indirect_draw_data(
     Resource<Asset::AssetServer>& assetServer,
     Resource<SceneData>& scene)
 {
+    VkCommandBuffer cmd;
+    {
+        cmd = passServer.write()->get_cmd_buffer(indirectDataPass);
+    }
+
+    auto access = passServer.partial_read();
+
+    if (renderables.size() == 0) {
+        return;
+    }
+
     std::vector<VkDrawIndexedIndirectCommand> indirectCalls;
 
     indirectCalls.reserve(renderables.size());
 
-    for (const auto& [entity, meshHandle, matHandle] : renderables) {
+    for (const auto& [entity, primHandle, matHandle] : renderables) {
 
         auto index = scene->get_entity_index(entity);
 
-        auto mesh = assetServer->get_mesh(meshHandle);
+        auto mesh = assetServer->get_primitive(primHandle);
 
         VkDrawIndexedIndirectCommand call{
             .indexCount = mesh.indexCount,
@@ -84,13 +92,6 @@ Cel::Renderer::Passes::create_indirect_draw_data(
     // upload, which might perform better
     // Alternatively an upload queue might be
     // beneficial as well
-
-    VkCommandBuffer cmd;
-    {
-        cmd = passServer.write()->get_cmd_buffer(indirectDataPass);
-    }
-
-    auto access = passServer.partial_read();
 
     Utils::upload_to_buffer(cmd,
                             indirectCalls.data(),
@@ -153,9 +154,14 @@ Cel::Renderer::Passes::draw_mesh(
         renderables,
     ParallelResource<RenderGraph::PassServer>& passServer)
 {
+
     VkCommandBuffer cmd;
     {
         cmd = passServer.write()->get_cmd_buffer(drawMeshPass);
+    }
+
+    if (renderables.size() == 0) {
+        return;
     }
 
     auto access = passServer.partial_read();

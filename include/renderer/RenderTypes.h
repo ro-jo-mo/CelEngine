@@ -27,6 +27,7 @@ struct Queue
 {
     VkQueue queue;
     uint32_t family;
+    bool isDedicated = false;
 };
 
 struct VulkanContext

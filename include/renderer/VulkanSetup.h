@@ -1,5 +1,7 @@
 #pragma once
 
+#include "asset/AssetTypes.h"
+#include "core/App.h"
 #include "ecs/ResourceManager.h"
 #include "passes/HandleAllocator.h"
 #include "resource-management/DeletionQueue.h"
@@ -19,5 +21,6 @@ initialise_renderer(Resource<VulkanContext>& context,
                     Resource<Swapchain>& swapchain,
                     Resource<VulkanResourceManager>& manager,
                     Resource<Asset::AssetServer>& server,
+                    Resource<Asset::SharedAssetData>& shared,
                     Resource<FinalCleanup>& cleanup);
 }

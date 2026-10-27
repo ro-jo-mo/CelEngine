@@ -60,7 +60,14 @@ namespace Cel::Renderer::Asset {
 class AssetServer
 {
   public:
-    explicit AssetServer(VulkanResourceManager& manager, SharedAssetData);
+    explicit AssetServer(VulkanResourceManager& manager,
+                         Resource<SharedAssetData>& shared);
+
+    Handle<SceneAsset> load_gltf(std::string file, GltfLabel::Label label);
+
+    void add_scene_to_entity(Entity entity, Handle<SceneAsset> handle);
+
+    Primitive& get_primitive(Handle<Primitive> handle);
 
     /**
      * Registers that this render pass accesses loaded assets.
@@ -71,21 +78,23 @@ class AssetServer
     void declare_scene_access(RenderGraph::PassBuilder& pass);
 
     void flush_cpu(VulkanResourceManager& manager,
+                   World& world,
                    SharedAssetData& shared,
                    RenderGraph::PassBuilder& pass);
 
     void flush_gpu(SharedAssetData& shared,
                    ParallelResource<RenderGraph::PassServer>& server);
 
-  private:
     void cleanup();
 
-    void register_pass(RenderGraph::PassBuilder& pass,
-                       Resource<VulkanResourceManager>& manager);
-
-    void flush(ParallelResource<RenderGraph::PassServer>& passServer);
-
+  private:
     GltfLoader gltfLoader;
+
+    // We guarantee that these handles are constant for the program runtime
+    // Storing them here makes declare_scene_access more ergonomic
+    Handle<AllocatedBuffer> vertexBufferHandle;
+    Handle<AllocatedBuffer> indexBufferHandle;
+    Handle<AllocatedBuffer> materialBufferHandle;
 };
 
 }

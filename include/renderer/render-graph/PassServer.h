@@ -2,6 +2,7 @@
 
 #include "../resource-management/MegaBuffer.h"
 #include "RenderGraphTypes.h"
+#include "renderer/asset/AssetTypes.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
 
 #include <unordered_set>
@@ -61,7 +62,7 @@ class PassServer
         const std::unordered_set<Handle<AllocatedImage>>& perFrameImages,
         const std::unordered_set<Handle<RenderPass>>& _setup_passes,
         VulkanResourceManager& manager,
-        Asset::AssetServer& assetServer);
+        Asset::SharedAssetData& shared);
 
   private:
     // Returns an unused command buffer. Used purely for the pre and post pass

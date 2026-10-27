@@ -1,5 +1,3 @@
-#define STB_IMAGE_IMPLEMENTATION
-
 #include "renderer/asset/AssetServer.h"
 
 #include "core/Error.h"
@@ -10,14 +8,6 @@
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
 
-#include <fastgltf/core.hpp>
-#include <fastgltf/tools.hpp>
-#include <fastgltf/types.hpp>
-#include <glm/glm.hpp>
-#include <ktx.h>
-#include <ranges>
-#include <stb_image.h>
-
 using namespace Cel::Renderer::Asset;
 using namespace Cel::Renderer;
 using namespace Cel;
@@ -25,18 +15,83 @@ using namespace Cel;
 namespace {
 inline const auto vertexStagingBuffer =
     Passes::HandleAllocator::allocate_buffer("vertex_staging_buffer");
-inline const auto indiceStagingBuffer =
-    Passes::HandleAllocator::allocate_buffer("indice_staging_buffer");
+inline const auto indexStagingBuffer =
+    Passes::HandleAllocator::allocate_buffer("index_staging_buffer");
 inline const auto materialStagingBuffer =
     Passes::HandleAllocator::allocate_buffer("material_staging_buffer");
 }
 
+AssetServer::AssetServer(VulkanResourceManager& manager,
+                         Resource<SharedAssetData>& shared)
+    : gltfLoader(manager.device)
+{
+
+    SharedAssetData data{
+        .device = manager.device,
+        .vertexBuffer =
+            MegaBuffer({ .allocSize = 2 << 16,
+                         .usages = VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT |
+                                   VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
+                                   VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT |
+                                   VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT,
+                         .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
+                       "vertex_buffer",
+                       manager),
+        .indexBuffer =
+            MegaBuffer({ .allocSize = 2 << 16,
+                         .usages = VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT |
+                                   VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
+                                   VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT |
+                                   VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT,
+                         .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
+                       "index_buffer",
+                       manager),
+        .materialBuffer =
+            MegaBuffer({ .allocSize = 2 << 16,
+                         .usages = VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
+                                   VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT |
+                                   VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT,
+                         .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
+                       "material_buffer",
+                       manager)
+    };
+
+    shared.initialise(data);
+
+    vertexBufferHandle = shared->vertexBuffer.handle;
+    indexBufferHandle = shared->indexBuffer.handle;
+    materialBufferHandle = shared->materialBuffer.handle;
+}
+
+Handle<SceneAsset>
+AssetServer::load_gltf(std::string file, GltfLabel::Label label)
+{
+    return gltfLoader.load_gltf(file, label);
+}
+
+Primitive&
+AssetServer::get_primitive(Handle<Primitive> handle)
+{
+    return gltfLoader.get_primitive(handle);
+}
+
+void
+AssetServer::add_scene_to_entity(Entity entity, Handle<SceneAsset> handle)
+{
+    gltfLoader.add_scene_to_entity(entity, handle);
+}
+
 void
 AssetServer::flush_cpu(VulkanResourceManager& manager,
+                       World& world,
                        SharedAssetData& shared,
                        RenderGraph::PassBuilder& pass)
 {
-    gltfLoader.flush_cpu(manager, shared, pass);
+    gltfLoader.flush_cpu(manager, world, shared, pass);
+
+    shared.vertexBuffer.register_upload(vertexStagingBuffer, pass);
+    shared.indexBuffer.register_upload(indexStagingBuffer, pass);
+    shared.materialBuffer.register_upload(materialStagingBuffer, pass);
 }
 
 void
@@ -50,12 +105,31 @@ AssetServer::flush_gpu(SharedAssetData& shared,
 
     auto access = server.partial_read();
 
-    shared.vertexBuffer.push_to_gpu(cmd,
-                                    access->get_resource(vertexStagingBuffer));
-    shared.indexBuffer.push_to_gpu(cmd,
-                                   access->get_resource(indiceStagingBuffer));
-    shared.materialBuffer.push_to_gpu(
-        cmd, access->get_resource(materialStagingBuffer));
+    shared.vertexBuffer.upload_to_gpu(cmd, vertexStagingBuffer, *access);
+    shared.indexBuffer.upload_to_gpu(cmd, indexStagingBuffer, *access);
+    shared.materialBuffer.upload_to_gpu(cmd, materialStagingBuffer, *access);
 
     gltfLoader.flush_gpu(cmd, *access);
+}
+
+void
+AssetServer::declare_scene_access(RenderGraph::PassBuilder& pass)
+{
+    pass.read_buffer(vertexBufferHandle,
+                     VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+                     VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT);
+    pass.read_buffer(indexBufferHandle,
+                     VK_ACCESS_2_INDEX_READ_BIT,
+                     VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT);
+    pass.read_buffer(materialBufferHandle,
+                     VK_ACCESS_2_SHADER_READ_BIT,
+                     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
+
+    gltfLoader.declare_scene_access(pass);
+}
+
+void
+AssetServer::cleanup()
+{
+    gltfLoader.cleanup();
 }

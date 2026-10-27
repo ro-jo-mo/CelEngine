@@ -95,10 +95,12 @@ class PassBuilder
      * @param uploadTo
      * @return
      */
-    PassBuilder& upload_buffer(Handle<AllocatedBuffer> staging,
+    PassBuilder& upload_buffer(uint32_t uploadSize,
+                               Handle<AllocatedBuffer> staging,
                                Handle<AllocatedBuffer> uploadTo);
 
-    PassBuilder& upload_image(Handle<AllocatedBuffer> staging,
+    PassBuilder& upload_image(uint32_t uploadSize,
+                              Handle<AllocatedBuffer> staging,
                               Handle<AllocatedImage> uploadTo);
 
     PassBuilder& set_queue(const Queue& queue);

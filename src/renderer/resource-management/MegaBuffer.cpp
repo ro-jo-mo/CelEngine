@@ -1,6 +1,8 @@
 #include "renderer/resource-management/MegaBuffer.h"
 
 #include "renderer/VulkanUtils.h"
+#include "renderer/render-graph/PassBuilder.h"
+#include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
 
 #include <fmt/base.h>
@@ -60,19 +62,35 @@ Cel::Renderer::PerFrameMegaBuffer::push_to_gpu(const AllocatedBuffer& buffer,
     dataToUpload.clear();
 }
 
-Cel::Renderer::MegaBuffer::MegaBuffer(const BufferRequirements req,
+Cel::Renderer::MegaBuffer::MegaBuffer(const BufferRequirements& req,
                                       const std::string& name,
                                       VulkanResourceManager& manager,
                                       const uint32_t alignment)
-    : handle(manager.get_handle_from_requirements(req, name))
+    : PerFrameMegaBuffer(alignment)
+    , handle(manager.get_handle_from_requirements(req, name))
     , buffer(manager.get_resource_from_handle(handle))
-    , alignment(alignment)
+
 {
 }
 
 void
-Cel::Renderer::MegaBuffer::push_to_gpu(VkCommandBuffer cmd,
-                                       const AllocatedBuffer& staging)
+Cel::Renderer::MegaBuffer::upload_to_gpu(VkCommandBuffer cmd,
+                                         Handle<AllocatedBuffer> staging,
+                                         const RenderGraph::PassServer& server)
 {
-    PerFrameMegaBuffer::push_to_gpu(buffer, cmd, staging);
+    if (dataToUpload.empty()) {
+        return;
+    }
+
+    push_to_gpu(buffer, cmd, server.get_resource(staging));
+}
+
+void
+Cel::Renderer::MegaBuffer::register_upload(
+    Handle<AllocatedBuffer> stagingHandle,
+    RenderGraph::PassBuilder& pass) const
+{
+    if (!dataToUpload.empty()) {
+        pass.upload_buffer(dataToUpload.size(), stagingHandle, buffer.handle);
+    }
 }

@@ -1,7 +1,9 @@
 #pragma once
 #include "common/Handle.h"
+#include "core/App.h"
 #include "ecs/Query.h"
 #include "ecs/Resource.h"
+#include "renderer/asset/AssetTypes.h"
 
 namespace Cel {
 namespace Renderer {
@@ -35,16 +37,19 @@ struct PassFriend
         Query<With<Handle<Asset::Material>, GlobalTransform>>& entities,
         Query<With<Camera, GlobalTransform>>& camera,
         Resource<SceneData>& sceneData,
-        Resource<Asset::AssetServer>& server,
+        Resource<Asset::SharedAssetData>& shared,
         ParallelResource<RenderGraph::PassServer>& passServer);
 
     static void register_asset_upload_pass(
         Resource<Asset::AssetServer>& server,
         Resource<VulkanResourceManager>& manager,
+        Resource<Asset::SharedAssetData>& shared,
+        Resource<World>& world,
         Resource<RenderGraph::Graph>& graph);
 
     static void upload_assets(
         Resource<Asset::AssetServer>& assetServer,
+        Resource<Asset::SharedAssetData>& shared,
         ParallelResource<RenderGraph::PassServer>& passServer);
 };
 
