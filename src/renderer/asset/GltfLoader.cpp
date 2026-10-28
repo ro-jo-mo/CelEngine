@@ -108,7 +108,6 @@ Cel::Renderer::Asset::GltfLoader::flush_cpu(VulkanResourceManager& manager,
         commit(data,
                samplers.size(),
                primitives.size(),
-               materials.size() * sizeof(MaterialConstants),
 
                manager,
                shared,
@@ -189,7 +188,6 @@ void
 Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
                                          uint32_t samplerOffset,
                                          uint32_t primitiveOffset,
-                                         uint32_t materialOffset,
 
                                          VulkanResourceManager& manager,
                                          SharedAssetData& shared,
@@ -252,12 +250,16 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
             data.textureSamplers[i * 3 + 2], material.normalTextureIndex, 0);
     }
 
-    uint32_t materialBufferOffset = shared.materialBuffer.allocate(
-        data.materials.data(),
-        data.materials.size() * sizeof(MaterialConstants));
+    // The shader indexes materials by element, so convert the byte offset into
+    // an index into the material array
+    const uint32_t materialOffset =
+        shared.materialBuffer.allocate(
+            data.materials.data(),
+            data.materials.size() * sizeof(MaterialConstants)) /
+        sizeof(MaterialConstants);
 
     for (uint32_t i = 0; i < data.materials.size(); i++) {
-        materials.emplace_back(materialBufferOffset + i);
+        materials.emplace_back(materialOffset + i);
     }
 
     // Convert the cpu mesh data to offsets in the gpu buffers
@@ -427,10 +429,10 @@ Cel::Renderer::Asset::GltfLoader::load_meshes(fastgltf::Asset& asset,
             auto& [vertices, indices] = data.primitives.emplace_back();
 
             // Associate the new mesh with a material
-            fastgltf::Optional<uint32_t> materialIndex{};
-            if (materialIndex.has_value()) {
+            std::optional<uint32_t> materialIndex{};
+            if (gltfPrimitive.materialIndex.has_value()) {
                 materialIndex =
-                    materialIndex.value() * sizeof(MaterialConstants);
+                    static_cast<uint32_t>(gltfPrimitive.materialIndex.value());
             }
 
             newMesh.materials.push_back(materialIndex);

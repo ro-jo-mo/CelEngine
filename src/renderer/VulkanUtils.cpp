@@ -3,6 +3,7 @@
 #include "core/Error.h"
 #include "renderer/VulkanHelpers.h"
 
+#include <algorithm>
 #include <fstream>
 #include <ranges>
 #include <vector>
@@ -311,7 +312,8 @@ Cel::Renderer::Utils::upload_image_asset(ktxTexture* texture,
                                          VkCommandBuffer cmd,
                                          const AllocatedImage& image,
                                          const AllocatedBuffer& staging)
-{ // Read basic image data from ktx file
+{
+    // Read basic image data from ktx file
     VkExtent3D extent{ .width = texture->baseWidth,
                        .height = texture->baseHeight,
                        .depth = texture->baseDepth };
@@ -337,9 +339,9 @@ Cel::Renderer::Utils::upload_image_asset(ktxTexture* texture,
             VkBufferImageCopy copy{};
             copy.bufferOffset = offset;
 
-            copy.imageExtent.width = extent.width >> mip;
-            copy.imageExtent.height = extent.height >> mip;
-            copy.imageExtent.depth = extent.depth >> mip;
+            copy.imageExtent.width = std::max(1u, extent.width >> mip);
+            copy.imageExtent.height = std::max(1u, extent.height >> mip);
+            copy.imageExtent.depth = std::max(1u, extent.depth >> mip);
 
             copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             copy.imageSubresource.mipLevel = mip;
@@ -608,7 +610,7 @@ Cel::Renderer::Utils::set_resource_name(VkDevice device,
             .objectHandle = resource,
             .pObjectName = name
         };
-        
+
         vk_check(vkSetDebugUtilsObjectName(device, &nameInfo));
     }
 }

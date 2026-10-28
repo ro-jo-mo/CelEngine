@@ -42,3 +42,7 @@ public ConstantBuffer<SceneData> scene;
 [vk::binding(1, 0)]
 public Sampler2D allTextures[];
 
+// You can do this ?!
+[vk::binding(1, 0)]
+public SamplerCube allTextures[];
+

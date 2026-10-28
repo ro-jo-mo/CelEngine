@@ -128,11 +128,17 @@ Cel::Renderer::VulkanResourceManager::allocate(
 {
     auto& requirements = imagePool.requirements.at(handle);
 
-    const VkImageCreateInfo img = Initialisers::image_create_info(
+    VkImageCreateInfo img = Initialisers::image_create_info(
         requirements.format, requirements.usages, requirements.extent);
+    img.mipLevels = requirements.mipLevels;
+    img.arrayLayers = requirements.arrayLayers;
+    img.flags = requirements.flags;
 
     VkImageViewCreateInfo view = Initialisers::image_view_create_info(
         requirements.format, nullptr, requirements.aspects);
+    view.viewType = requirements.viewType;
+    view.subresourceRange.levelCount = requirements.mipLevels;
+    view.subresourceRange.layerCount = requirements.arrayLayers;
 
     return Utils::create_image(
         handle,
@@ -196,6 +202,13 @@ Cel::Renderer::VulkanResourceManager::is_compatible(
         return false;
     }
 
+    if (actual.mipLevels != requested.mipLevels ||
+        actual.arrayLayers != requested.arrayLayers ||
+        actual.flags != requested.flags ||
+        actual.viewType != requested.viewType) {
+        return false;
+    }
+
     if (actual.extent.width < requested.extent.width ||
         actual.extent.height < requested.extent.height ||
         actual.extent.depth < requested.extent.depth) {
@@ -228,13 +241,18 @@ Cel::Renderer::VulkanResourceManager::alias_resource(
     const ImageRequirements& requirements)
 {
     for (const auto& [i, image] : std::views::enumerate(imagePool.freed)) {
-        auto& [format, extent, usages, aspects] = get<1>(image);
+        auto& freed = get<1>(image);
 
-        if (aspects == requirements.aspects && format == requirements.format &&
-            usages == requirements.usages &&
-            extent.width == requirements.extent.width &&
-            extent.height == requirements.extent.height &&
-            extent.depth == requirements.extent.depth) {
+        if (freed.aspects == requirements.aspects &&
+            freed.format == requirements.format &&
+            freed.usages == requirements.usages &&
+            freed.extent.width == requirements.extent.width &&
+            freed.extent.height == requirements.extent.height &&
+            freed.extent.depth == requirements.extent.depth &&
+            freed.mipLevels == requirements.mipLevels &&
+            freed.arrayLayers == requirements.arrayLayers &&
+            freed.flags == requirements.flags &&
+            freed.viewType == requirements.viewType) {
 
             return i;
         }

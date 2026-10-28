@@ -6,6 +6,7 @@
 #include "../resource-management/MegaBuffer.h"
 #include "AssetTypes.h"
 #include "GltfLoader.h"
+#include "ImageLoader.h"
 #include "common/Handle.h"
 #include "ecs/Types.h"
 
@@ -67,6 +68,16 @@ class AssetServer
 
     void add_scene_to_entity(Entity entity, Handle<SceneAsset> handle);
 
+    Handle<ImageAsset> load_image(std::string file);
+
+    ImageAsset& get_image(Handle<ImageAsset> handle);
+
+    Handle<TextureAsset> load_texture(
+        std::string file,
+        SamplerSettings sampler = SamplerSettings::Linear);
+
+    uint32_t get_texture(Handle<TextureAsset> handle);
+
     Primitive& get_primitive(Handle<Primitive> handle);
 
     /**
@@ -89,6 +100,7 @@ class AssetServer
 
   private:
     GltfLoader gltfLoader;
+    ImageLoader imageLoader;
 
     // We guarantee that these handles are constant for the program runtime
     // Storing them here makes declare_scene_access more ergonomic

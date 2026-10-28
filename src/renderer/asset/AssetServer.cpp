@@ -24,6 +24,7 @@ inline const auto materialStagingBuffer =
 AssetServer::AssetServer(VulkanResourceManager& manager,
                          Resource<SharedAssetData>& shared)
     : gltfLoader(manager.device)
+    , imageLoader(manager.device)
 {
 
     SharedAssetData data{
@@ -75,6 +76,30 @@ AssetServer::get_primitive(Handle<Primitive> handle)
     return gltfLoader.get_primitive(handle);
 }
 
+Handle<ImageAsset>
+AssetServer::load_image(std::string file)
+{
+    return imageLoader.load_image(file);
+}
+
+ImageAsset&
+AssetServer::get_image(Handle<ImageAsset> handle)
+{
+    return imageLoader.get_image(handle);
+}
+
+Handle<TextureAsset>
+AssetServer::load_texture(std::string file, SamplerSettings sampler)
+{
+    return imageLoader.load_texture(file, sampler);
+}
+
+uint32_t
+AssetServer::get_texture(Handle<TextureAsset> handle)
+{
+    return imageLoader.get_texture_index(handle);
+}
+
 void
 AssetServer::add_scene_to_entity(Entity entity, Handle<SceneAsset> handle)
 {
@@ -88,6 +113,7 @@ AssetServer::flush_cpu(VulkanResourceManager& manager,
                        RenderGraph::PassBuilder& pass)
 {
     gltfLoader.flush_cpu(manager, world, shared, pass);
+    imageLoader.flush_cpu(manager, shared, pass);
 
     shared.vertexBuffer.register_upload(vertexStagingBuffer, pass);
     shared.indexBuffer.register_upload(indexStagingBuffer, pass);
@@ -110,6 +136,7 @@ AssetServer::flush_gpu(SharedAssetData& shared,
     shared.materialBuffer.upload_to_gpu(cmd, materialStagingBuffer, *access);
 
     gltfLoader.flush_gpu(cmd, *access);
+    imageLoader.flush_gpu(cmd, *access);
 }
 
 void
@@ -126,10 +153,12 @@ AssetServer::declare_scene_access(RenderGraph::PassBuilder& pass)
                      VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
 
     gltfLoader.declare_scene_access(pass);
+    imageLoader.declare_image_access(pass);
 }
 
 void
 AssetServer::cleanup()
 {
     gltfLoader.cleanup();
+    imageLoader.cleanup();
 }

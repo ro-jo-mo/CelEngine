@@ -74,6 +74,7 @@ target_sources(${PROJECT_NAME}
         "renderer/VulkanUtils.cpp"
         "renderer/asset/AssetServer.cpp"
         "renderer/asset/GltfLoader.cpp"
+        "renderer/asset/ImageLoader.cpp"
         "renderer/Descriptors.cpp"
         "renderer/Camera.cpp"
         "renderer/SceneData.cpp"

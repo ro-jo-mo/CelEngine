@@ -10,8 +10,38 @@
 
 namespace Cel::Renderer::Asset {
 
+struct SamplerSettings
+{
+    VkFilter min = VK_FILTER_LINEAR;
+    VkFilter mag = VK_FILTER_LINEAR;
+
+    VkSamplerMipmapMode mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+    // Sensible default for textures
+    const static SamplerSettings Linear;
+
+    // Sensible default for pixel art
+    const static SamplerSettings Pixel;
+};
+
+constexpr SamplerSettings SamplerSettings::Linear{};
+constexpr SamplerSettings SamplerSettings::Pixel{
+    .min = VK_FILTER_NEAREST,
+    .mag = VK_FILTER_LINEAR,
+    .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+};
+
+// Handle<TextureAsset> represents a value in the texture cache
+struct TextureAsset;
+
 struct ImageAsset
-{};
+{
+    AllocatedImage image;
+    uint32_t mipLevels;
+    uint32_t arrayLayers;
+    VkImageViewType viewType;
+};
 
 struct MeshAsset
 {};

@@ -89,7 +89,6 @@ class GltfLoader
     void commit(GltfData& data,
                 uint32_t samplerOffset,
                 uint32_t primitiveOffset,
-                uint32_t materialOffset,
 
                 VulkanResourceManager& manager,
                 SharedAssetData& shared,

@@ -100,6 +100,10 @@ struct ImageRequirements
     VkExtent3D extent;
     VkImageUsageFlags usages;
     VkImageAspectFlags aspects;
+    uint32_t mipLevels = 1;
+    uint32_t arrayLayers = 1;
+    VkImageCreateFlags flags = 0;
+    VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_2D;
 
     using Access = ImageAccess;
 };
