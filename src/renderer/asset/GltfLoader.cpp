@@ -253,9 +253,9 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
     // The shader indexes materials by element, so convert the byte offset into
     // an index into the material array
     const uint32_t materialOffset =
-        shared.materialBuffer.allocate(
-            data.materials.data(),
-            data.materials.size() * sizeof(MaterialConstants)) /
+        shared.materialBuffer.allocate(data.materials.data(),
+                                       data.materials.size() *
+                                           sizeof(MaterialConstants)) /
         sizeof(MaterialConstants);
 
     for (uint32_t i = 0; i < data.materials.size(); i++) {
@@ -267,12 +267,16 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
         auto& primitive = primitives.emplace_back();
 
         primitive.firstIndex = shared.indexBuffer.allocate(
-            cpuPrim.indices.data(), cpuPrim.indices.size() * sizeof(uint32_t));
+                                   cpuPrim.indices.data(),
+                                   cpuPrim.indices.size() * sizeof(uint32_t)) /
+                               sizeof(uint32_t);
 
         primitive.indexCount = cpuPrim.indices.size();
 
         primitive.vertexOffset = shared.vertexBuffer.allocate(
-            cpuPrim.vertices.data(), cpuPrim.vertices.size() * sizeof(Vertex));
+                                     cpuPrim.vertices.data(),
+                                     cpuPrim.vertices.size() * sizeof(Vertex)) /
+                                 sizeof(Vertex);
     }
 
     // Remap meshes to committed primitives
@@ -463,8 +467,8 @@ Cel::Renderer::Asset::GltfLoader::load_meshes(fastgltf::Asset& asset,
                         Vertex newVertex;
                         newVertex.position = { vert.x(), vert.y(), vert.z() };
                         newVertex.normal = { 1, 0, 0 };
-                        newVertex.uv_x = 0;
-                        newVertex.uv_y = 0;
+                        newVertex.uvX = 0;
+                        newVertex.uvY = 0;
                         vertices.push_back(newVertex);
                     });
             }
@@ -494,8 +498,8 @@ Cel::Renderer::Asset::GltfLoader::load_meshes(fastgltf::Asset& asset,
                         asset,
                         asset.accessors[uv->accessorIndex],
                         [&](fastgltf::math::fvec2 vert, const size_t index) {
-                            vertices[index].uv_x = vert.x();
-                            vertices[index].uv_y = vert.y();
+                            vertices[index].uvX = vert.x();
+                            vertices[index].uvY = vert.y();
                         });
                 }
             }

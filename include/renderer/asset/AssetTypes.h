@@ -49,9 +49,9 @@ struct MeshAsset
 struct Vertex
 {
     glm::vec3 position;
-    float uv_x;
+    float uvX;
     glm::vec3 normal;
-    float uv_y;
+    float uvY;
 };
 
 // TODO probably replace this with handle. Rename MaterialConstants -> Material

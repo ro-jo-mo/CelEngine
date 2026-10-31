@@ -75,6 +75,7 @@ target_sources(${PROJECT_NAME}
         "renderer/asset/AssetServer.cpp"
         "renderer/asset/GltfLoader.cpp"
         "renderer/asset/ImageLoader.cpp"
+        "renderer/asset/ProceduralLoader.cpp"
         "renderer/Descriptors.cpp"
         "renderer/Camera.cpp"
         "renderer/SceneData.cpp"
@@ -155,6 +156,7 @@ set(public_headers
         include/renderer/asset/GltfLabels.h
         include/renderer/asset/GltfLoader.h
         include/renderer/asset/ImageLoader.h
+        include/renderer/asset/ProceduralLoader.h
 
         include/renderer/RenderPlugin.h
         include/renderer/VulkanSetup.h

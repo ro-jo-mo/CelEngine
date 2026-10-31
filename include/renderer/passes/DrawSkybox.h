@@ -8,7 +8,12 @@ namespace Cel::Renderer::Passes {
 struct SkyboxData
 {
     Pipeline pipeline;
+    Handle<Asset::Primitive> cube;
 };
+
+// Needs.
+// A cube mesh.
+// Pipeline
 
 void
 create_skybox_data();

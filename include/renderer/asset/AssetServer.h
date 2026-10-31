@@ -7,6 +7,7 @@
 #include "AssetTypes.h"
 #include "GltfLoader.h"
 #include "ImageLoader.h"
+#include "ProceduralLoader.h"
 #include "common/Handle.h"
 #include "ecs/Types.h"
 
@@ -78,6 +79,8 @@ class AssetServer
 
     uint32_t get_texture(Handle<TextureAsset> handle);
 
+    Handle<Primitive> create_cube(glm::vec3 size = glm::vec3(1.0f));
+
     Primitive& get_primitive(Handle<Primitive> handle);
 
     /**
@@ -101,6 +104,7 @@ class AssetServer
   private:
     GltfLoader gltfLoader;
     ImageLoader imageLoader;
+    ProceduralLoader proceduralLoader;
 
     // We guarantee that these handles are constant for the program runtime
     // Storing them here makes declare_scene_access more ergonomic

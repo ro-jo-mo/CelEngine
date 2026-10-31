@@ -19,6 +19,10 @@ inline const auto indexStagingBuffer =
     Passes::HandleAllocator::allocate_buffer("index_staging_buffer");
 inline const auto materialStagingBuffer =
     Passes::HandleAllocator::allocate_buffer("material_staging_buffer");
+
+// Set on primitive handles owned by the procedural loader. Loaders only see
+// the masked 0..n index
+constexpr uint32_t PRIMITIVE_MASK = 1u << 31;
 }
 
 AssetServer::AssetServer(VulkanResourceManager& manager,
@@ -70,9 +74,21 @@ AssetServer::load_gltf(std::string file, GltfLabel::Label label)
     return gltfLoader.load_gltf(file, label);
 }
 
+Handle<Primitive>
+AssetServer::create_cube(glm::vec3 size)
+{
+    auto handle = proceduralLoader.create_cube(size);
+    handle.index |= PRIMITIVE_MASK;
+    return handle;
+}
+
 Primitive&
 AssetServer::get_primitive(Handle<Primitive> handle)
 {
+    if (handle.index & PRIMITIVE_MASK) {
+        handle.index &= ~PRIMITIVE_MASK;
+        return proceduralLoader.get_primitive(handle);
+    }
     return gltfLoader.get_primitive(handle);
 }
 
@@ -114,6 +130,7 @@ AssetServer::flush_cpu(VulkanResourceManager& manager,
 {
     gltfLoader.flush_cpu(manager, world, shared, pass);
     imageLoader.flush_cpu(manager, shared, pass);
+    proceduralLoader.flush_cpu(shared);
 
     shared.vertexBuffer.register_upload(vertexStagingBuffer, pass);
     shared.indexBuffer.register_upload(indexStagingBuffer, pass);
