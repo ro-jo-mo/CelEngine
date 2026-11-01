@@ -44,5 +44,5 @@ public Sampler2D allTextures[];
 
 // You can do this ?!
 [vk::binding(1, 0)]
-public SamplerCube allTextures[];
+public SamplerCube allCubeTextures[];
 

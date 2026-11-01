@@ -11,7 +11,7 @@ namespace Cel {
 // For some very annoying reason, my runtime deletes the message from
 // runtime_error As such I also print to stderr
 template<typename... T>
-inline void
+void
 throw_error(fmt::format_string<T...> fmt, const T&&... args)
 {
     auto message = fmt::vformat(fmt.str, fmt::vargs<T...>{ { args... } });

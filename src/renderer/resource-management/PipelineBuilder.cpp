@@ -212,6 +212,8 @@ format_to_byte_size(const VkFormat format)
     switch (format) {
         case VK_FORMAT_R32G32B32_SFLOAT:
             return 12;
+        case VK_FORMAT_R32_UINT:
+            return 4;
         default:
             Cel::throw_error("unimplemented vk format {}",
                              static_cast<uint32_t>(format));

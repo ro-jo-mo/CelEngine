@@ -48,4 +48,6 @@ inline const auto uploadAssetsPass =
 inline const auto drawMeshPass =
     HandleAllocator::allocate_pass("draw_mesh_pass");
 
+inline const auto skyboxPass = HandleAllocator::allocate_pass("skybox_pass");
+
 }

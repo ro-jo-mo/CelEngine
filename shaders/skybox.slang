@@ -1,33 +1,40 @@
 #language slang 2026
 
+import common;
+
+
 struct VSInput {
-    float3 pos;
+    uniform uint imageId;
+    uint vertexId : SV_VertexID;
 }
+
 
 struct VSOutput {
     float4 pos : SV_Position;
     float3 uvw;
+    uint imageId; 
 }
 
-ConstantBuffer<float4x4> viewProj;
-
-SamplerCube skybox;
 
 [shader("vertex")]
 VSOutput vertexMain(VSInput in) {
     VSOutput out;
-    out.uvw = in.pos;
 
-    float4 pos = mul(viewProj, float4(in.pos.xyz, 1.0));
+    out.imageId = in.imageId;
+
+    float3 pos = scene.vertexBuffer[in.vertexId].position;
+
+    out.uvw = pos;
+
+    out.pos = mul(scene.viewProj, float4(out.pos.xyz, 1.0));
     // Reverse Z buffer
     // Set skybox behind all
-    pos = float4(pos.xy, 0.0, pos.w);
-    out.pos = pos;
-
+    out.pos = float4(out.pos.xy, 0.0, out.pos.w);
+    
     return out;
 }
 
 [shader("fragment")]
 float4 fragmentMain(VSOutput in) {
-    return skybox.Sample(in.uvw);
+    return allCubeTextures[in.imageId].Sample(in.uvw);
 }

@@ -9,6 +9,7 @@ struct SkyboxData
 {
     Pipeline pipeline;
     Handle<Asset::Primitive> cube;
+    Handle<Asset::TextureAsset> texture;
 };
 
 // Needs.
@@ -16,12 +17,18 @@ struct SkyboxData
 // Pipeline
 
 void
-create_skybox_data();
+create_skybox_data(Resource<SkyboxData>& skybox,
+                   Resource<VulkanContext>& context,
+                   Resource<Asset::AssetServer>& server);
 
 void
-add_skybox_pass(Resource<RenderGraph::Graph>& graph);
+register_skybox_pass(Resource<SkyboxData>& skybox,
+                     Resource<Asset::AssetServer>& server,
+                     Resource<RenderGraph::Graph>& graph);
 
 void
-draw_skybox(ParallelResource<RenderGraph::PassServer>& server);
+draw_skybox(Resource<SkyboxData>& skybox,
+            Resource<Asset::AssetServer>& assetServer,
+            ParallelResource<RenderGraph::PassServer>& passServer);
 
 }

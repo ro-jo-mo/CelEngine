@@ -5,6 +5,7 @@
 #include "renderer/SceneData.h"
 #include "renderer/passes/BasePasses.h"
 #include "renderer/passes/DrawMeshes.h"
+#include "renderer/passes/DrawSkybox.h"
 
 void
 Cel::Renderer::Passes::PassPlugin::build(SystemScheduler scheduler,
@@ -17,7 +18,12 @@ Cel::Renderer::Passes::PassPlugin::build(SystemScheduler scheduler,
 
     resourceManager.insert_resource<SceneData>();
 
+    resourceManager.insert_resource<SkyboxData>();
+
+    scheduler.add_system(Startup::Last, create_skybox_data);
+
     scheduler.add_group(Render::PreUpdate,
+                        register_skybox_pass,
                         register_indirect_draw_data_pass,
                         register_draw_mesh_pass,
                         PassFriend::register_asset_upload_pass,
@@ -29,5 +35,5 @@ Cel::Renderer::Passes::PassPlugin::build(SystemScheduler scheduler,
                         PassFriend::create_scene_data);
 
     scheduler.add_group(
-        Render::PostUpdate, draw_mesh, PassFriend::upload_assets);
+        Render::PostUpdate, draw_mesh, PassFriend::upload_assets, draw_skybox);
 }

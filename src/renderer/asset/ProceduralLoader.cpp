@@ -95,10 +95,11 @@ Cel::Renderer::Asset::ProceduralLoader::generate_cube(const Cube& cube,
 
     for (uint32_t i = 0; i < 30; i += 5) {
         for (const uint32_t corner : order) {
-            primitive.vertices.push_back({ .position = corners[i + corner],
-                                           .uvX = uvs[corner].x,
-                                           .normal = corners[i + 4],
-                                           .uvY = uvs[corner].y });
+            primitive.vertices.push_back(
+                { .position = corners[i + corner] * cube.size,
+                  .uvX = uvs[corner].x,
+                  .normal = corners[i + 4],
+                  .uvY = uvs[corner].y });
         }
     }
 }

@@ -92,6 +92,7 @@ target_sources(${PROJECT_NAME}
         "renderer/passes/HandleAllocator.cpp"
         "renderer/passes/BasePasses.cpp"
         "renderer/passes/DrawMeshes.cpp"
+        "renderer/passes/DrawSkybox.cpp"
         "renderer/passes/PassPlugin.cpp"
         "renderer/passes/StagingPool.cpp"
 
@@ -186,6 +187,7 @@ set(public_headers
         include/renderer/passes/Passes.h
         include/renderer/passes/BasePasses.h
         include/renderer/passes/DrawMeshes.h
+        include/renderer/passes/DrawSkybox.h
         include/renderer/passes/PassPlugin.h
         include/renderer/passes/BasePasses.h
         include/renderer/passes/StagingPool.h
