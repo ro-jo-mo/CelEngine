@@ -5,7 +5,7 @@ import common;
 struct VSInput
 {
   uint drawId : SV_StartInstanceLocation;
-  uint vertexId : SV_VertexID;
+  uint vertexId : SV_VulkanVertexID;
 }
 
 struct VSOutput

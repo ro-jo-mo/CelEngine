@@ -22,11 +22,12 @@ Cel::Renderer::Passes::PassPlugin::build(SystemScheduler scheduler,
 
     scheduler.add_system(Startup::Last, create_skybox_data);
 
+    scheduler.add_system(Render::First, PassFriend::register_asset_upload_pass);
+
     scheduler.add_group(Render::PreUpdate,
                         register_skybox_pass,
                         register_indirect_draw_data_pass,
                         register_draw_mesh_pass,
-                        PassFriend::register_asset_upload_pass,
                         PassFriend::register_create_scene_data_pass,
                         PassFriend::register_present_pass);
 

@@ -516,7 +516,7 @@ Cel::Renderer::Asset::GltfLoader::load_images(fastgltf::Asset& asset,
 
         auto ErrorMsg = [&](const char* ext) {
             (throw_error("Error loading gltf image. Attempted to use {}",
-                         std::move(ext)));
+                         ext));
         };
 
         std::visit(
@@ -549,7 +549,7 @@ Cel::Renderer::Asset::GltfLoader::load_images(fastgltf::Asset& asset,
         if (imageData.empty()) {
 
             throw_error("Failed to load an image ({}) in gltf asset",
-                        std::move(gltfImage.name));
+                        gltfImage.name);
         }
 
         int width, height, channels;

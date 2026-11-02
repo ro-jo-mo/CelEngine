@@ -69,7 +69,7 @@ ResourceManager::insert_resource(Args&&... args)
     const std::type_index id = typeid(Type);
 
     if (resources.contains(id)) {
-        throw_error("inserted resource already exists", typeid(T).name());
+        throw_error("inserted resource already exists {}", typeid(T).name());
     }
 
     resources[id] =
@@ -84,7 +84,7 @@ ResourceManager::insert_resource(T resource)
     const std::type_index id = typeid(Type);
 
     if (resources.contains(id)) {
-        throw_error("inserted resource already exists", typeid(T).name());
+        throw_error("inserted resource already exists {}", typeid(T).name());
     }
     resources[id] = std::make_unique<Type>(std::in_place, resource);
 }
@@ -97,7 +97,7 @@ ResourceManager::insert_parallel_resource(Args&&... args)
     const std::type_index id = typeid(Type);
 
     if (parallelResources.contains(id)) {
-        throw_error("inserted parallel resource already exists",
+        throw_error("inserted parallel resource already exists {}",
                     typeid(T).name());
     }
 
@@ -113,7 +113,7 @@ ResourceManager::insert_parallel_resource(T resource)
     const std::type_index id = typeid(Type);
 
     if (parallelResources.contains(id)) {
-        throw_error("inserted parallel resource already exists",
+        throw_error("inserted parallel resource already exists {}",
                     typeid(T).name());
     }
     parallelResources[id] = std::make_unique<Type>(std::in_place, resource);
@@ -127,7 +127,7 @@ ResourceManager::insert_resource_as_null()
     const std::type_index id = typeid(Type);
 
     if (resources.contains(id)) {
-        throw_error("inserted resource already exists", typeid(T).name());
+        throw_error("inserted resource already exists {}", typeid(T).name());
     }
     resources[id] = std::make_unique<Type>();
 }
@@ -140,7 +140,7 @@ ResourceManager::insert_parallel_resource_as_null()
     const std::type_index id = typeid(Type);
 
     if (parallelResources.contains(id)) {
-        throw_error("inserted parallel resource already exists",
+        throw_error("inserted parallel resource already exists {}",
                     typeid(T).name());
     }
     parallelResources[id] = std::make_unique<Type>();

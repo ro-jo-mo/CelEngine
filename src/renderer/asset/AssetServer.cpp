@@ -161,11 +161,17 @@ AssetServer::declare_scene_access(RenderGraph::PassBuilder& pass)
 {
     pass.read_buffer(vertexBufferHandle,
                      VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
-                     VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT);
-    pass.read_buffer(indexBufferHandle,
+                     VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT)
+        .read_buffer(indexBufferHandle,
                      VK_ACCESS_2_INDEX_READ_BIT,
-                     VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT);
-    pass.read_buffer(materialBufferHandle,
+                     VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT)
+        .read_buffer(materialBufferHandle,
+                     VK_ACCESS_2_SHADER_READ_BIT,
+                     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+        .read_buffer(Passes::sceneDataBuffer,
+                     VK_ACCESS_2_SHADER_READ_BIT,
+                     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+        .read_buffer(Passes::entityDataBuffer,
                      VK_ACCESS_2_SHADER_READ_BIT,
                      VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
 

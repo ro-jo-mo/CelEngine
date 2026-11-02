@@ -7,7 +7,7 @@ public struct SceneData
   public Vertex* vertexBuffer;
   public MaterialData* materialBuffer;
   public PerEntityData* entityDataBuffer;
-  public float4x4 viewM;
+  public float4x4 view;
   public float4x4 projection;
   public float4x4 viewProj;
 }

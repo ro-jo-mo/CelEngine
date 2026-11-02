@@ -12,9 +12,9 @@ namespace Cel {
 // runtime_error As such I also print to stderr
 template<typename... T>
 void
-throw_error(fmt::format_string<T...> fmt, const T&&... args)
+throw_error(fmt::format_string<T...> fmt, T&&... args)
 {
-    auto message = fmt::vformat(fmt.str, fmt::vargs<T...>{ { args... } });
+    auto message = fmt::format(fmt, std::forward<T>(args)...);
 
     fmt::println(stderr, "{}", message);
     throw std::runtime_error(message);

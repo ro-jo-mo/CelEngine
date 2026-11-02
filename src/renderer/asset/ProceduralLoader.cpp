@@ -93,13 +93,22 @@ Cel::Renderer::Asset::ProceduralLoader::generate_cube(const Cube& cube,
     // counterclockwise winding
     const uint32_t order[] = { 0, 3, 2, 1, 2, 3 };
 
+    primitive.vertices.reserve(24);
+    primitive.indices.reserve(36);
+
     for (uint32_t i = 0; i < 30; i += 5) {
-        for (const uint32_t corner : order) {
+        const auto base = static_cast<uint32_t>(primitive.vertices.size());
+
+        for (uint32_t corner = 0; corner < 4; ++corner) {
             primitive.vertices.push_back(
                 { .position = corners[i + corner] * cube.size,
                   .uvX = uvs[corner].x,
                   .normal = corners[i + 4],
                   .uvY = uvs[corner].y });
+        }
+
+        for (const uint32_t corner : order) {
+            primitive.indices.push_back(base + corner);
         }
     }
 }

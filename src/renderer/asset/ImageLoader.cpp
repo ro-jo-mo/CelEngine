@@ -93,7 +93,9 @@ Cel::Renderer::Asset::ImageLoader::load_ktx(ImageData& data)
     ktxTexture2* texture2;
 
     const auto loadError = ktxTexture2_CreateFromNamedFile(
-        data.file.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &texture2);
+        data.file.string().c_str(),
+        KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+        &texture2);
 
     ktx_error(loadError);
 
@@ -111,7 +113,7 @@ Cel::Renderer::Asset::ImageLoader::load_ktx(ImageData& data)
         ktxTexture_Destroy(texture);
         throw_error("Unsupported ktx image {}. Only 2D images and cubemaps "
                     "are supported",
-                    data.file.c_str());
+                    data.file.string());
     }
 
     VkImageCreateFlags flags = 0;
@@ -137,7 +139,7 @@ Cel::Renderer::Asset::ImageLoader::load_ktx(ImageData& data)
 
     if (data.requirements.format == VK_FORMAT_UNDEFINED) {
         ktxTexture_Destroy(texture);
-        throw_error("Ktx file has no vk format {}", data.file.c_str());
+        throw_error("Ktx file has no vk format {}", data.file.string());
     }
 }
 
@@ -189,7 +191,7 @@ Cel::Renderer::Asset::ImageLoader::commit(const ImageData& data,
                                           RenderGraph::PassBuilder& pass)
 {
     const auto handle = manager.get_handle_from_requirements(
-        data.requirements, data.file.filename());
+        data.requirements, data.file.filename().string());
 
     images[data.handle.index] = { .image =
                                       manager.get_resource_from_handle(handle),

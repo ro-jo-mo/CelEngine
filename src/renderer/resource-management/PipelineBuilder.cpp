@@ -235,7 +235,7 @@ PipelineBuilder::add_shader_module(const char* path,
 
     if (!file.is_open()) {
         auto absolute = std::filesystem::absolute(path).string();
-        throw_error("unable to open shader file {}", std::move(absolute));
+        throw_error("unable to open shader file {}", absolute);
     }
 
     // The cursors is at the end of the file, so it can be used to get the
@@ -257,7 +257,7 @@ PipelineBuilder::add_shader_module(const char* path,
 
     VkShaderModule shaderModule;
     if (!Utils::load_shader(buffer.data(), codeSize, device, &shaderModule)) {
-        throw_error("Error loading shader {}", std::move(path));
+        throw_error("Error loading shader {}", path);
     }
 
     // Gather only the data from this shader stage
@@ -273,7 +273,7 @@ PipelineBuilder::add_shader_module(const char* path,
         throw_error(
             "couldn't find entry point in shader. \nEntry {} \nShader {}",
             static_cast<uint32_t>(stage),
-            std::move(path));
+            path);
         return *this;
     }
 

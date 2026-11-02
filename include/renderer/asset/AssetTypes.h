@@ -25,8 +25,8 @@ struct SamplerSettings
     const static SamplerSettings Pixel;
 };
 
-constexpr SamplerSettings SamplerSettings::Linear{};
-constexpr SamplerSettings SamplerSettings::Pixel{
+inline constexpr SamplerSettings SamplerSettings::Linear{};
+inline constexpr SamplerSettings SamplerSettings::Pixel{
     .min = VK_FILTER_NEAREST,
     .mag = VK_FILTER_LINEAR,
     .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
