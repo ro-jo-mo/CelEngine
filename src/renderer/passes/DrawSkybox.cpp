@@ -18,6 +18,7 @@ Cel::Renderer::Passes::create_skybox_data(Resource<SkyboxData>& skybox,
                                               VK_SHADER_STAGE_VERTEX_BIT)
                            .add_shader_module("../../shaders/skybox.frag.spv",
                                               VK_SHADER_STAGE_FRAGMENT_BIT)
+                           .set_cull_mode(VK_CULL_MODE_NONE)
                            .build();
 }
 
@@ -69,6 +70,7 @@ Cel::Renderer::Passes::draw_skybox(
         Initialisers::depth_attachment_info(
             access->get_resource(Passes::depthImage).imageView,
             VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 
     VkRenderingInfo renderInfo = Initialisers::rendering_info(
         access->get_extent(), &colourAttachment, &depthAttachment);
@@ -86,12 +88,13 @@ Cel::Renderer::Passes::draw_skybox(
 
     vkCmdPushConstants(cmd,
                        skybox->pipeline.pipelineLayout,
-                       VK_SHADER_STAGE_VERTEX_BIT |
-                           VK_SHADER_STAGE_FRAGMENT_BIT,
+                       VK_SHADER_STAGE_ALL,
                        0,
                        sizeof(textureIndex),
                        &textureIndex);
 
     vkCmdDrawIndexed(
         cmd, cube.indexCount, 1, cube.firstIndex, cube.vertexOffset, 0);
+
+    vkCmdEndRendering(cmd);
 }

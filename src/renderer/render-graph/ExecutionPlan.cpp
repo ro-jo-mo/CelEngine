@@ -73,6 +73,7 @@ format_to_image_aspect(VkFormat format)
         case VK_FORMAT_R8G8B8_UNORM:
         case VK_FORMAT_R8G8B8A8_UNORM:
         case VK_FORMAT_R16G16B16A16_SFLOAT:
+        case VK_FORMAT_R8G8B8A8_SRGB:
             return VK_IMAGE_ASPECT_COLOR_BIT;
 
         default:

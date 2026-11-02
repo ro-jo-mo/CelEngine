@@ -4,7 +4,6 @@ import common;
 
 
 struct VSInput {
-    uniform uint imageId;
     uint vertexId : SV_VertexID;
 }
 
@@ -17,16 +16,16 @@ struct VSOutput {
 
 
 [shader("vertex")]
-VSOutput vertexMain(VSInput in) {
+VSOutput vertexMain(VSInput in, uniform uint imageId) {
     VSOutput out;
 
-    out.imageId = in.imageId;
+    out.imageId = imageId;
 
     float3 pos = scene.vertexBuffer[in.vertexId].position;
 
     out.uvw = pos;
 
-    out.pos = mul(scene.viewProj, float4(out.pos.xyz, 1.0));
+    out.pos = mul(scene.viewProj, float4(pos.xyz, 1.0));
     // Reverse Z buffer
     // Set skybox behind all
     out.pos = float4(out.pos.xy, 0.0, out.pos.w);

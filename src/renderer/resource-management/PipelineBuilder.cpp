@@ -150,9 +150,16 @@ PipelineBuilder::generate_pipeline_layout()
     VkPipelineLayoutCreateInfo createInfo =
         Initialisers::pipeline_layout_create_info();
 
-    // Set push constants (simple)
-    createInfo.pushConstantRangeCount = pushConstants.size();
-    createInfo.pPushConstantRanges = pushConstants.data();
+    // Push constants are no longer reflected, so I'll just check the they fit
+    // in the default 128 bytes
+    for (const auto& pushConstant : pushConstants) {
+        if (pushConstant.offset + pushConstant.size > defaultPushRange.size) {
+            throw_error("push constants exceeds max 128 bytes");
+        }
+    }
+
+    createInfo.pushConstantRangeCount = 1;
+    createInfo.pPushConstantRanges = &defaultPushRange;
 
     // Set descriptor layouts (need to finalise descriptor data)
     uint32_t currentSet = 0;
@@ -212,8 +219,6 @@ format_to_byte_size(const VkFormat format)
     switch (format) {
         case VK_FORMAT_R32G32B32_SFLOAT:
             return 12;
-        case VK_FORMAT_R32_UINT:
-            return 4;
         default:
             Cel::throw_error("unimplemented vk format {}",
                              static_cast<uint32_t>(format));
@@ -527,6 +532,22 @@ PipelineBuilder::set_depth_attachment(VkFormat format)
     return *this;
 }
 
+PipelineBuilder&
+PipelineBuilder::set_winding_order(VkFrontFace frontFace)
+{
+    rasterizer.frontFace = frontFace;
+
+    return *this;
+}
+
+PipelineBuilder&
+PipelineBuilder::set_cull_mode(VkCullModeFlags cullMode)
+{
+    rasterizer.cullMode = cullMode;
+
+    return *this;
+}
+
 void
 PipelineBuilder::initialise_default_descriptor(VkDevice device)
 {
@@ -559,8 +580,8 @@ PipelineBuilder::initialise_default_descriptor(VkDevice device)
             .flags = 0,
             .setLayoutCount = 1,
             .pSetLayouts = &defaultSetLayout,
-            .pushConstantRangeCount = 0,
-            .pPushConstantRanges = nullptr
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges = &defaultPushRange
         };
 
         vkCreatePipelineLayout(

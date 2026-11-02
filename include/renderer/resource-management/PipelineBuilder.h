@@ -43,11 +43,20 @@ class PipelineBuilder
     PipelineBuilder& disable_depth_test();
     PipelineBuilder& set_color_attachment(VkFormat format);
     PipelineBuilder& set_depth_attachment(VkFormat format);
+    PipelineBuilder& set_winding_order(VkFrontFace frontFace);
+    PipelineBuilder& set_cull_mode(VkCullModeFlags cullMode);
 
     static void initialise_default_descriptor(VkDevice device);
 
     inline static VkDescriptorSetLayout defaultSetLayout = VK_NULL_HANDLE;
     inline static VkPipelineLayout defaultPipelineLayout = VK_NULL_HANDLE;
+
+    // We support only the minimum guaranteed by vulkan 1.3
+    static constexpr VkPushConstantRange defaultPushRange{
+        .stageFlags = VK_SHADER_STAGE_ALL,
+        .offset = 0,
+        .size = 128
+    };
 
   private:
     void generate_pipeline_layout();
