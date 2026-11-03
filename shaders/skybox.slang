@@ -10,16 +10,13 @@ struct VSInput {
 
 struct VSOutput {
     float4 pos : SV_Position;
-    float3 uvw;
-    uint imageId; 
+    float3 uvw; 
 }
 
 
 [shader("vertex")]
-VSOutput vertexMain(VSInput in, uniform uint imageId) {
+VSOutput vertexMain(VSInput in) {
     VSOutput out;
-
-    out.imageId = imageId;
 
     float3 pos = scene.vertexBuffer[in.vertexId].position;
 
@@ -38,6 +35,6 @@ VSOutput vertexMain(VSInput in, uniform uint imageId) {
 }
 
 [shader("fragment")]
-float4 fragmentMain(VSOutput in) {
-    return allCubeTextures[in.imageId].Sample(in.uvw);
+float4 fragmentMain(VSOutput in,uniform uint imageId) {
+    return allCubeTextures[imageId].Sample(in.uvw);
 }
