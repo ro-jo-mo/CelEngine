@@ -2,8 +2,11 @@
 
 #include "renderer/RenderTypes.h"
 
+#include <deque>
 #include <map>
 #include <spirv_reflect.h>
+#include <string>
+#include <string_view>
 #include <vector>
 #include <vulkan/vulkan_core.h>
 
@@ -28,14 +31,22 @@ class PipelineBuilder
     Pipeline build();
 
     /**
-     * @brief Add a shader module to the pipeline
-     * The stage, descriptors, push constants are derived through spirv reflect
-     * @param path Path to the shader *.spv
-     * @param stage Shader stage
+     * @brief Add a single stage from a compiled shader to the pipeline
+     * The descriptors, push constants and vertex input are derived through
+     * spirv reflect
+     * @param name Shader name relative to the compiled shaders folder
+     * @param stage The stage whose entry point should be used
      * @return this
      */
-    PipelineBuilder& add_shader_module(const char* path,
+    PipelineBuilder& add_shader_module(std::string_view name,
                                        VkShaderStageFlagBits stage);
+
+    /**
+     * @brief Add both the vertex and fragment stages from a compiled shader.
+     * @param name Shader name relative to the compiled shaders folder
+     * @return this
+     */
+    PipelineBuilder& add_graphics_shader(std::string_view name);
 
     PipelineBuilder& enable_depth_test(
         bool depthWriteEnable,
@@ -59,6 +70,27 @@ class PipelineBuilder
     };
 
   private:
+    struct LoadedShader
+    {
+        SpvReflectShaderModule reflection;
+        VkShaderModule module;
+    };
+
+    /**
+     * @brief Read a compiled shader from disk, reflect it and create its
+     * VkShaderModule. The builder owns the module and destroys it in build().
+     * The caller must destroy the reflection with spvReflectDestroyShaderModule
+     */
+    LoadedShader load_shader(std::string_view name);
+
+    /**
+     * @brief Add the entry point for stage to the pipeline and reflect its
+     * descriptors, push constants and vertex input
+     */
+    void add_shader_module(const SpvReflectShaderModule* spvModule,
+                           VkShaderModule shaderModule,
+                           VkShaderStageFlagBits stage);
+
     void generate_pipeline_layout();
 
     void initialise_defaults();
@@ -74,6 +106,11 @@ class PipelineBuilder
                              const SpvReflectEntryPoint* entry);
 
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+    // Unique modules, as several stages may share one
+    std::vector<VkShaderModule> shaderModules;
+    // Owns the strings that shaderStages[i].pName points at. A deque, so
+    // growing it doesn't move existing strings
+    std::deque<std::string> entryPointNames;
 
     struct LayoutBindingAndFlags
     {

@@ -188,10 +188,7 @@ Cel::Renderer::Passes::draw_mesh(
     vkCmdBeginRendering(cmd, &renderInfo);
 
     static auto pipeline = PipelineBuilder(access->get_device())
-                               .add_shader_module("../../shaders/mesh.vert.spv",
-                                                  VK_SHADER_STAGE_VERTEX_BIT)
-                               .add_shader_module("../../shaders/mesh.frag.spv",
-                                                  VK_SHADER_STAGE_FRAGMENT_BIT)
+                               .add_graphics_shader("mesh")
                                .build();
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);

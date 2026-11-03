@@ -81,9 +81,11 @@ PipelineBuilder::build()
     vk_check(vkCreateGraphicsPipelines(
         device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &newPipeline));
 
-    for (auto& shader : shaderStages) {
-        vkDestroyShaderModule(device, shader.module, nullptr);
+    // Destroy each module once, stages may share the same module
+    for (auto shaderModule : shaderModules) {
+        vkDestroyShaderModule(device, shaderModule, nullptr);
     }
+    shaderModules.clear();
 
     return { newPipeline, pipelineLayout, compiledDescriptors };
 }
@@ -226,16 +228,26 @@ format_to_byte_size(const VkFormat format)
     }
 }
 
-PipelineBuilder&
-PipelineBuilder::add_shader_module(const char* path,
-                                   VkShaderStageFlagBits stage)
+namespace {
+// Destroys the reflection data when it leaves scope, including on throw
+struct ReflectionGuard
 {
+    SpvReflectShaderModule* module;
+    ~ReflectionGuard() { spvReflectDestroyShaderModule(module); }
+};
+
+}
+
+PipelineBuilder::LoadedShader
+PipelineBuilder::load_shader(std::string_view name)
+{
+    const auto path = Utils::shader_path(name);
+
     // open the file. With cursor at the end
     std::ifstream file(path, std::ios::ate | std::ios::binary);
 
     if (!file.is_open()) {
-        auto absolute = std::filesystem::absolute(path).string();
-        throw_error("unable to open shader file {}", absolute);
+        throw_error("unable to open shader file {}", path.string());
     }
 
     // The cursors is at the end of the file, so it can be used to get the
@@ -251,37 +263,53 @@ PipelineBuilder::add_shader_module(const char* path,
     // codeSize is measured in bytes
     auto codeSize = buffer.size() * sizeof(uint32_t);
 
-    SpvReflectShaderModule spvModule{};
-    assert_spv(
-        spvReflectCreateShaderModule(codeSize, buffer.data(), &spvModule));
+    LoadedShader shader{};
+    assert_spv(spvReflectCreateShaderModule(
+        codeSize, buffer.data(), &shader.reflection));
 
-    VkShaderModule shaderModule;
-    if (!Utils::load_shader(buffer.data(), codeSize, device, &shaderModule)) {
-        throw_error("Error loading shader {}", path);
+    if (!Utils::load_shader(buffer.data(), codeSize, device, &shader.module)) {
+        spvReflectDestroyShaderModule(&shader.reflection);
+        throw_error("Error loading shader {}", path.string());
     }
 
+    // Owned by the builder from here, destroyed in build()
+    shaderModules.push_back(shader.module);
+
+    return shader;
+}
+
+void
+PipelineBuilder::add_shader_module(const SpvReflectShaderModule* spvModule,
+                                   VkShaderModule shaderModule,
+                                   VkShaderStageFlagBits stage)
+{
     // Gather only the data from this shader stage
-    SpvReflectEntryPoint* entry = nullptr;
-    for (size_t i = 0; i < spvModule.entry_point_count; i++) {
-        if (spvModule.entry_points[i].shader_stage ==
+    const SpvReflectEntryPoint* entry = nullptr;
+    for (size_t i = 0; i < spvModule->entry_point_count; i++) {
+        if (spvModule->entry_points[i].shader_stage ==
             static_cast<SpvReflectShaderStageFlagBits>(stage)) {
-            entry = &spvModule.entry_points[i];
+            entry = &spvModule->entry_points[i];
+            break;
         }
     }
 
     if (entry == nullptr) {
         throw_error(
-            "couldn't find entry point in shader. \nEntry {} \nShader {}",
+            "couldn't find entry point in shader. \nStage {} \nShader {}",
             static_cast<uint32_t>(stage),
-            path);
-        return *this;
+            spvModule->source_file ? spvModule->source_file : "<unknown>");
+        return;
     }
+
+    // The reflection data is freed after loading, so keep our own copy of
+    // the entry point name for vkCreateGraphicsPipelines
+    const auto& entryName = entryPointNames.emplace_back(entry->name);
 
     VkPipelineShaderStageCreateInfo shaderStageInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = stage,
         .module = shaderModule,
-        .pName = entry->name
+        .pName = entryName.c_str()
     };
 
     shaderStages.push_back(shaderStageInfo);
@@ -290,14 +318,36 @@ PipelineBuilder::add_shader_module(const char* path,
     reflect_descriptor_data(entry, stage);
 
     // Grab push  constants
-    reflect_push_data(spvModule, entry, stage);
+    reflect_push_data(*spvModule, entry, stage);
 
     // If this is the vertex stage, reflect the vertex data
     if (stage == VK_SHADER_STAGE_VERTEX_BIT) {
-        reflect_vertex_data(spvModule, entry);
+        reflect_vertex_data(*spvModule, entry);
     }
+}
 
-    //   spvReflectDestroyShaderModule(&spvModule);
+PipelineBuilder&
+PipelineBuilder::add_shader_module(std::string_view name,
+                                   VkShaderStageFlagBits stage)
+{
+    auto shader = load_shader(name);
+    ReflectionGuard guard{ &shader.reflection };
+
+    add_shader_module(&shader.reflection, shader.module, stage);
+
+    return *this;
+}
+
+PipelineBuilder&
+PipelineBuilder::add_graphics_shader(std::string_view name)
+{
+    auto shader = load_shader(name);
+    ReflectionGuard guard{ &shader.reflection };
+
+    add_shader_module(
+        &shader.reflection, shader.module, VK_SHADER_STAGE_VERTEX_BIT);
+    add_shader_module(
+        &shader.reflection, shader.module, VK_SHADER_STAGE_FRAGMENT_BIT);
 
     return *this;
 }

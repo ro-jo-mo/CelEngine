@@ -3,10 +3,29 @@
 #include "core/Error.h"
 #include "renderer/VulkanHelpers.h"
 
+#include <SDL3/SDL_filesystem.h>
 #include <algorithm>
 #include <fstream>
 #include <ranges>
 #include <vector>
+
+std::filesystem::path
+Cel::Renderer::Utils::shader_path(std::string_view name)
+{
+    // SDL owns and caches this string
+    static const std::filesystem::path shaderRoot = [] {
+        const char* base = SDL_GetBasePath();
+        if (base == nullptr) {
+            throw_error("Unable to find executable directory: {}",
+                        SDL_GetError());
+        }
+        return std::filesystem::path(base) / "shaders";
+    }();
+
+    auto path = shaderRoot / name;
+    path += ".spv";
+    return path;
+}
 
 bool
 Cel::Renderer::Utils::load_shader(const char* path,

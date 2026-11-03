@@ -1,4 +1,5 @@
 #pragma once
+
 #include "ecs/Resource.h"
 
 namespace Cel::Renderer {

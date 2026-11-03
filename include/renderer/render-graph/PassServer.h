@@ -49,8 +49,8 @@ class PassServer
 
     /**
      * Acquire the next swapchain image for this frame, signalling this
-     * frame's acquire semaphore. Must run after release_resources, and before
-     * the present pass records. Sets swapchain.imageIndex / imageAcquired.
+     * frame's acquire semaphore.
+     * Must run between release_resources, and present pass recording.
      */
     void acquire_swapchain_image(Swapchain& swapchain);
 

@@ -14,10 +14,7 @@ Cel::Renderer::Passes::create_skybox_data(Resource<SkyboxData>& skybox,
     skybox->cube = server->create_cube();
     skybox->texture = server->load_texture("../../assets/skybox.ktx2");
     skybox->pipeline = PipelineBuilder{ context->device }
-                           .add_shader_module("../../shaders/skybox.vert.spv",
-                                              VK_SHADER_STAGE_VERTEX_BIT)
-                           .add_shader_module("../../shaders/skybox.frag.spv",
-                                              VK_SHADER_STAGE_FRAGMENT_BIT)
+                           .add_graphics_shader("skybox")
                            .set_cull_mode(VK_CULL_MODE_NONE)
                            .build();
 }

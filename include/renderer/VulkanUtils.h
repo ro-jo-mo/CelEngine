@@ -2,7 +2,9 @@
 
 #include "RenderTypes.h"
 
+#include <filesystem>
 #include <ktx.h>
+#include <string_view>
 #include <vk_mem_alloc.h>
 
 namespace Cel::Renderer::Utils {
@@ -11,6 +13,17 @@ namespace Cel::Renderer::Utils {
 // This is atleast convenient and seems to work
 inline decltype(vkSetDebugUtilsObjectNameEXT)* vkSetDebugUtilsObjectName =
     nullptr;
+
+/**
+ * @brief Resolve a shader name to its compiled SPIR-V file
+ * Shaders are compiled by CMake into a "shaders" folder next to the executable,
+ * so this works regardless of the working directory.
+ * @param name Shader name relative to the shaders folder, without the .spv
+ * extension. e.g. "mesh.vert" or "post/tonemap.frag"
+ * @return <executable dir>/shaders/<name>.spv
+ */
+[[nodiscard]] std::filesystem::path
+shader_path(std::string_view name);
 
 bool
 load_shader(const char* path, VkDevice device, VkShaderModule* outShaderModule);

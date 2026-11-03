@@ -50,6 +50,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_LEFT_HANDED SPIRV_REFLECT_USE_SYSTEM_SPIRV_H)
 
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 target_sources(${PROJECT_NAME}
         PRIVATE
         "ecs/EntityManager.cpp"
@@ -104,6 +106,8 @@ target_sources(${PROJECT_NAME}
         "renderer/resource-management/MegaBuffer.cpp"
 )
 
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -113,6 +117,7 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 set(public_headers
         include/ecs/ComponentArray.h
@@ -205,6 +210,9 @@ set(public_headers
         include/renderer/resource-management/DeletionQueue.h
         include/renderer/resource-management/MegaBuffer.h
 )
+
+# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")
 
