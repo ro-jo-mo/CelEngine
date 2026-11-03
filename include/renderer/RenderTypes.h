@@ -21,6 +21,11 @@ struct Swapchain
     VkFormat format;
     VkExtent2D extent;
     std::vector<VkSemaphore> presentSemaphores;
+
+    // The image acquired for the current frame. Only valid while
+    // imageAcquired is true
+    uint32_t imageIndex = 0;
+    bool imageAcquired = false;
 };
 
 struct Queue

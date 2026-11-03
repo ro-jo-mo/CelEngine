@@ -8,6 +8,7 @@ namespace Asset {
 class AssetServer;
 }
 struct RenderExtent;
+struct Swapchain;
 class VulkanResourceManager;
 }
 namespace Cel::Renderer::RenderGraph {
@@ -25,6 +26,10 @@ class RenderGraphPlugin final : public Plugin
                               Resource<RenderExtent>& extent,
                               Resource<Asset::SharedAssetData>& shared,
                               ParallelResource<PassServer>& passServer);
+
+    static void acquire_swapchain_image(
+        Resource<Swapchain>& swapchain,
+        ParallelResource<PassServer>& passServer);
 };
 
 }

@@ -48,6 +48,13 @@ class PassServer
     void release_resources(VulkanResourceManager& manager);
 
     /**
+     * Acquire the next swapchain image for this frame, signalling this
+     * frame's acquire semaphore. Must run after release_resources, and before
+     * the present pass records. Sets swapchain.imageIndex / imageAcquired.
+     */
+    void acquire_swapchain_image(Swapchain& swapchain);
+
+    /**
      * Set the current frame data, what passes are running this frame, the
      * mapping of pass handles to real handles
      */

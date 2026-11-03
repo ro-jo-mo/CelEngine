@@ -4,6 +4,7 @@
 
 #include "core/Error.h"
 #include "core/World.h"
+#include "renderer/VulkanHelpers.h"
 #include "renderer/render-graph/PassBuilder.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
@@ -195,12 +196,16 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
 {
     for (const auto& extent : data.images | std::views::values) {
 
-        ImageRequirements requirements{ .format = VK_FORMAT_R8G8B8A8_UNORM,
-                                        .extent = extent,
-                                        .usages =
-                                            VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                                            VK_IMAGE_USAGE_SAMPLED_BIT,
-                                        .aspects = VK_IMAGE_ASPECT_COLOR_BIT };
+        // TODO: At some point I'd like to add the VK_FORMAT_LIST extension
+        ImageRequirements requirements{
+            .format = VK_FORMAT_R8G8B8A8_UNORM,
+            .extent = extent,
+            .usages =
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            .aspects = VK_IMAGE_ASPECT_COLOR_BIT,
+            // Allow SRGB for colour textures
+            .flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT
+        };
 
         const auto handle =
             manager.get_handle_from_requirements(requirements, "gltf_image");
@@ -219,35 +224,40 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
     // If we delayed creation to now we could de duplicate
     samplers.append_range(data.samplers);
 
-    auto add_texture = [&](auto& pair, auto& set, uint32_t defaultImg) {
-        auto [img, sampler] = pair;
+    auto add_texture =
+        [&](auto& pair, auto& set, uint32_t defaultImg, bool srgb) {
+            auto [img, sampler] = pair;
 
-        if (img == UINT32_MAX) {
-            img = defaultImg;
-        } else {
-            img += data.imageOffset;
-        }
+            if (img == UINT32_MAX) {
+                img = defaultImg;
+            } else {
+                img += data.imageOffset;
+            }
 
-        if (sampler == UINT32_MAX) {
-            sampler = 0;
-        } else {
-            sampler += samplerOffset;
-        }
+            if (sampler == UINT32_MAX) {
+                sampler = 0;
+            } else {
+                sampler += samplerOffset;
+            }
 
-        set = shared.textures.add_texture(images[img].imageView,
-                                          samplers[sampler]);
-    };
+            set = shared.textures.add_texture(get_texture_view(img, srgb),
+                                              samplers[sampler]);
+        };
 
     // Set the index into texture array for materials
     for (const auto& [i, material] : std::views::enumerate(data.materials)) {
-        add_texture(data.textureSamplers[i * 3], material.colorTextureIndex, 0);
+        add_texture(
+            data.textureSamplers[i * 3], material.colorTextureIndex, 0, true);
 
         add_texture(data.textureSamplers[i * 3 + 1],
                     material.metalRoughnessTextureIndex,
-                    0);
+                    0,
+                    false);
 
-        add_texture(
-            data.textureSamplers[i * 3 + 2], material.normalTextureIndex, 0);
+        add_texture(data.textureSamplers[i * 3 + 2],
+                    material.normalTextureIndex,
+                    0,
+                    false);
     }
 
     // The shader indexes materials by element, so convert the byte offset into
@@ -302,6 +312,30 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
     remap_tree(data.scene, remap_tree);
 
     scenes[data.handle.index] = data.scene;
+}
+
+VkImageView
+Cel::Renderer::Asset::GltfLoader::get_texture_view(uint32_t imageIndice,
+                                                   bool srgb)
+{
+    if (!srgb) {
+        return images[imageIndice].imageView;
+    }
+
+    if (srgbViews.size() < images.size()) {
+        srgbViews.resize(images.size(), nullptr);
+    }
+
+    if (srgbViews[imageIndice] == nullptr) {
+        VkImageViewCreateInfo create =
+            Initialisers::image_view_create_info(VK_FORMAT_R8G8B8A8_SRGB,
+                                                 images[imageIndice].image,
+                                                 VK_IMAGE_ASPECT_COLOR_BIT);
+
+        vkCreateImageView(device, &create, nullptr, &srgbViews[imageIndice]);
+    }
+
+    return srgbViews[imageIndice];
 }
 
 static VkFilter
@@ -515,8 +549,7 @@ Cel::Renderer::Asset::GltfLoader::load_images(fastgltf::Asset& asset,
         std::vector<std::byte> imageData;
 
         auto ErrorMsg = [&](const char* ext) {
-            (throw_error("Error loading gltf image. Attempted to use {}",
-                         ext));
+            (throw_error("Error loading gltf image. Attempted to use {}", ext));
         };
 
         std::visit(

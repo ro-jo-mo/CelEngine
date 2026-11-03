@@ -209,6 +209,27 @@ Cel::Renderer::RenderGraph::PassServer::get_extent() const
     return extent;
 }
 
+void
+Cel::Renderer::RenderGraph::PassServer::acquire_swapchain_image(
+    Swapchain& swapchain)
+{
+    const VkResult result =
+        vkAcquireNextImageKHR(device,
+                              swapchain.swapchain,
+                              UINT64_MAX,
+                              acquireSemaphores[currentFrame],
+                              VK_NULL_HANDLE,
+                              &swapchain.imageIndex);
+
+    swapchain.imageAcquired = true;
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        // Introduce code to handle resizing swapchain
+        fmt::println("Out of date swapchain, needs resizing");
+        swapchain.imageAcquired = false;
+    }
+}
+
 Cel::Renderer::AllocatedBuffer&
 Cel::Renderer::RenderGraph::PassServer::get_resource(
     const Handle<AllocatedBuffer> handle) const

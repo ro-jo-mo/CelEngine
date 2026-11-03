@@ -10,20 +10,6 @@
 #include "renderer/render-graph/RenderGraph.h"
 
 void
-Cel::Renderer::Passes::PassFriend::register_present_pass(
-    Resource<RenderGraph::Graph>& graph)
-{
-    auto pass = RenderGraph::PassBuilder(Passes::presentPass)
-                    .read_image(Passes::drawImage,
-                                VK_ACCESS_2_TRANSFER_READ_BIT,
-                                VK_PIPELINE_STAGE_2_BLIT_BIT,
-                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-                    .set_queue(Queues::graphics);
-
-    graph->set_present_pass(pass.build());
-}
-
-void
 Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
     Resource<RenderGraph::Graph>& graph)
 {

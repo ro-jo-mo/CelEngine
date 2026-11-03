@@ -93,6 +93,7 @@ target_sources(${PROJECT_NAME}
         "renderer/passes/BasePasses.cpp"
         "renderer/passes/DrawMeshes.cpp"
         "renderer/passes/DrawSkybox.cpp"
+        "renderer/passes/PresentPass.cpp"
         "renderer/passes/PassPlugin.cpp"
         "renderer/passes/StagingPool.cpp"
 
@@ -188,6 +189,7 @@ set(public_headers
         include/renderer/passes/BasePasses.h
         include/renderer/passes/DrawMeshes.h
         include/renderer/passes/DrawSkybox.h
+        include/renderer/passes/PresentPass.h
         include/renderer/passes/PassPlugin.h
         include/renderer/passes/BasePasses.h
         include/renderer/passes/StagingPool.h

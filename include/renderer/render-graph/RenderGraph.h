@@ -34,8 +34,10 @@ class Graph : Common::Scheduler<Handle<RenderPass>>
                               Common::Graph<Handle<RenderPass>>>
     add_setup_pass(const RenderPass& pass);
 
-    // This is effectively a dummy pass. We don't expect it to record any data,
-    // but it will specify the present queue and necessary barriers.
+    // The final pass in the graph. It specifies the present queue and the
+    // barriers on graph resources it reads. It records its own commands
+    // (see Passes/PresentPass), writing to the swapchain image, which is
+    // managed outside the graph.
     void set_present_pass(const RenderPass& pass);
 
     template<typename... Ts>

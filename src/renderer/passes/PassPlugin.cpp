@@ -6,6 +6,7 @@
 #include "renderer/passes/BasePasses.h"
 #include "renderer/passes/DrawMeshes.h"
 #include "renderer/passes/DrawSkybox.h"
+#include "renderer/passes/PresentPass.h"
 
 void
 Cel::Renderer::Passes::PassPlugin::build(SystemScheduler scheduler,
@@ -29,12 +30,15 @@ Cel::Renderer::Passes::PassPlugin::build(SystemScheduler scheduler,
                         register_indirect_draw_data_pass,
                         register_draw_mesh_pass,
                         PassFriend::register_create_scene_data_pass,
-                        PassFriend::register_present_pass);
+                        register_present_pass);
 
     scheduler.add_chain(Render::PostUpdate,
                         create_indirect_draw_data,
                         PassFriend::create_scene_data);
 
-    scheduler.add_group(
-        Render::PostUpdate, draw_mesh, PassFriend::upload_assets, draw_skybox);
+    scheduler.add_group(Render::PostUpdate,
+                        draw_mesh,
+                        PassFriend::upload_assets,
+                        draw_skybox,
+                        record_present_pass);
 }

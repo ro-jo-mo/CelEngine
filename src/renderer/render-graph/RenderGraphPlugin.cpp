@@ -47,6 +47,14 @@ RenderGraph::RenderGraphPlugin::compile_graph(
                          *shared);
 }
 
+void
+RenderGraph::RenderGraphPlugin::acquire_swapchain_image(
+    Resource<Swapchain>& swapchain,
+    ParallelResource<PassServer>& passServer)
+{
+    passServer.absolute()->acquire_swapchain_image(*swapchain);
+}
+
 static void
 init_pass_server(Resource<VulkanContext>& context,
                  ParallelResource<RenderGraph::PassServer>& server)
@@ -67,5 +75,9 @@ RenderGraph::RenderGraphPlugin::build(SystemScheduler scheduler,
         .after(initialise_renderer);
 
     scheduler.add_system(Render::Update, compile_graph);
+    // Acquire after compile_graph has waited on this frame's fence, so the
+    // acquire semaphore is free to reuse. Must precede present pass recording
+    scheduler.add_system(Render::Update, acquire_swapchain_image)
+        .after(compile_graph);
     scheduler.add_system(Render::Last, execute_graph);
 }

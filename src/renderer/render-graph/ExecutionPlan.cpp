@@ -522,45 +522,12 @@ ExecutionPlan::execute(
     Swapchain& swapchain,
     VulkanResourceManager& manager)
 {
-    // Get swapchain image
-    uint32_t swapchainIndex;
-    VkResult result = vkAcquireNextImageKHR(
-        passServer.device,
-        swapchain.swapchain,
-        UINT64_MAX,
-        passServer.acquireSemaphores[passServer.currentFrame],
-        VK_NULL_HANDLE,
-        &swapchainIndex);
-
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        // Introduce code to handle resizing swapchain
-        fmt::println("Out of date swapchain, needs resizing");
-        return;
+    // The swapchain should be acquired prior to execution here
+    if (!swapchain.imageAcquired) {
+        throw_error("Present ordering / sync error");
     }
 
-    // Record commands for the present pass
-    {
-        // Copy image to swapchain on the present pass
-        const auto cmd = passServer.get_cmd_buffer(presentPass);
-
-        const auto& drawImage = passServer.get_resource(Passes::drawImage);
-
-        Utils::transition_image_layout(cmd,
-                                       swapchain.images[swapchainIndex],
-                                       VK_IMAGE_LAYOUT_UNDEFINED,
-                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-        Utils::copy_image_to_image(cmd,
-                                   drawImage.image,
-                                   swapchain.images[swapchainIndex],
-                                   passServer.extent,
-                                   swapchain.extent);
-
-        Utils::transition_image_layout(cmd,
-                                       swapchain.images[swapchainIndex],
-                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-    }
+    const uint32_t swapchainIndex = swapchain.imageIndex;
 
     // Create submit infos
     // The pres / posts / recorded are mainly here to keep the data alive until

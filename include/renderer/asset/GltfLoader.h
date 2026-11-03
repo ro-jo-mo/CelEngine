@@ -112,15 +112,21 @@ class GltfLoader
                                       fastgltf::Asset& asset,
                                       GltfData& data);
 
+    // The same image can be used for both colour and pbr textures.
+    // Thus we may need an optional srgb view
+    VkImageView get_texture_view(uint32_t imageIndice, bool srgb);
+
     std::mutex processingLock;
     std::vector<GltfData> processing;
 
     std::vector<SceneAsset> scenes;
 
     std::vector<AllocatedImage> images;
-    std::vector<VkSampler> samplers;
     std::vector<Primitive> primitives;
     std::vector<Material> materials;
+
+    std::vector<VkSampler> samplers;
+    std::vector<VkImageView> srgbViews;
 
     StagingPool stagingPool;
 

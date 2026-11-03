@@ -28,8 +28,6 @@ struct SceneData;
 struct PassFriend
 {
 
-    static void register_present_pass(Resource<RenderGraph::Graph>& graph);
-
     static void register_create_scene_data_pass(
         Resource<RenderGraph::Graph>& graph);
 
