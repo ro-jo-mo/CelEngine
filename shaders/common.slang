@@ -24,9 +24,12 @@ public struct MaterialData
 {
   public float4 colorFactors;
   public float4 metalRoughFactors;
-  public int colorTextureIndex;
-  public int metalRoughnessTextureIndex;
-  public int normalTextureIndex;
+  public uint colorTextureIndex;
+  public uint metalRoughnessTextureIndex;
+  public uint normalTextureIndex;
+  public uint colorSamplerIndex;
+  public uint metalRoughnessSamplerIndex;
+  public uint normalSamplerIndex;
 }
 
 public struct PerEntityData
@@ -39,10 +42,18 @@ public struct PerEntityData
 [vk::binding(0, 0)]
 public ConstantBuffer<SceneData> scene;
 
+
+#ifndef MAX_SAMPLERS
+#error "MAX_SAMPLERS value must be defined!"
+#endif
+
 [vk::binding(1, 0)]
-public Sampler2D allTextures[];
+public SamplerState allSamplers[MAX_SAMPLERS];
+
+[vk::binding(2, 0)]
+public Texture2D allTextures[];
 
 // You can do this ?!
-[vk::binding(1, 0)]
-public SamplerCube allCubeTextures[];
+[vk::binding(2, 0)]
+public TextureCube allCubeTextures[];
 

@@ -34,7 +34,12 @@ VSOutput vertexMain(VSInput in) {
     return out;
 }
 
+struct SkyboxPush {
+    uint imageId;
+    uint samplerId;
+}
+
 [shader("fragment")]
-float4 fragmentMain(VSOutput in,uniform uint imageId) {
-    return allCubeTextures[imageId].Sample(in.uvw);
+float4 fragmentMain(VSOutput in, uniform SkyboxPush push) {
+    return allCubeTextures[push.imageId].Sample(allSamplers[push.samplerId], in.uvw);
 }

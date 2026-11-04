@@ -115,7 +115,10 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3 },
         { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3 },
         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 3 },
+        // Fixed size binding, every set consumes the whole array
+        { VK_DESCRIPTOR_TYPE_SAMPLER,
+          static_cast<float>(MAX_SAMPLERS) },
     };
 
     for (auto& allocator : descriptorAllocators) {
@@ -344,8 +347,10 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     // Create the scene descriptor for this frame
     DescriptorWriter writer;
 
-    auto textureCount =
-        static_cast<uint32_t>(shared.textures.descriptors.size());
+    const auto& textures = shared.textures.infos;
+    const auto& samplers = shared.samplers.infos;
+
+    auto textureCount = static_cast<uint32_t>(textures.size());
     {
         writer.write_buffer(0,
                             get_resource(Passes::sceneDataBuffer).buffer,
@@ -353,18 +358,26 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
                             0,
                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-        if (!shared.textures.descriptors.empty()) {
-            VkWriteDescriptorSet arraySet{
+        if (!samplers.empty()) {
+            writer.write(VkWriteDescriptorSet{
                 .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                 .pNext = nullptr,
                 .dstBinding = 1,
                 .dstArrayElement = 0,
-                .descriptorCount = textureCount,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .pImageInfo = shared.textures.descriptors.data()
-            };
+                .descriptorCount = static_cast<uint32_t>(samplers.size()),
+                .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+                .pImageInfo = samplers.data() });
+        }
 
-            writer.write(arraySet);
+        if (!textures.empty()) {
+            writer.write(VkWriteDescriptorSet{
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .pNext = nullptr,
+                .dstBinding = 2,
+                .dstArrayElement = 0,
+                .descriptorCount = textureCount,
+                .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+                .pImageInfo = textures.data() });
         }
     }
 

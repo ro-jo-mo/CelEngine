@@ -19,8 +19,9 @@ endif ()
 option(CEL_BUILD_TESTS "Build the test suite" ${PROJECT_IS_TOP_LEVEL})
 option(CEL_BUILD_EXAMPLES "Build the examples" ${PROJECT_IS_TOP_LEVEL})
 
-add_subdirectory(shaders)
+# src first: it defines the config cache variables shaders also use
 add_subdirectory(src)
+add_subdirectory(shaders)
 
 # Anything linking the engine gets up-to-date shaders
 add_dependencies(${PROJECT_NAME} CelShaders)

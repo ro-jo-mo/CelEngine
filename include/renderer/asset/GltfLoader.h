@@ -64,7 +64,8 @@ class GltfLoader
         // Based on the result of adding textureSamplers to the texture cache
         std::vector<MaterialConstants> materials;
 
-        std::vector<VkSampler> samplers;
+        // Resolved against the shared sampler cache in commit
+        std::vector<SamplerSettings> samplers;
         std::vector<std::pair<void*, VkExtent3D>> images;
         SceneAsset scene;
 
@@ -87,7 +88,6 @@ class GltfLoader
      * Single threaded access
      */
     void commit(GltfData& data,
-                uint32_t samplerOffset,
                 uint32_t primitiveOffset,
 
                 VulkanResourceManager& manager,
@@ -100,7 +100,7 @@ class GltfLoader
 
     static void load_meshes(fastgltf::Asset& asset, GltfData& data);
 
-    void load_samplers(const fastgltf::Asset& asset, GltfData& data) const;
+    static void load_samplers(const fastgltf::Asset& asset, GltfData& data);
 
     static void load_materials(fastgltf::Asset& asset, GltfData& data);
 
@@ -125,7 +125,6 @@ class GltfLoader
     std::vector<Primitive> primitives;
     std::vector<Material> materials;
 
-    std::vector<VkSampler> samplers;
     std::vector<VkImageView> srgbViews;
 
     StagingPool stagingPool;

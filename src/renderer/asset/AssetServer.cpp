@@ -58,7 +58,8 @@ AssetServer::AssetServer(VulkanResourceManager& manager,
                                    VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT,
                          .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
                        "material_buffer",
-                       manager)
+                       manager),
+        .samplers = SamplerCache(manager.device)
     };
 
     shared.initialise(data);
@@ -110,7 +111,7 @@ AssetServer::load_texture(std::string file, SamplerSettings sampler)
     return imageLoader.load_texture(file, sampler);
 }
 
-uint32_t
+TextureAsset
 AssetServer::get_texture(Handle<TextureAsset> handle)
 {
     return imageLoader.get_texture_index(handle);

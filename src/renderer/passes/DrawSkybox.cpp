@@ -81,14 +81,15 @@ Cel::Renderer::Passes::draw_skybox(
     vkCmdBindPipeline(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, skybox->pipeline.pipeline);
 
-    auto textureIndex = assetServer->get_texture(skybox->texture);
+    // Matches SkyboxPush in skybox.slang
+    const Asset::TextureAsset texture = assetServer->get_texture(skybox->texture);
 
     vkCmdPushConstants(cmd,
                        skybox->pipeline.pipelineLayout,
                        VK_SHADER_STAGE_ALL,
                        0,
-                       sizeof(textureIndex),
-                       &textureIndex);
+                       sizeof(texture),
+                       &texture);
 
     vkCmdDrawIndexed(
         cmd, cube.indexCount, 1, cube.firstIndex, cube.vertexOffset, 0);

@@ -11,6 +11,7 @@ cleanup_renderer(Resource<FinalCleanup>& cleanup,
                  Resource<VulkanContext>& context);
 
 void
-cleanup_asset_server(Resource<Asset::AssetServer>& assetServer);
+cleanup_asset_server(Resource<Asset::AssetServer>& assetServer,
+                     Resource<Asset::SharedAssetData>& shared);
 
 }

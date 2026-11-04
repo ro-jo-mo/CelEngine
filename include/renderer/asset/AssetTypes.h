@@ -1,5 +1,6 @@
 #pragma once
 
+#include "renderer/Descriptors.h"
 #include "renderer/resource-management/MegaBuffer.h"
 
 #include <glm/ext/matrix_float4x4.hpp>
@@ -10,30 +11,12 @@
 
 namespace Cel::Renderer::Asset {
 
-struct SamplerSettings
+// Indices into the global image and sampler descriptor arrays
+struct TextureAsset
 {
-    VkFilter min = VK_FILTER_LINEAR;
-    VkFilter mag = VK_FILTER_LINEAR;
-
-    VkSamplerMipmapMode mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    VkSamplerAddressMode addressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-    // Sensible default for textures
-    const static SamplerSettings Linear;
-
-    // Sensible default for pixel art
-    const static SamplerSettings Pixel;
+    uint32_t texture;
+    uint32_t sampler;
 };
-
-inline constexpr SamplerSettings SamplerSettings::Linear{};
-inline constexpr SamplerSettings SamplerSettings::Pixel{
-    .min = VK_FILTER_NEAREST,
-    .mag = VK_FILTER_LINEAR,
-    .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-};
-
-// Handle<TextureAsset> represents a value in the texture cache
-struct TextureAsset;
 
 struct ImageAsset
 {
@@ -69,6 +52,9 @@ struct MaterialConstants
     uint32_t colorTextureIndex;
     uint32_t metalRoughnessTextureIndex;
     uint32_t normalTextureIndex;
+    uint32_t colorSamplerIndex;
+    uint32_t metalRoughnessSamplerIndex;
+    uint32_t normalSamplerIndex;
 };
 
 struct CpuPrimitive
@@ -106,6 +92,7 @@ struct SharedAssetData
     MegaBuffer indexBuffer;
     MegaBuffer materialBuffer;
     TextureCache textures;
+    SamplerCache samplers;
 };
 
 }

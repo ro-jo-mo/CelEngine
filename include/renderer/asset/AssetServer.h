@@ -22,10 +22,12 @@ namespace Cel::Renderer {
 class Camera;
 namespace Asset {
 class AssetServer;
+struct SharedAssetData;
 }
 struct DrawData;
 void
-cleanup_asset_server(Resource<Asset::AssetServer>& assetServer);
+cleanup_asset_server(Resource<Asset::AssetServer>& assetServer,
+                     Resource<Asset::SharedAssetData>& shared);
 }
 
 namespace Cel::Renderer::Passes {
@@ -77,7 +79,7 @@ class AssetServer
         std::string file,
         SamplerSettings sampler = SamplerSettings::Linear);
 
-    uint32_t get_texture(Handle<TextureAsset> handle);
+    TextureAsset get_texture(Handle<TextureAsset> handle);
 
     Handle<Primitive> create_cube(glm::vec3 size = glm::vec3(1.0f));
 

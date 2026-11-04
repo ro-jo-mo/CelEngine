@@ -107,7 +107,6 @@ Cel::Renderer::Asset::GltfLoader::flush_cpu(VulkanResourceManager& manager,
         data.imageOffset = images.size();
 
         commit(data,
-               samplers.size(),
                primitives.size(),
 
                manager,
@@ -187,7 +186,6 @@ Cel::Renderer::Asset::GltfLoader::flush_gpu(
 
 void
 Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
-                                         uint32_t samplerOffset,
                                          uint32_t primitiveOffset,
 
                                          VulkanResourceManager& manager,
@@ -220,42 +218,50 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
             handle);
     }
 
-    // We only really store samplers to delete later
-    // If we delayed creation to now we could de duplicate
-    samplers.append_range(data.samplers);
+    // Resolve the samplers to indices in the sampler cache
+    std::vector<uint32_t> samplerIndices;
+    samplerIndices.reserve(data.samplers.size());
+    for (const auto& settings : data.samplers) {
+        samplerIndices.push_back(shared.samplers.add_sampler(settings));
+    }
 
-    auto add_texture =
-        [&](auto& pair, auto& set, uint32_t defaultImg, bool srgb) {
-            auto [img, sampler] = pair;
+    auto add_texture = [&](const auto& pair,
+                           uint32_t& textureIndex,
+                           uint32_t& samplerIndex,
+                           uint32_t defaultImg,
+                           bool srgb) {
+        auto [img, sampler] = pair;
 
-            if (img == UINT32_MAX) {
-                img = defaultImg;
-            } else {
-                img += data.imageOffset;
-            }
+        if (img == UINT32_MAX) {
+            img = defaultImg;
+        } else {
+            img += data.imageOffset;
+        }
 
-            if (sampler == UINT32_MAX) {
-                sampler = 0;
-            } else {
-                sampler += samplerOffset;
-            }
+        textureIndex =
+            shared.textures.add_texture(get_texture_view(img, srgb));
 
-            set = shared.textures.add_texture(get_texture_view(img, srgb),
-                                              samplers[sampler]);
-        };
+        samplerIndex = sampler == UINT32_MAX ? SamplerCache::defaultSampler
+                                             : samplerIndices[sampler];
+    };
 
-    // Set the index into texture array for materials
-    for (const auto& [i, material] : std::views::enumerate(data.materials)) {
-        add_texture(
-            data.textureSamplers[i * 3], material.colorTextureIndex, 0, true);
+    // Set the index into texture and sampler arrays for materials
+    for (auto&& [i, material] : std::views::enumerate(data.materials)) {
+        add_texture(data.textureSamplers[i * 3],
+                    material.colorTextureIndex,
+                    material.colorSamplerIndex,
+                    0,
+                    true);
 
         add_texture(data.textureSamplers[i * 3 + 1],
                     material.metalRoughnessTextureIndex,
+                    material.metalRoughnessSamplerIndex,
                     0,
                     false);
 
         add_texture(data.textureSamplers[i * 3 + 2],
                     material.normalTextureIndex,
+                    material.normalSamplerIndex,
                     0,
                     false);
     }
@@ -372,30 +378,37 @@ extract_mip_map(const fastgltf::Filter filter)
     }
 }
 
+static VkSamplerAddressMode
+extract_wrap(const fastgltf::Wrap wrap)
+{
+    switch (wrap) {
+        case fastgltf::Wrap::ClampToEdge:
+            return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        case fastgltf::Wrap::MirroredRepeat:
+            return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+        case fastgltf::Wrap::Repeat:
+        default:
+            return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    }
+}
+
 void
 Cel::Renderer::Asset::GltfLoader::load_samplers(const fastgltf::Asset& asset,
-                                                GltfData& data) const
+                                                GltfData& data)
 {
     data.samplers.reserve(asset.samplers.size());
-    for (auto& gltfSampler : asset.samplers) {
-        VkSamplerCreateInfo sampler = {
-            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO, .pNext = nullptr
-        };
-        sampler.maxLod = VK_LOD_CLAMP_NONE;
-        sampler.minLod = 0;
+    for (const auto& gltfSampler : asset.samplers) {
+        const auto minFilter =
+            gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest);
 
-        sampler.magFilter = extract_filter(
-            gltfSampler.magFilter.value_or(fastgltf::Filter::Nearest));
-        sampler.minFilter = extract_filter(
-            gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
-
-        sampler.mipmapMode = extract_mip_map(
-            gltfSampler.minFilter.value_or(fastgltf::Filter::Nearest));
-
-        VkSampler newSampler;
-        vkCreateSampler(device, &sampler, nullptr, &newSampler);
-
-        data.samplers.push_back(newSampler);
+        data.samplers.push_back(SamplerSettings{
+            .min = extract_filter(minFilter),
+            .mag = extract_filter(
+                gltfSampler.magFilter.value_or(fastgltf::Filter::Nearest)),
+            .mipmapMode = extract_mip_map(minFilter),
+            .addressU = extract_wrap(gltfSampler.wrapS),
+            .addressV = extract_wrap(gltfSampler.wrapT),
+        });
     }
 }
 
@@ -682,4 +695,11 @@ Cel::Renderer::Asset::GltfLoader::declare_scene_access(
 void
 Cel::Renderer::Asset::GltfLoader::cleanup()
 {
+    // Samplers are owned by the shared SamplerCache
+    for (const auto view : srgbViews) {
+        if (view != VK_NULL_HANDLE) {
+            vkDestroyImageView(device, view, nullptr);
+        }
+    }
+    srgbViews.clear();
 }

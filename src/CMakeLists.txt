@@ -3,6 +3,7 @@ set(namespace "CelEngine")
 set(MAX_ENTITIES 2048 CACHE STRING "Max number of entities that can exist at once")
 set(CMD_BUFFERS_PER_POOL 30 CACHE STRING "(Deprecated) Total number of cmd buffers created per pool for render passes")
 set(MAX_VARIABLE_DESCRIPTOR_ARRAY 4000 CACHE STRING "The number of descriptors assigned when creating a variable descriptor array for a shader")
+set(MAX_SAMPLERS 64 CACHE STRING "Size of the global sampler descriptor array (unique sampler settings). Also passed to shaders")
 
 
 configure_file(

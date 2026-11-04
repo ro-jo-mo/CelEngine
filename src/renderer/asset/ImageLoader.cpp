@@ -53,7 +53,7 @@ Cel::Renderer::Asset::ImageLoader::get_image(Handle<ImageAsset> handle)
     return images[handle.index];
 }
 
-uint32_t
+Cel::Renderer::Asset::TextureAsset
 Cel::Renderer::Asset::ImageLoader::get_texture_index(
     Handle<TextureAsset> handle)
 {
@@ -92,10 +92,10 @@ Cel::Renderer::Asset::ImageLoader::load_ktx(ImageData& data)
     // I could probably guess for a ktx1
     ktxTexture2* texture2;
 
-    const auto loadError = ktxTexture2_CreateFromNamedFile(
-        data.file.string().c_str(),
-        KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
-        &texture2);
+    const auto loadError =
+        ktxTexture2_CreateFromNamedFile(data.file.string().c_str(),
+                                        KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+                                        &texture2);
 
     ktx_error(loadError);
 
@@ -158,28 +158,11 @@ Cel::Renderer::Asset::ImageLoader::flush_cpu(VulkanResourceManager& manager,
 
     // I'll have to check the image is loaded for async
     for (const auto& data : texturesToProcess) {
-
-        VkSampler sampler;
-
-        VkSamplerCreateInfo info{
-            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .pNext = nullptr,
-            .flags = 0,
-            .magFilter = data.sampler.mag,
-            .minFilter = data.sampler.min,
-            .mipmapMode = data.sampler.mipmapMode,
-            .addressModeU = data.sampler.addressMode,
-            .addressModeV = data.sampler.addressMode,
-            .addressModeW = data.sampler.addressMode,
-            .minLod = 0,
-            .maxLod = VK_LOD_CLAMP_NONE,
+        textureIndices[data.texHandle.index] = {
+            .texture = shared.textures.add_texture(
+                images[data.imgHandle.index].image.imageView),
+            .sampler = shared.samplers.add_sampler(data.sampler)
         };
-
-        vkCreateSampler(device, &info, nullptr, &sampler);
-        samplers.push_back(sampler);
-
-        textureIndices[data.texHandle.index] = shared.textures.add_texture(
-            images[data.imgHandle.index].image.imageView, sampler);
     }
 
     texturesToProcess.clear();
@@ -247,9 +230,4 @@ Cel::Renderer::Asset::ImageLoader::cleanup()
         ktxTexture_Destroy(data.texture);
     }
     imagesToProcess.clear();
-
-    for (const auto sampler : samplers) {
-        vkDestroySampler(device, sampler, nullptr);
-    }
-    samplers.clear();
 }

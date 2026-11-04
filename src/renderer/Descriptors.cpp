@@ -1,4 +1,5 @@
 #include "renderer/Descriptors.h"
+#include "core/Config.h"
 #include "renderer/VulkanHelpers.h"
 
 #include <cassert>
@@ -263,7 +264,8 @@ Cel::Renderer::DescriptorWriter::update_set(VkDevice device,
         assert(w.dstSet != VK_NULL_HANDLE);
         assert(w.descriptorCount > 0);
 
-        if (w.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
+        if (w.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER ||
+            w.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
             w.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
             w.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
             assert(w.pImageInfo != nullptr);
@@ -280,20 +282,105 @@ Cel::Renderer::DescriptorWriter::update_set(VkDevice device,
 }
 
 uint32_t
-Cel::Renderer::TextureCache::add_texture(VkImageView view, VkSampler sampler)
+Cel::Renderer::TextureCache::add_texture(VkImageView view)
 {
-    for (const auto& [i, descriptor] : std::views::enumerate(descriptors)) {
-        if (descriptor.imageView == view && descriptor.sampler == sampler) {
-            return i;
-        }
+    if (const auto it = lookup.find(view); it != lookup.end()) {
+        return it->second;
     }
 
-    const uint32_t i = descriptors.size();
+    const auto index = static_cast<uint32_t>(infos.size());
 
-    descriptors.push_back(VkDescriptorImageInfo{
-        .sampler = sampler,
+    infos.push_back(VkDescriptorImageInfo{
+        .sampler = VK_NULL_HANDLE,
         .imageView = view,
         .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 
-    return i;
+    lookup.emplace(view, index);
+
+    return index;
+}
+
+size_t
+Cel::Renderer::SamplerSettingsHash::operator()(
+    const SamplerSettings& s) const noexcept
+{
+    size_t seed = 0;
+    auto combine = [&](const size_t v) {
+        seed ^= v + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
+    };
+
+    combine(std::hash<int>{}(s.min));
+    combine(std::hash<int>{}(s.mag));
+    combine(std::hash<int>{}(s.mipmapMode));
+    combine(std::hash<int>{}(s.addressU));
+    combine(std::hash<int>{}(s.addressV));
+    combine(std::hash<int>{}(s.addressW));
+    combine(std::hash<float>{}(s.maxAnisotropy));
+    combine(std::hash<int>{}(s.compare.has_value() ? s.compare.value() : -1));
+    combine(std::hash<int>{}(s.border));
+
+    return seed;
+}
+
+Cel::Renderer::SamplerCache::SamplerCache(VkDevice device)
+    : device(device)
+{
+    infos.reserve(MAX_SAMPLERS);
+    add_sampler(SamplerSettings::Linear);
+}
+
+uint32_t
+Cel::Renderer::SamplerCache::add_sampler(const SamplerSettings& settings)
+{
+    if (const auto it = lookup.find(settings); it != lookup.end()) {
+        return it->second;
+    }
+
+    const VkSamplerCreateInfo info{
+        .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .magFilter = settings.mag,
+        .minFilter = settings.min,
+        .mipmapMode = settings.mipmapMode,
+        .addressModeU = settings.addressU,
+        .addressModeV = settings.addressV,
+        .addressModeW = settings.addressW,
+        .mipLodBias = 0.f,
+        .anisotropyEnable = settings.maxAnisotropy > 0.f,
+        .maxAnisotropy = settings.maxAnisotropy,
+        .compareEnable = settings.compare.has_value(),
+        .compareOp = settings.compare.value_or(VK_COMPARE_OP_ALWAYS),
+        .minLod = 0.f,
+        .maxLod = VK_LOD_CLAMP_NONE,
+        .borderColor = settings.border,
+        .unnormalizedCoordinates = VK_FALSE,
+    };
+
+    VkSampler sampler;
+
+    vkCreateSampler(device, &info, nullptr, &sampler);
+
+    const auto index = infos.size();
+
+    assert(index <= MAX_SAMPLERS);
+
+    infos.push_back({ .sampler = sampler,
+                      .imageView = VK_NULL_HANDLE,
+                      .imageLayout = VK_IMAGE_LAYOUT_UNDEFINED });
+
+    lookup.emplace(settings, index);
+
+    return index;
+}
+
+void
+Cel::Renderer::SamplerCache::cleanup()
+{
+    for (const auto& info : infos) {
+        vkDestroySampler(device, info.sampler, nullptr);
+    }
+
+    infos.clear();
+    lookup.clear();
 }

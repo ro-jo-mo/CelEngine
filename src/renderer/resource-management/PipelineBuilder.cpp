@@ -607,9 +607,21 @@ PipelineBuilder::initialise_default_descriptor(VkDevice device)
         builder.add_binding(
             0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS);
 
-        VkDescriptorSetLayoutBinding textures{
+        VkDescriptorSetLayoutBinding samplers{
             .binding = 1,
-            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
+            .descriptorCount = MAX_SAMPLERS,
+            .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
+            .pImmutableSamplers = nullptr
+        };
+
+        builder.add_binding(samplers,
+                            VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+
+        // The variable count binding must be the highest binding in the set
+        VkDescriptorSetLayoutBinding textures{
+            .binding = 2,
+            .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
             .descriptorCount = MAX_VARIABLE_DESCRIPTOR_ARRAY,
             .stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
             .pImmutableSamplers = nullptr

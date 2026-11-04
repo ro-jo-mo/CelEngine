@@ -19,6 +19,8 @@ set(CEL_SHADER_FLAGS
         -fvk-use-scalar-layout
         -matrix-layout-column-major
         -g
+        # Engine config shared with C++ (see include/core/Config.h.in)
+        -DMAX_SAMPLERS=${MAX_SAMPLERS}
 )
 
 if (CMAKE_RUNTIME_OUTPUT_DIRECTORY)

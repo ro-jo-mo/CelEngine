@@ -32,36 +32,37 @@ Cel::Renderer::Passes::register_tonemap(Resource<RenderExtent>& extent)
 }
 
 void
-Cel::Renderer::Passes::tonemap(
+Cel::Renderer::Passes::tonemap_pass(
     Resource<Asset::SharedAssetData>& shared,
     ParallelResource<RenderGraph::PassServer>& passServer)
-{
-    VkCommandBuffer cmd;
+{ /*
+     VkCommandBuffer cmd;
 
-    {
-        cmd = passServer.write()->get_cmd_buffer(Passes::tonemapPass);
-    }
+     {
+         cmd = passServer.write()->get_cmd_buffer(Passes::tonemapPass);
+     }
 
-    auto access = passServer.partial_read();
+     auto access = passServer.partial_read();
 
-    const static auto pipeline = PipelineBuilder(access->get_device())
-                                     .add_graphics_shader("tonemap")
-                                     .disable_depth_test()
-                                     .build();
+     const static auto pipeline = PipelineBuilder(access->get_device())
+                                      .add_graphics_shader("tonemap")
+                                      .disable_depth_test()
+                                      .build();
 
-    VkRenderingAttachmentInfo colourAttachment = Initialisers::attachment_info(
-        access->get_resource(Passes::finalImage).imageView,
-        nullptr,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+     VkRenderingAttachmentInfo colourAttachment = Initialisers::attachment_info(
+         access->get_resource(Passes::finalImage).imageView,
+         nullptr,
+         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    VkRenderingInfo renderInfo = Initialisers::rendering_info(
-        access->get_extent(), &colourAttachment, nullptr);
+     VkRenderingInfo renderInfo = Initialisers::rendering_info(
+         access->get_extent(), &colourAttachment, nullptr);
 
-    vkCmdBeginRendering(cmd, &renderInfo);
+     vkCmdBeginRendering(cmd, &renderInfo);
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
+     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
 
-    auto imageIndice = /* Get draw image index in texture array */;
+     auto imageIndice =
+    ;
 
     vkCmdPushConstants(cmd,
                        pipeline.pipelineLayout,
@@ -71,4 +72,5 @@ Cel::Renderer::Passes::tonemap(
                        &imageIndice);
 
     vkCmdEndRendering(cmd);
+    */
 }

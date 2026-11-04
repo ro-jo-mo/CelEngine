@@ -38,7 +38,7 @@ class ImageLoader
 
     ImageAsset& get_image(Handle<ImageAsset> handle);
 
-    uint32_t get_texture_index(Handle<TextureAsset> handle);
+    TextureAsset get_texture_index(Handle<TextureAsset> handle);
 
     void flush_cpu(VulkanResourceManager& manager,
                    SharedAssetData& shared,
@@ -94,11 +94,9 @@ class ImageLoader
 
     std::vector<ImageAsset> images;
 
-    // A simple mapping of texture handle to index in the texture cache
-    std::vector<uint32_t> textureIndices;
-
-    // Owned here, destroyed in cleanup
-    std::vector<VkSampler> samplers;
+    // A simple mapping of texture handle to indices in the texture and sampler
+    // caches
+    std::vector<TextureAsset> textureIndices;
 
     StagingPool stagingPool;
 
