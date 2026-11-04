@@ -115,17 +115,16 @@ camera_controller(
     }
 }
 
-class MyPlugin : public Plugin
+class MyPlugin
 {
   public:
-    void build(SystemScheduler scheduler,
-               ResourceManager& resourceManager) override
+    void build(PluginManager& manager)
     {
-        scheduler.add_system(Startup::Start, spawn_camera);
-        scheduler.add_system(Startup::Start, spawn_asset);
+        manager.add_system(Startup::Start, spawn_camera);
+        manager.add_system(Startup::Start, spawn_asset);
 
-        scheduler.add_system(MainUpdate::Update, spin_it);
-        scheduler.add_system(MainUpdate::Last, camera_controller);
+        manager.add_system(MainUpdate::Update, spin_it);
+        manager.add_system(MainUpdate::Last, camera_controller);
     }
 };
 

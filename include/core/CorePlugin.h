@@ -3,10 +3,9 @@
 #include "Plugin.h"
 
 namespace Cel {
-class CorePlugin final : public Plugin
+class CorePlugin
 {
   public:
-    void build(SystemScheduler scheduler,
-               ResourceManager& resourceManager) override;
+    void build(PluginManager& manager);
 };
 }

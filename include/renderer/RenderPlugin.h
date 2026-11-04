@@ -2,10 +2,9 @@
 #include "../core/Plugin.h"
 
 namespace Cel::Renderer {
-class RenderPlugin final : public Plugin
+class RenderPlugin
 {
   public:
-    void build(SystemScheduler scheduler,
-               ResourceManager& resourceManager) override;
+    void build(PluginManager& manager);
 };
 }

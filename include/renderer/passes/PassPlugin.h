@@ -4,11 +4,10 @@
 
 namespace Cel::Renderer::Passes {
 
-class PassPlugin final : public Plugin
+class PassPlugin
 {
   public:
-    void build(SystemScheduler scheduler,
-               ResourceManager& resourceManager) override;
+    void build(PluginManager& manager);
 };
 
 }

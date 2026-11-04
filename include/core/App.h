@@ -44,11 +44,12 @@ class App
     /**
      * @brief Add a plugin to the game.
      * @tparam T Plugin type
+     * @param plugin The plugin, holding any configuration for it. Defaults to
+     * a value initialised plugin
      * @return A reference to this ecs, for chaining calls
      */
-    template<typename T>
-        requires std::derived_from<T, Plugin>
-    App& add_plugin();
+    template<Plugin T>
+    App& add_plugin(T plugin = {});
 
   private:
     template<ScheduleEnum Enum>
@@ -160,12 +161,13 @@ App::end(bool multithread)
     return *this;
 }
 
-template<typename T>
-    requires std::derived_from<T, Plugin>
+template<Plugin T>
 App&
-App::add_plugin()
+App::add_plugin(T plugin)
 {
-    T().build(SystemScheduler(schedules, systemAllocator), resourceManager);
+    PluginManager manager(SystemScheduler(schedules, systemAllocator),
+                          resourceManager);
+    plugin.build(manager);
     return *this;
 }
 

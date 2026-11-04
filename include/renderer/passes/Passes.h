@@ -26,6 +26,7 @@ inline const auto presentPass = HandleAllocator::allocate_pass("present_pass");
 
 inline const auto drawImage = HandleAllocator::allocate_image("draw_image");
 inline const auto depthImage = HandleAllocator::allocate_image("depth_image");
+inline const auto finalImage = HandleAllocator::allocate_image("final_image");
 
 // The typical render passes I expect all programs to have are also stored here,
 // to simplify includes
@@ -49,5 +50,7 @@ inline const auto drawMeshPass =
     HandleAllocator::allocate_pass("draw_mesh_pass");
 
 inline const auto skyboxPass = HandleAllocator::allocate_pass("skybox_pass");
+
+inline const auto tonemapPass = HandleAllocator::allocate_pass("tonemap_pass");
 
 }

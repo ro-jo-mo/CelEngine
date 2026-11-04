@@ -111,21 +111,16 @@ Cel::Renderer::Passes::register_draw_mesh_pass(
     auto pass =
         RenderGraph::PassBuilder(drawMeshPass).set_queue(Queues::graphics);
 
-    VkExtent3D ext{ .width = extent->extent.width,
-                    .height = extent->extent.height,
-                    .depth = 1 };
-
     pass.create_image(Passes::drawImage,
                       false,
                       VK_FORMAT_R16G16B16A16_SFLOAT,
-                      ext,
-                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                          VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+                      extent->extent3d(),
+                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                       VK_IMAGE_ASPECT_COLOR_BIT)
         .create_image(Passes::depthImage,
                       false,
                       VK_FORMAT_D32_SFLOAT,
-                      ext,
+                      extent->extent3d(),
                       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
                           VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                       VK_IMAGE_ASPECT_DEPTH_BIT)
@@ -166,13 +161,10 @@ Cel::Renderer::Passes::draw_mesh(
 
     auto access = passServer.partial_read();
 
-    VkClearValue clear{ .color = VkClearColorValue{
-                            .float32 = { 0.0, 0.0, 0.0, 0.0 } } };
-
     // Rendering info setup
     VkRenderingAttachmentInfo colourAttachment = Initialisers::attachment_info(
         access->get_resource(Passes::drawImage).imageView,
-        &clear,
+        nullptr,
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
     VkRenderingAttachmentInfo depthAttachment =

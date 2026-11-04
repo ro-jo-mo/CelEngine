@@ -15,11 +15,10 @@ namespace Cel::Renderer::RenderGraph {
 class PassServer;
 class Graph;
 
-class RenderGraphPlugin final : public Plugin
+class RenderGraphPlugin
 {
   public:
-    void build(SystemScheduler scheduler,
-               ResourceManager& resourceManager) override;
+    void build(PluginManager& manager);
 
     static void compile_graph(Resource<Graph>& graph,
                               Resource<VulkanResourceManager>& manager,

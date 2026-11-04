@@ -9,4 +9,7 @@ namespace Cel::Renderer::Passes {
 void
 register_tonemap();
 
+void
+tonemap_pass();
+
 }

@@ -98,7 +98,7 @@ target_sources(${PROJECT_NAME}
         "renderer/passes/PresentPass.cpp"
         "renderer/passes/PassPlugin.cpp"
         "renderer/passes/StagingPool.cpp"
-
+        "renderer/passes/Tonemap.cpp"
 
         "renderer/resource-management/ResourceTracker.cpp"
         "renderer/resource-management/VulkanResourceManager.cpp"
@@ -198,6 +198,7 @@ set(public_headers
         include/renderer/passes/PassPlugin.h
         include/renderer/passes/BasePasses.h
         include/renderer/passes/StagingPool.h
+        include/renderer/passes/Tonemap.h
 
         include/renderer/passes/DrawMeshes.h
         include/renderer/passes/DrawSkybox.h

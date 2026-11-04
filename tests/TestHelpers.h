@@ -58,13 +58,12 @@ inline Cel::Rotation rotation{
 }
 
 template<auto Schedule, auto funcPtr>
-class SingleSystemPlugin : public Cel::Plugin
+class SingleSystemPlugin
 {
   public:
-    void build(Cel::SystemScheduler scheduler,
-               Cel::ResourceManager& resourceManager) override
+    void build(Cel::PluginManager& manager)
     {
-        scheduler.add_system(Schedule, funcPtr);
+        manager.add_system(Schedule, funcPtr);
     }
 };
 
@@ -75,66 +74,61 @@ StopRunning(Cel::Resource<Cel::Running>& running)
 }
 
 template<auto Schedule>
-class StopAfterOneFramePlugin : public Cel::Plugin
+class StopAfterOneFramePlugin
 {
   public:
-    void build(Cel::SystemScheduler scheduler, Cel::ResourceManager&) override
+    void build(Cel::PluginManager& manager)
     {
-        scheduler.add_system(Schedule, StopRunning);
+        manager.add_system(Schedule, StopRunning);
     }
 };
 
 template<auto Schedule, auto... Systems>
-class ChainPlugin : public Cel::Plugin
+class ChainPlugin
 {
   public:
-    void build(Cel::SystemScheduler scheduler,
-               Cel::ResourceManager& resourceManager) override
+    void build(Cel::PluginManager& manager)
     {
-        scheduler.add_chain(Schedule, Systems...);
+        manager.add_chain(Schedule, Systems...);
     }
 };
 
 template<auto Schedule, auto... Systems>
-class GroupPlugin : public Cel::Plugin
+class GroupPlugin
 {
   public:
-    void build(Cel::SystemScheduler scheduler,
-               Cel::ResourceManager& resourceManager) override
+    void build(Cel::PluginManager& manager)
     {
-        scheduler.add_group(Schedule, Systems...);
+        manager.add_group(Schedule, Systems...);
     }
 };
 
 template<auto Schedule, auto First, auto Second>
-class BeforePlugin : public Cel::Plugin
+class BeforePlugin
 {
   public:
-    void build(Cel::SystemScheduler scheduler,
-               Cel::ResourceManager& resourceManager) override
+    void build(Cel::PluginManager& manager)
     {
-        scheduler.add_system(Schedule, First).before(Second);
+        manager.add_system(Schedule, First).before(Second);
     }
 };
 
 template<auto Schedule, auto First, auto Second>
-class AfterPlugin : public Cel::Plugin
+class AfterPlugin
 {
   public:
-    void build(Cel::SystemScheduler scheduler,
-               Cel::ResourceManager& resourceManager) override
+    void build(Cel::PluginManager& manager)
     {
-        scheduler.add_system(Schedule, Second).after(First);
+        manager.add_system(Schedule, Second).after(First);
     }
 };
 
 template<typename ResType, auto... Args>
-class ResourcePlugin : public Cel::Plugin
+class ResourcePlugin
 {
   public:
-    void build(Cel::SystemScheduler scheduler,
-               Cel::ResourceManager& resourceManager) override
+    void build(Cel::PluginManager& manager)
     {
-        resourceManager.insert_resource(ResType{ Args... });
+        manager.insert_resource(ResType{ Args... });
     }
 };

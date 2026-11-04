@@ -65,19 +65,18 @@ init_pass_server(Resource<VulkanContext>& context,
 }
 
 void
-RenderGraph::RenderGraphPlugin::build(SystemScheduler scheduler,
-                                      ResourceManager& resourceManager)
+RenderGraph::RenderGraphPlugin::build(PluginManager& manager)
 {
-    resourceManager.insert_parallel_resource_as_null<PassServer>();
-    resourceManager.insert_resource<Graph>();
+    manager.insert_parallel_resource_as_null<PassServer>();
+    manager.insert_resource<Graph>();
 
-    scheduler.add_system(Startup::PreStart, init_pass_server)
+    manager.add_system(Startup::PreStart, init_pass_server)
         .after(initialise_renderer);
 
-    scheduler.add_system(Render::Update, compile_graph);
+    manager.add_system(Render::Update, compile_graph);
     // Acquire after compile_graph has waited on this frame's fence, so the
     // acquire semaphore is free to reuse. Must precede present pass recording
-    scheduler.add_system(Render::Update, acquire_swapchain_image)
+    manager.add_system(Render::Update, acquire_swapchain_image)
         .after(compile_graph);
-    scheduler.add_system(Render::Last, execute_graph);
+    manager.add_system(Render::Last, execute_graph);
 }

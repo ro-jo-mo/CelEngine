@@ -45,8 +45,13 @@ struct VulkanContext
 
 struct RenderExtent
 {
-    VkExtent2D extent;
+    VkExtent2D extent{};
     float renderScale = 1.0f;
+
+    [[nodiscard]] VkExtent3D extent3d() const
+    {
+        return { .width = extent.width, .height = extent.height, .depth = 1 };
+    }
 };
 
 // Constants unique to each entity

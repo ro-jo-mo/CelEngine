@@ -10,23 +10,22 @@
 using namespace Cel;
 
 void
-Renderer::RenderPlugin::build(SystemScheduler scheduler,
-                              ResourceManager& resourceManager)
+Renderer::RenderPlugin::build(PluginManager& manager)
 {
-    resourceManager.insert_resource<FinalCleanup>();
-    resourceManager.insert_resource<RenderExtent>();
-    resourceManager.insert_resource_as_null<Asset::AssetServer>();
-    resourceManager.insert_resource_as_null<Asset::SharedAssetData>();
-    resourceManager.insert_resource_as_null<VulkanResourceManager>();
-    resourceManager.insert_resource_as_null<Swapchain>();
-    resourceManager.insert_resource_as_null<Window>();
-    resourceManager.insert_resource_as_null<VulkanContext>();
-    resourceManager.insert_resource_as_null<VmaAllocator>();
+    manager.insert_resource<FinalCleanup>();
+    manager.insert_resource<RenderExtent>();
+    manager.insert_resource_as_null<Asset::AssetServer>();
+    manager.insert_resource_as_null<Asset::SharedAssetData>();
+    manager.insert_resource_as_null<VulkanResourceManager>();
+    manager.insert_resource_as_null<Swapchain>();
+    manager.insert_resource_as_null<Window>();
+    manager.insert_resource_as_null<VulkanContext>();
+    manager.insert_resource_as_null<VmaAllocator>();
 
-    scheduler.add_system(Startup::PreStart, initialise_renderer);
+    manager.add_system(Startup::PreStart, initialise_renderer);
 
-    scheduler.add_group(Render::First, set_render_extent, camera_system);
+    manager.add_group(Render::First, set_render_extent, camera_system);
 
-    scheduler.add_chain(
+    manager.add_chain(
         TearDown::Middle, cleanup_asset_server, cleanup_renderer);
 }
