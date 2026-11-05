@@ -23,7 +23,7 @@ Cel::Renderer::Passes::register_tonemap(Resource<RenderExtent>& extent,
                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
             .create_image(Passes::finalImage,
                           false,
-                          VK_FORMAT_R8G8B8A8_SRGB,
+                          VK_FORMAT_R8G8B8A8_UNORM,
                           extent->extent3d(),
                           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                               VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
@@ -53,7 +53,7 @@ Cel::Renderer::Passes::tonemap_pass(
         PipelineBuilder(access->get_device())
             .add_graphics_shader("tonemap")
             .disable_depth_test()
-            .set_color_attachment(VK_FORMAT_R8G8B8A8_SRGB)
+            .set_color_attachment(VK_FORMAT_R8G8B8A8_UNORM)
             .set_cull_mode(VK_CULL_MODE_NONE)
             .build();
 

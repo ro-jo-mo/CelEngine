@@ -24,7 +24,6 @@ vertexMain(uint vertexId : SV_VulkanVertexID)
 
 // Source from https://www.shadertoy.com/view/mdcSDH
 
-
 float3 agx_default_contrast_approx(float3 x) {
   float3 x2 = x * x;
   float3 x4 = x2 * x2;
@@ -47,7 +46,7 @@ float3 agx(float3 val) {
   const float maxEv = 4.026069f;
 
   // Input transform
-  val = mul(agx_mat, val);
+  val = mul(val, agx_mat);
   
   // Log2 space encoding
   val = clamp(log2(max(val,0.0000000001)), minEv, maxEv);
@@ -59,6 +58,15 @@ float3 agx(float3 val) {
   return val;
 }
 
+float3 agx_eotf(float3 val) {
+  const float3x3 agx_mat_inv = float3x3(
+    1.19687900512017, -0.0528968517574562, -0.0529716355144438,
+    -0.0980208811401368, 1.15190312990417, -0.0980434501171241,
+    -0.0990297440797205, -0.0989611768448433, 1.15107367264116);
+
+  return mul(val, agx_mat_inv);
+}
+
 
 [shader("fragment")]
 float4
@@ -66,5 +74,7 @@ fragmentMain(VSOutput in, uniform uint imageId)
 {
   float4 colour = allTextures[imageId].Load(int3(int2(in.pos.xy),0));
 
-  return float4(agx(colour.xyz),1.0);
+  float3 display = saturate(agx_eotf(agx(colour.xyz)));
+
+  return float4(display, 1.0);
 }
