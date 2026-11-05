@@ -7,6 +7,7 @@
 #include "renderer/passes/DrawMeshes.h"
 #include "renderer/passes/DrawSkybox.h"
 #include "renderer/passes/PresentPass.h"
+#include "renderer/passes/Tonemap.h"
 
 void
 Cel::Renderer::Passes::PassPlugin::build(PluginManager& manager)
@@ -25,19 +26,21 @@ Cel::Renderer::Passes::PassPlugin::build(PluginManager& manager)
     manager.add_system(Render::First, PassFriend::register_asset_upload_pass);
 
     manager.add_group(Render::PreUpdate,
-                        register_skybox_pass,
-                        register_indirect_draw_data_pass,
-                        register_draw_mesh_pass,
-                        PassFriend::register_create_scene_data_pass,
-                        register_present_pass);
+                      register_skybox_pass,
+                      register_indirect_draw_data_pass,
+                      register_tonemap,
+                      register_draw_mesh_pass,
+                      PassFriend::register_create_scene_data_pass,
+                      register_present_pass);
 
     manager.add_chain(Render::PostUpdate,
-                        create_indirect_draw_data,
-                        PassFriend::create_scene_data);
+                      create_indirect_draw_data,
+                      PassFriend::create_scene_data);
 
     manager.add_group(Render::PostUpdate,
-                        draw_mesh,
-                        PassFriend::upload_assets,
-                        draw_skybox,
-                        record_present_pass);
+                      draw_mesh,
+                      tonemap_pass,
+                      PassFriend::upload_assets,
+                      draw_skybox,
+                      record_present_pass);
 }

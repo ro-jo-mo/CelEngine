@@ -12,9 +12,8 @@ Cel::Renderer::Passes::register_present_pass(
     Resource<RenderGraph::Graph>& graph)
 {
 
-
     auto pass = RenderGraph::PassBuilder(Passes::presentPass)
-                    .read_image(Passes::drawImage,
+                    .read_image(Passes::finalImage,
                                 VK_ACCESS_2_TRANSFER_READ_BIT,
                                 VK_PIPELINE_STAGE_2_BLIT_BIT,
                                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
@@ -40,7 +39,7 @@ Cel::Renderer::Passes::record_present_pass(
 
     auto access = passServer.partial_read();
 
-    const auto& image = access->get_resource(Passes::drawImage);
+    const auto& image = access->get_resource(Passes::finalImage);
     const auto target = swapchain->images[swapchain->imageIndex];
 
     Utils::transition_image_layout(cmd,

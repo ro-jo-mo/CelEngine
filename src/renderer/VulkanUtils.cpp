@@ -586,6 +586,73 @@ Cel::Renderer::Utils::set_scissor_and_viewport(VkCommandBuffer cmd,
 
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 }
+
+Cel::Renderer::Utils::RenderScope::~RenderScope()
+{
+    vkCmdEndRendering(cmd);
+}
+
+Cel::Renderer::Utils::RenderScope
+Cel::Renderer::Utils::begin_rendering(
+    VkCommandBuffer cmd,
+    const VkRenderingAttachmentInfo* colorAttachment,
+    const VkRenderingAttachmentInfo* depthAttachment,
+    const VkExtent2D extent)
+{
+
+    const VkRenderingInfo renderInfo =
+        Initialisers::rendering_info(extent, colorAttachment, depthAttachment);
+
+    vkCmdBeginRendering(cmd, &renderInfo);
+
+    set_scissor_and_viewport(cmd, extent);
+
+    return { cmd };
+}
+
+Cel::Renderer::Utils::RenderScope
+Cel::Renderer::Utils::begin_rendering(VkCommandBuffer cmd,
+                                      VkImageView colorView,
+                                      VkImageView depthView,
+                                      const VkExtent2D extent,
+                                      VkAttachmentLoadOp depthLoadOp)
+{
+    VkRenderingAttachmentInfo colorAttachment = Initialisers::attachment_info(
+        colorView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    VkRenderingAttachmentInfo depthAttachment =
+        Initialisers::depth_attachment_info(
+            depthView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+    depthAttachment.loadOp = depthLoadOp;
+
+    return begin_rendering(cmd, &colorAttachment, &depthAttachment, extent);
+}
+
+Cel::Renderer::Utils::RenderScope
+Cel::Renderer::Utils::begin_rendering_no_depth(VkCommandBuffer cmd,
+                                               VkImageView colorView,
+                                               VkExtent2D extent)
+{
+    VkRenderingAttachmentInfo colorAttachment = Initialisers::attachment_info(
+        colorView, nullptr, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    return begin_rendering(cmd, &colorAttachment, nullptr, extent);
+}
+
+Cel::Renderer::Utils::RenderScope
+Cel::Renderer::Utils::begin_rendering_no_color(VkCommandBuffer cmd,
+                                               VkImageView depthView,
+                                               VkExtent2D extent)
+{
+
+    VkRenderingAttachmentInfo depthAttachment =
+        Initialisers::depth_attachment_info(
+            depthView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+
+    return begin_rendering(cmd, nullptr, &depthAttachment, extent);
+}
+
 void
 Cel::Renderer::Utils::set_resource_name(VkDevice device,
                                         VmaAllocator allocator,

@@ -62,8 +62,8 @@ depth_attachment_info(
 
 VkRenderingInfo
 rendering_info(VkExtent2D renderExtent,
-              VkRenderingAttachmentInfo* colorAttachment,
-              VkRenderingAttachmentInfo* depthAttachment);
+               const VkRenderingAttachmentInfo* colorAttachment,
+               const VkRenderingAttachmentInfo* depthAttachment);
 
 VkImageSubresourceRange
 image_subresource_range(VkImageAspectFlags aspectMask);

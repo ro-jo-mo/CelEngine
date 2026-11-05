@@ -57,32 +57,20 @@ Cel::Renderer::Passes::draw_skybox(
 
     auto access = passServer.partial_read();
 
-    // Rendering info setup
-    VkRenderingAttachmentInfo colourAttachment = Initialisers::attachment_info(
+    auto guard = Utils::begin_rendering(
+        cmd,
         access->get_resource(Passes::drawImage).imageView,
-        nullptr,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-    VkRenderingAttachmentInfo depthAttachment =
-        Initialisers::depth_attachment_info(
-            access->get_resource(Passes::depthImage).imageView,
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-
-    VkRenderingInfo renderInfo = Initialisers::rendering_info(
-        access->get_extent(), &colourAttachment, &depthAttachment);
-
-    Utils::set_scissor_and_viewport(cmd, access->get_extent());
-
-    vkCmdBeginRendering(cmd, &renderInfo);
+        access->get_resource(Passes::depthImage).imageView,
+        access->get_extent(),
+        VK_ATTACHMENT_LOAD_OP_LOAD);
 
     auto& cube = assetServer->get_primitive(skybox->cube);
 
     vkCmdBindPipeline(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, skybox->pipeline.pipeline);
 
-    // Matches SkyboxPush in skybox.slang
-    const Asset::TextureAsset texture = assetServer->get_texture(skybox->texture);
+    const Asset::TextureAsset texture =
+        assetServer->get_texture(skybox->texture);
 
     vkCmdPushConstants(cmd,
                        skybox->pipeline.pipelineLayout,
@@ -93,6 +81,4 @@ Cel::Renderer::Passes::draw_skybox(
 
     vkCmdDrawIndexed(
         cmd, cube.indexCount, 1, cube.firstIndex, cube.vertexOffset, 0);
-
-    vkCmdEndRendering(cmd);
 }

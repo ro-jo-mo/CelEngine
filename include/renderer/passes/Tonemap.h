@@ -5,6 +5,7 @@ namespace Cel::Renderer {
 struct RenderExtent;
 }
 namespace Cel::Renderer::RenderGraph {
+class Graph;
 class PassServer;
 }
 namespace Cel::Renderer::Asset {
@@ -17,10 +18,10 @@ namespace Cel::Renderer::Passes {
 // vkCmdDraw(3,1,0)
 
 void
-register_tonemap(Resource<RenderExtent>& extent);
+register_tonemap(Resource<RenderExtent>& extent,
+                 Resource<RenderGraph::Graph>& graph);
 
 void
-tonemap_pass(Resource<Asset::SharedAssetData>& shared,
-             ParallelResource<RenderGraph::PassServer>& passServer);
+tonemap_pass(ParallelResource<RenderGraph::PassServer>& passServer);
 
 }

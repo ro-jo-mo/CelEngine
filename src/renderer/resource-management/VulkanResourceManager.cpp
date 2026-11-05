@@ -4,6 +4,20 @@
 #include "renderer/VulkanUtils.h"
 #include "renderer/resource-management/ResourceTracker.h"
 
+const Cel::Renderer::BufferRequirements&
+Cel::Renderer::VulkanResourceManager::get_requirements(
+    const Handle<AllocatedBuffer> handle) const
+{
+    return bufferPool.requirements.at(handle);
+}
+
+const Cel::Renderer::ImageRequirements&
+Cel::Renderer::VulkanResourceManager::get_requirements(
+    const Handle<AllocatedImage> handle) const
+{
+    return imagePool.requirements.at(handle);
+}
+
 Cel::Renderer::VulkanResourceManager::VulkanResourceManager(
     VkDevice device,
     VmaAllocator allocator)

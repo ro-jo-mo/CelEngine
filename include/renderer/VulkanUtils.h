@@ -129,6 +129,36 @@ upload_to_buffer(VkCommandBuffer cmd,
 void
 set_scissor_and_viewport(VkCommandBuffer cmd, const VkExtent2D& extent);
 
+// Basic raii wrapper that executes vkCmdEndRendering after leaving scope
+struct RenderScope
+{
+    ~RenderScope();
+    VkCommandBuffer cmd;
+};
+
+[[nodiscard]] RenderScope
+begin_rendering(VkCommandBuffer cmd,
+                const VkRenderingAttachmentInfo* colorAttachment,
+                const VkRenderingAttachmentInfo* depthAttachment,
+                VkExtent2D extent);
+
+[[nodiscard]] RenderScope
+begin_rendering(VkCommandBuffer cmd,
+                VkImageView colorView,
+                VkImageView depthView,
+                VkExtent2D extent,
+                VkAttachmentLoadOp depthLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR);
+
+[[nodiscard]] RenderScope
+begin_rendering_no_depth(VkCommandBuffer cmd,
+                         VkImageView colorView,
+                         VkExtent2D extent);
+
+[[nodiscard]] RenderScope
+begin_rendering_no_color(VkCommandBuffer cmd,
+                         VkImageView depthView,
+                         VkExtent2D extent);
+
 void
 set_resource_name(VkDevice device,
                   VmaAllocator allocator,

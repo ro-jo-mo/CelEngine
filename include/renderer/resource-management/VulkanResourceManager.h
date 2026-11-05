@@ -49,6 +49,12 @@ class VulkanResourceManager
 
     [[nodiscard]] bool does_resource_exist(Handle<AllocatedImage> handle) const;
 
+    [[nodiscard]] const BufferRequirements& get_requirements(
+        Handle<AllocatedBuffer> handle) const;
+
+    [[nodiscard]] const ImageRequirements& get_requirements(
+        Handle<AllocatedImage> handle) const;
+
     /**
      * This resource is no longer in use and can be safely deleted
      */

@@ -117,8 +117,7 @@ Cel::Renderer::RenderGraph::PassServer::PassServer(
         { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
         { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 3 },
         // Fixed size binding, every set consumes the whole array
-        { VK_DESCRIPTOR_TYPE_SAMPLER,
-          static_cast<float>(MAX_SAMPLERS) },
+        { VK_DESCRIPTOR_TYPE_SAMPLER, static_cast<float>(MAX_SAMPLERS) },
     };
 
     for (auto& allocator : descriptorAllocators) {
@@ -247,6 +246,22 @@ Cel::Renderer::RenderGraph::PassServer::get_resource(
     return mappedImages.at(handle);
 }
 
+uint32_t
+Cel::Renderer::RenderGraph::PassServer::get_texture_index(
+    const Handle<AllocatedImage> handle) const
+{
+    const auto it = passTextureIndices.find(handle);
+
+    if (it == passTextureIndices.end()) {
+        throw_error("Attempted to access {} through texture indice. Image must "
+                    "be created through pass.create_image(...) with "
+                    "VK_IMAGE_USAGE_SAMPLED_BIT",
+                    Passes::HandleAllocator::get_name(handle));
+    }
+    
+    return it->second;
+}
+
 void
 Cel::Renderer::RenderGraph::PassServer::release_resources(
     VulkanResourceManager& manager)
@@ -336,18 +351,42 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
         buffersToFree[freeFrame].emplace_back(mapped);
         mappedBuffers.emplace(handle, manager.get_resource_from_handle(mapped));
     }
+
+    // We create a copy of the texture cache that we can then append the pass
+    // images to for shader access
+    passImageInfos.assign_range(shared.textures.infos);
+    passTextureIndices.clear();
+
     for (const auto& [handle, mapped] : imageMapping) {
         const auto freeFrame =
             perFrameImages.contains(handle) ? currentFrame : nextFrame;
 
         imagesToFree[freeFrame].emplace_back(mapped);
         mappedImages.emplace(handle, manager.get_resource_from_handle(mapped));
+
+        // Add pass images to descriptor array
+        // Skip images that can't be accessed from shader
+        if (!(manager.get_requirements(mapped).usages &
+              VK_IMAGE_USAGE_SAMPLED_BIT)) {
+            continue;
+        }
+
+        passTextureIndices.emplace(
+            handle, static_cast<uint32_t>(passImageInfos.size()));
+
+        passImageInfos.push_back(VkDescriptorImageInfo{
+            .sampler = VK_NULL_HANDLE,
+            .imageView = mappedImages.at(handle).get().imageView,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
     }
+
+    assert(passImageInfos.size() <= MAX_VARIABLE_DESCRIPTOR_ARRAY &&
+           "Too many textures, increase MAX_VARIABLE_DESCRIPTOR_ARRAY");
 
     // Create the scene descriptor for this frame
     DescriptorWriter writer;
 
-    const auto& textures = shared.textures.infos;
+    const auto& textures = passImageInfos;
     const auto& samplers = shared.samplers.infos;
 
     auto textureCount = static_cast<uint32_t>(textures.size());

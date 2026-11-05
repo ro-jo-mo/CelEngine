@@ -130,10 +130,7 @@ present_info()
 }
 
 VkRenderingAttachmentInfo
-attachment_info(
-    VkImageView view,
-    VkClearValue* clear,
-    VkImageLayout layout /*= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL*/)
+attachment_info(VkImageView view, VkClearValue* clear, VkImageLayout layout)
 {
     VkRenderingAttachmentInfo colorAttachment{};
     colorAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -152,9 +149,7 @@ attachment_info(
 }
 
 VkRenderingAttachmentInfo
-depth_attachment_info(
-    VkImageView view,
-    VkImageLayout layout /*= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL*/)
+depth_attachment_info(VkImageView view, VkImageLayout layout)
 {
     VkRenderingAttachmentInfo depthAttachment{};
     depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -171,8 +166,8 @@ depth_attachment_info(
 
 VkRenderingInfo
 rendering_info(VkExtent2D renderExtent,
-               VkRenderingAttachmentInfo* colorAttachment,
-               VkRenderingAttachmentInfo* depthAttachment)
+               const VkRenderingAttachmentInfo* colorAttachment,
+               const VkRenderingAttachmentInfo* depthAttachment)
 {
     VkRenderingInfo renderInfo{};
     renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;

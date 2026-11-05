@@ -115,7 +115,8 @@ Cel::Renderer::Passes::register_draw_mesh_pass(
                       false,
                       VK_FORMAT_R16G16B16A16_SFLOAT,
                       extent->extent3d(),
-                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                          VK_IMAGE_USAGE_SAMPLED_BIT,
                       VK_IMAGE_ASPECT_COLOR_BIT)
         .create_image(Passes::depthImage,
                       false,
@@ -161,23 +162,11 @@ Cel::Renderer::Passes::draw_mesh(
 
     auto access = passServer.partial_read();
 
-    // Rendering info setup
-    VkRenderingAttachmentInfo colourAttachment = Initialisers::attachment_info(
+    auto guard = Utils::begin_rendering(
+        cmd,
         access->get_resource(Passes::drawImage).imageView,
-        nullptr,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-
-    VkRenderingAttachmentInfo depthAttachment =
-        Initialisers::depth_attachment_info(
-            access->get_resource(Passes::depthImage).imageView,
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
-
-    VkRenderingInfo renderInfo = Initialisers::rendering_info(
-        access->get_extent(), &colourAttachment, &depthAttachment);
-
-    Utils::set_scissor_and_viewport(cmd, access->get_extent());
-
-    vkCmdBeginRendering(cmd, &renderInfo);
+        access->get_resource(Passes::depthImage).imageView,
+        access->get_extent());
 
     static auto pipeline = PipelineBuilder(access->get_device())
                                .add_graphics_shader("mesh")
@@ -193,6 +182,4 @@ Cel::Renderer::Passes::draw_mesh(
                              0,
                              renderables.size(),
                              sizeof(VkDrawIndexedIndirectCommand));
-
-    vkCmdEndRendering(cmd);
 }

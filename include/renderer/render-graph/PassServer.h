@@ -45,6 +45,14 @@ class PassServer
     [[nodiscard]] AllocatedImage& get_resource(
         Handle<AllocatedImage> handle) const;
 
+    /**
+     * Index into allTextures for an image created by a pass this frame.
+     * The image must have been created with VK_IMAGE_USAGE_SAMPLED_BIT.
+     * Only valid for the current frame, the index may change every frame.
+     */
+    [[nodiscard]] uint32_t get_texture_index(
+        Handle<AllocatedImage> handle) const;
+
     void release_resources(VulkanResourceManager& manager);
 
     /**
@@ -133,6 +141,11 @@ class PassServer
         buffersToFree;
     std::array<std::vector<Handle<AllocatedImage>>, FRAMES_IN_FLIGHT>
         imagesToFree;
+
+    // Descriptor array for textures this frame
+    std::vector<VkDescriptorImageInfo> passImageInfos;
+    // Pass image handle to image info
+    std::unordered_map<Handle<AllocatedImage>, uint32_t> passTextureIndices;
 
     std::unordered_set<Handle<RenderPass>> setupPasses;
 
