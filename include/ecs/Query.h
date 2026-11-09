@@ -17,17 +17,18 @@
 #include <vector>
 
 namespace Cel {
+
 /**
  * @ingroup Helper types
  * @{
  */
 
-template<typename T>
-struct TypeStorage
+template<typename... T>
+struct TypeList
 {};
 
 template<typename... T>
-struct TypeList
+struct Get : TypeList<T...>
 {};
 
 template<typename... T>
@@ -43,7 +44,8 @@ struct Without : TypeList<T...>
  */
 
 /**
- * @brief A special helper function for getting the index of "Entity" in a query
+ * @brief A special helper function for getting the index of "Entity" in a
+ query
  * @param index Starts at 0, recursively searches for entity
  * @return The index of entity in the query
  */
@@ -68,13 +70,15 @@ template<typename...>
 class Query;
 
 /**
- * @brief Standard query, requests a filtered set of entities required by a game
+ * @brief Standard query, requests a filtered set of entities required by a
+ game
  * system
- * @tparam Include Only include entities with all of these components
- * @tparam Exclude Exclude all entities with any of these components
+ * @tparam Requires Only include entities with all of these components
+ * @tparam Excludes Exclude all entities with any of these components
  */
-template<typename... Include, typename... Exclude>
-class Query<With<Include...>, Without<Exclude...>> : public IQuery
+template<typename... Retrieves, typename... Requires, typename... Excludes>
+class Query<Get<Retrieves...>, With<Requires...>, Without<Excludes...>>
+    : public IQuery
 {
     template<typename T>
     using ComponentRefT = std::conditional_t<std::is_same_v<T, Entity>, T, T&>;
@@ -84,7 +88,7 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
         : manager(components_manager)
     {
         includedComponentArrays = std::make_tuple(
-            manager.get_component_array<std::remove_const_t<Include>>()...);
+            manager.get_component_array<std::remove_const_t<Requires>>()...);
         Query::update_query();
     }
 
@@ -132,11 +136,12 @@ class Query<With<Include...>, Without<Exclude...>> : public IQuery
     template<typename Component>
     ComponentRefT<Component> get_component_or_entity(Entity& entity);
 
-    std::tuple<std::shared_ptr<ComponentArray<std::remove_const_t<Include>>>...>
+    std::tuple<
+        std::shared_ptr<ComponentArray<std::remove_const_t<Requires>>>...>
         includedComponentArrays;
     ComponentsManager& manager;
     std::unordered_set<Entity> included;
-    size_t entityTypeIndex = get_index_of_entity_type<Include...>(0);
+    size_t entityTypeIndex = get_index_of_entity_type<Requires...>(0);
 };
 
 template<typename... Include, typename... Exclude>
@@ -308,4 +313,5 @@ class Query<With<Include...>> final : public Query<With<Include...>, Without<>>
     {
     }
 };
+
 }

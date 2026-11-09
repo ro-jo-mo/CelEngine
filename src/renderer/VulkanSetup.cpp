@@ -19,7 +19,7 @@ using namespace Cel::Renderer;
 
 constexpr bool useValidationLayers = true;
 
-void
+static void
 init_vulkan(Resource<VulkanContext>& context,
             Resource<VmaAllocator>& allocator,
             Resource<Window>& window,
@@ -211,7 +211,32 @@ init_vulkan(Resource<VulkanContext>& context,
     });
 }
 
-void
+static VkSurfaceFormatKHR
+select_unorm_surface_format(VkPhysicalDevice gpu, VkSurfaceKHR surface)
+{
+    uint32_t count = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(gpu, surface, &count, nullptr);
+    std::vector<VkSurfaceFormatKHR> available(count);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(
+        gpu, surface, &count, available.data());
+
+    constexpr std::array preferred = { VK_FORMAT_B8G8R8A8_UNORM,
+                                       VK_FORMAT_R8G8B8A8_UNORM };
+
+    for (const auto format : preferred) {
+        for (const auto& surfaceFormat : available) {
+            if (surfaceFormat.format == format &&
+                surfaceFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return surfaceFormat;
+            }
+        }
+    }
+
+    throw_error("Unable to find a valid UNORM swapchain format");
+    return {};
+}
+
+static void
 init_swapchain(Resource<VulkanContext>& context,
                Resource<Swapchain>& swapchain,
                Resource<FinalCleanup>& cleanup)
@@ -219,23 +244,27 @@ init_swapchain(Resource<VulkanContext>& context,
     vkb::SwapchainBuilder builder{ context->gpu,
                                    context->device,
                                    context->surface };
-    auto format = VK_FORMAT_R8G8B8A8_UNORM;
+
+    const VkSurfaceFormatKHR surfaceFormat =
+        select_unorm_surface_format(context->gpu, context->surface);
 
     auto swapchainBuild =
-        builder
-            .set_desired_format(VkSurfaceFormatKHR{
-                .format = format,
-                .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR })
+        builder.set_desired_format(surfaceFormat)
             .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
             .set_desired_extent(1600, 900)
             .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
             .build()
             .value();
 
+    if (swapchainBuild.image_format != surfaceFormat.format ||
+        swapchainBuild.color_space != surfaceFormat.colorSpace) {
+        throw_error("Swapchain was created with non UNORM format");
+    }
+
     swapchain.initialise(swapchainBuild.swapchain,
                          swapchainBuild.get_images().value(),
                          swapchainBuild.get_image_views().value(),
-                         format,
+                         swapchainBuild.image_format,
                          swapchainBuild.extent);
 
     // Create semaphores for swapchain images
