@@ -32,31 +32,51 @@ get_query_counter()
     return counter;
 }
 
+template<typename T>
+ComponentId
+_component_id()
+{
+    static auto id = get_component_counter()++;
+    return id;
 }
 
-// TODO: I might have to handle constness here
+template<typename T>
+ResourceId
+_resource_id()
+{
+    static auto id = get_resource_counter()++;
+    return id;
+}
+
+template<typename T>
+QueryId
+_query_id()
+{
+    static auto id = get_query_counter()++;
+    return id;
+}
+
+}
+
 template<typename T>
 ComponentId
 component_id()
 {
-    static auto id = Detail::get_component_counter()++;
-    return id;
+    return Detail::_component_id<std::remove_const_t<T>>();
 }
 
 template<typename T>
 ResourceId
 resource_id()
 {
-    static auto id = Detail::get_resource_counter()++;
-    return id;
+    return Detail::_resource_id<std::remove_const_t<T>>();
 }
 
 template<typename T>
 QueryId
 query_id()
 {
-    static auto id = Detail::get_query_counter()++;
-    return id;
+    return Detail::_query_id<std::remove_const_t<T>>();
 }
 
 }

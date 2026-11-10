@@ -63,10 +63,30 @@ void
 Cel::ArchetypeManager::update_entity_data(const Entity entity,
                                           const Signature& signature)
 {
-    auto& data = entityDatas[entity];
+    auto& data = entityData[entity];
 
     const auto arch = sigToArchetype.at(signature);
 
     data.archetype = arch;
     data.index = arch->get_entity_index(entity);
+}
+void*
+Cel::ArchetypeManager::get_component_for_entity(const Entity entity,
+                                                const ComponentId component)
+{
+    auto& data = entityData[entity];
+
+    // Return null if this archetype doesn't store this component
+    if (data.archetype->get_signature().test(component)) {
+        return data.archetype->get_component(entity, component);
+    }
+
+    // This path should only activate for optional components
+    return nullptr;
+}
+
+const Cel::Signature&
+Cel::ArchetypeManager::get_entity_signature(const Entity entity) const
+{
+    return entityData[entity].archetype->get_signature();
 }

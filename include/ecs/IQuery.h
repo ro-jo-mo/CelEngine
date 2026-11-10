@@ -29,9 +29,9 @@ class IQuery
     // A list of archetypes that match this
     std::vector<QueryMatch> matches;
 
-    Signature retrieve;
-    Signature required;
-    Signature reject;
+    Signature retrieve{};
+    Signature required{};
+    Signature reject{};
 
     friend class QueryManager;
 };

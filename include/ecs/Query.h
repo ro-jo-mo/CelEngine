@@ -1,10 +1,13 @@
 #pragma once
 
+#include "ArchetypeManager.h"
 #include "ComponentArray.h"
 #include "ComponentsManager.h"
 #include "IQuery.h"
 
 #include "Types.h"
+#include "core/Optional.h"
+
 #include <algorithm>
 
 #include <iostream>
@@ -44,25 +47,6 @@ struct Without : TypeList<T...>
  */
 
 /**
- * @brief A special helper function for getting the index of "Entity" in a
- query
- * @param index Starts at 0, recursively searches for entity
- * @return The index of entity in the query
- */
-template<typename Component, typename... Components>
-consteval size_t
-get_index_of_entity_type(const size_t index)
-{
-    if constexpr (std::is_same_v<Component, Entity>) {
-        return index;
-    }
-    if constexpr (sizeof...(Components) > 0) {
-        return get_index_of_entity_type<Components...>(index + 1);
-    }
-    return -1;
-}
-
-/**
  * Base form of query, no implementation
  * Always use Query<With<...>,Without<...>>
  */
@@ -74,244 +58,147 @@ class Query;
  game
  * system
  * @tparam Requires Only include entities with all of these components
- * @tparam Excludes Exclude all entities with any of these components
+ * @tparam Rejects Exclude all entities with any of these components
  */
-template<typename... Retrieves, typename... Requires, typename... Excludes>
-class Query<Get<Retrieves...>, With<Requires...>, Without<Excludes...>>
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+class Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
     : public IQuery
 {
+    // Account for entity retrieval and optionals
+    // If T == Entity "Entity" Else If IsOptional T::type* Else T&
     template<typename T>
-    using ComponentRefT = std::conditional_t<std::is_same_v<T, Entity>, T, T&>;
+    using ReturnT = std::conditional_t<
+        std::is_same_v<Entity, T>,
+        Entity,
+        std::conditional_t<IsOptional<T>::value, typename T::type*, T&>>;
+
+    // Type returned from get + iter
+    using ReturnTuple = std::tuple<ReturnT<Retrieves>...>;
 
   public:
-    explicit Query(ComponentsManager& components_manager)
-        : manager(components_manager)
+    explicit Query(ArchetypeManager& archetypeManager);
+
+    ReturnTuple get(Entity entity);
+
+    bool has(Entity entity) const;
+
+    size_t size() const;
+
+    struct Iterator
     {
-        includedComponentArrays = std::make_tuple(
-            manager.get_component_array<std::remove_const_t<Requires>>()...);
-        Query::update_query();
-    }
+        bool operator!=(const Iterator& other) const;
 
-    void update_query() override;
+        bool operator==(const Iterator& other) const;
 
-    /**
-     * @brief Retrieve the components of this entity
-     * @param entity Entity to retrieve
-     * @return Retrieved entity components
-     */
-    auto get(Entity entity);
+        Iterator& operator++();
 
-    /**
-     * @brief Checks whether this query contains the entity i.e. can
-     * query.Get(entity) be run successfully
-     * @param entity Entity to check
-     * @return True if this query contains "entity"
-     */
-    [[nodiscard]] bool has(Entity entity) const;
-
-    /**
-     * @brief Size of this query
-     * @return Number of entities in this query
-     */
-    [[nodiscard]] size_t size() const;
-
-    /**
-     * Iterator used for query iteration
-     */
-    class Iterator;
+        ReturnTuple operator*();
+    };
 
     Iterator begin();
 
     Iterator end();
 
   private:
-    /**
-     * @brief Special method to retrieve the specified component.
-     * As previously stated entity ids are a special case of components, not
-     * stored by the component manager and must be fetched separately
-     * @tparam Component Component to retrieve
-     * @param entity Entity owning this component
-     * @return Retrieved component
-     */
-    template<typename Component>
-    ComponentRefT<Component> get_component_or_entity(Entity& entity);
+    template<typename T>
+    ReturnT<T> get_return_value(Entity entity);
 
-    std::tuple<
-        std::shared_ptr<ComponentArray<std::remove_const_t<Requires>>>...>
-        includedComponentArrays;
-    ComponentsManager& manager;
-    std::unordered_set<Entity> included;
-    size_t entityTypeIndex = get_index_of_entity_type<Requires...>(0);
+    // We must store the manager for "get"
+    ArchetypeManager& archetypeManager;
 };
 
-template<typename... Include, typename... Exclude>
-void
-Query<With<Include...>, Without<Exclude...>>::update_query()
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Query(
+    ArchetypeManager& archetypeManager)
+    : archetypeManager(archetypeManager)
 {
-    auto getEntityLists = [](auto&... componentArrays) {
-        return std::vector<std::unordered_map<Entity, size_t>>{
-            componentArrays->get_entity_list()...
-        };
+    // Set signatures
+
+    auto mark_sig = []<typename T>(Signature& sig) {
+        sig.set(component_id<T>(), true);
     };
 
-    auto entityArrays = std::apply(getEntityLists, includedComponentArrays);
-
-    if (entityTypeIndex != -1) {
-        entityArrays.erase(entityArrays.begin() + entityTypeIndex);
-    }
-
-    // find smallest array, use it as the base
-    size_t smallestIndex = 0;
-    size_t smallestSize = std::numeric_limits<size_t>::max();
-
-    for (int i = 0; i < entityArrays.size(); ++i) {
-        if (entityArrays[i].size() < smallestSize) {
-            smallestSize = entityArrays[i].size();
-            smallestIndex = i;
+    // Version that ignores optional types
+    auto mark_sig_ignore_optional = []<typename T>(Signature& sig) {
+        if constexpr (!IsOptional<T>::value) {
+            sig.set(component_id<T>(), true);
         }
-    }
-    // put smallest list at the front
-    std::swap(entityArrays[0], entityArrays[smallestIndex]);
+    };
 
-    included.clear();
-
-    for (auto& [entity, _] : entityArrays[0]) {
-        auto inSet = std::all_of(
-            entityArrays.begin() + 1, entityArrays.end(), [entity](auto& map) {
-                return map.find(entity) != map.end();
-            });
-
-        if (inSet) {
-            included.insert(entity);
-        }
-    }
-
-    // for each excluded list, does entity exist inside
-    // if so, remove
-    auto excludedComponentArrays =
-        std::make_tuple(manager.get_component_array<Exclude>()...);
-    auto excludedEntityArrays =
-        std::apply(getEntityLists, excludedComponentArrays);
-
-    for (auto iter = included.begin(); iter != included.end();) {
-        auto entity = *iter;
-        auto inSet = std::any_of(
-            excludedEntityArrays.begin(),
-            excludedEntityArrays.end(),
-            [entity](auto& map) { return map.find(entity) != map.end(); });
-
-        if (inSet) {
-            iter = included.erase(iter);
+    // If type is optional, get type held
+    auto mark_sig_strip_optional = []<typename T>(Signature& sig) {
+        if constexpr (IsOptional<T>::value) {
+            sig.set(component_id<typename T::type>(), true);
         } else {
-            ++iter;
+            sig.set(component_id<T>(), true);
         }
-    }
+    };
+
+    // Components that this query requires an entity has
+    (void(mark_sig_ignore_optional.template operator()<Retrieves>(required)),
+     ...);
+    (void(mark_sig.template operator()<Requires>(required)), ...);
+
+    // Components this query will retrieve, including optionals
+    (void(mark_sig_strip_optional.template operator()<Retrieves>(retrieve)),
+     ...);
+
+    // Components this query will reject
+    (void(mark_sig.template operator()<Rejects>(reject)), ...);
 }
 
-template<typename... Include, typename... Exclude>
-auto
-Query<With<Include...>, Without<Exclude...>>::get(Entity entity)
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::ReturnTuple
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::get(
+    const Entity entity)
 {
-    return std::tuple<ComponentRefT<Include>...>(
-        get_component_or_entity<Include>(entity)...);
+    // Get uses a different routing to iteration
+
+    // Ensure entity is actually a match for this query
+    assert(
+        has(entity) &&
+        "Entity retrieved through Query::get(entity) must exist in the query");
+
+    return ReturnTuple(get_return_value<Retrieves>(entity)...);
 }
 
-template<typename... Include, typename... Exclude>
-bool
-Query<With<Include...>, Without<Exclude...>>::has(const Entity entity) const
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+template<typename T>
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    template ReturnT<T>
+    Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+        get_return_value(Entity entity)
 {
-    return included.contains(entity);
-}
-template<typename... Include, typename... Exclude>
-size_t
-Query<With<Include...>, Without<Exclude...>>::size() const
-{
-    return included.size();
-}
-
-template<typename... Include, typename... Exclude>
-template<typename Component>
-Query<With<Include...>, Without<Exclude...>>::template ComponentRefT<Component>
-Query<With<Include...>, Without<Exclude...>>::get_component_or_entity(
-    Entity& entity)
-{
-    if constexpr (std::is_same_v<Component, Entity>) {
+    if constexpr (std::is_same_v<Entity, T>) {
         return entity;
+    } else {
+        // Reinterpret cast should handle ref vs pointer for optional
+        return reinterpret_cast<ReturnT<T>>(
+            archetypeManager.get_component_for_entity(entity,
+                                                      component_id<T>()));
     }
-    return std::get<
-               std::shared_ptr<ComponentArray<std::remove_const_t<Component>>>>(
-               includedComponentArrays)
-        ->get_component(entity);
 }
 
-template<typename... Include, typename... Exclude>
-class Query<With<Include...>, Without<Exclude...>>::Iterator
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+bool
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::has(
+    const Entity entity) const
 {
-  public:
-    using iterator_category = std::forward_iterator_tag;
-
-    using Iter = std::unordered_set<Entity>::iterator;
-
-    Iterator(Iter currentIter, Iter endIter, Query& viewRef)
-        : current(std::move(currentIter))
-        , end(std::move(endIter))
-        , view(viewRef) {};
-
-    bool operator!=(const Iterator& other) const
-    {
-        return current != other.current;
-    }
-
-    bool operator==(const Iterator& other) const
-    {
-        return current == other.current;
-    }
-
-    Iterator& operator++()
-    {
-        ++current;
-        return *this;
-    }
-
-    std::tuple<ComponentRefT<Include>...> operator*()
-    {
-        ref = *current;
-        return view.get(ref);
-    }
-
-  private:
-    Iter current;
-    Iter end;
-    Entity ref{ 0 };
-    Query& view;
-};
-
-template<typename... Include, typename... Exclude>
-Query<With<Include...>, Without<Exclude...>>::Iterator
-Query<With<Include...>, Without<Exclude...>>::begin()
-{
-    return Iterator(included.begin(), included.end(), *this);
+    return (archetypeManager.get_entity_signature(entity) & required) ==
+           required;
 }
 
-template<typename... Include, typename... Exclude>
-Query<With<Include...>, Without<Exclude...>>::Iterator
-Query<With<Include...>, Without<Exclude...>>::end()
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+size_t
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::size() const
 {
-    return Iterator(included.end(), included.end(), *this);
-}
+    size_t total = 0;
 
-/**
- * @brief Convenient specialisation for when there is no without filter
- * @tparam Include Only include entities with these components
- */
-template<typename... Include>
-class Query<With<Include...>> final : public Query<With<Include...>, Without<>>
-{
-  public:
-    explicit Query(ComponentsManager& components_manager)
-        : Query<With<Include...>, Without<>>(components_manager)
-    {
+    for (const auto& match : matches) {
+        total += match.archetype.get_total_entities();
     }
-};
+
+    return total;
+}
 
 }

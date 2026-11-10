@@ -13,7 +13,9 @@ class ArchetypeManager
   public:
     ArchetypeManager();
 
-    void get_components(Entity entity);
+    void* get_component_for_entity(Entity entity, ComponentId component);
+
+    const Signature& get_entity_signature(Entity entity) const;
 
   private:
     struct EntityData
@@ -41,7 +43,7 @@ class ArchetypeManager
     // Retrieve an archetype based on its signature
     std::unordered_map<Signature, Archetype*> sigToArchetype;
     // Stores data about the components an entity has and where it's stored
-    std::array<EntityData, MAX_ENTITIES> entityDatas{};
+    std::array<EntityData, MAX_ENTITIES> entityData{};
     // Stores details about the sizing, destructor and constructor of a
     // component
     std::array<ComponentInfo, MAX_COMPONENTS> componentInfos{};
