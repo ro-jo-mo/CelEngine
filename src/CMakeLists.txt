@@ -2,6 +2,7 @@ set(namespace "CelEngine")
 
 set(MAX_ENTITIES 2048 CACHE STRING "Max number of entities that can exist at once")
 set(MAX_COMPONENTS 128 CACHE STRING "Max number of components that be registered into the ECS")
+set(MAX_QUERY_RETRIEVE 15 CACHE STRING "Max number of components a query can retrieve. (Ideally 2^n - 1 for alignment")
 set(CMD_BUFFERS_PER_POOL 30 CACHE STRING "(Deprecated) Total number of cmd buffers created per pool for render passes")
 set(MAX_VARIABLE_DESCRIPTOR_ARRAY 4000 CACHE STRING "The number of descriptors assigned when creating a variable descriptor array for a shader")
 set(MAX_SAMPLERS 64 CACHE STRING "Size of the global sampler descriptor array (unique sampler settings). Also passed to shaders")
@@ -61,6 +62,7 @@ target_sources(${PROJECT_NAME}
         "ecs/ScheduleGraph.cpp"
         "ecs/QueryManager.cpp"
         "ecs/Archetype.cpp"
+        "ecs/ArchetypeManager.cpp"
 
         "core/World.cpp"
         "core/Time.cpp"
@@ -141,7 +143,7 @@ set(public_headers
         include/ecs/Types.h
         include/ecs/Query.h
         include/ecs/Archetype.h
-        
+
 
         include/core/Plugin.h
         include/core/World.h

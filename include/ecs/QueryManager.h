@@ -1,37 +1,52 @@
 #pragma once
 
+#include "ArchetypeManager.h"
 #include "ComponentsManager.h"
 #include "IQuery.h"
-#include <memory>
 #include <iostream>
+#include <memory>
 
 namespace Cel {
-  /**
-   * @brief Manages the updating of all queries
-   * Additionally ensures we don't duplicate queries
-   */
-  class QueryManager {
+class Archetype;
+/**
+ * @brief Manages the updating of all queries
+ * Additionally ensures we don't duplicate queries¦
+ */
+class QueryManager
+{
   public:
-    explicit QueryManager(ComponentsManager &manager)
-      : componentsManager(manager) {
+    explicit QueryManager(ArchetypeManager& archetypeManager)
+        : archetypeManager(archetypeManager)
+    {
     }
 
-    void update_queries() const;
-
     template<typename Query>
-    Query &get_query();
+    Query& get_query();
+
+    // When creating a new archetype, we find all queries that accept it
+    void find_matches_for_new_archetype(Archetype archetype);
 
   private:
-    ComponentsManager &componentsManager;
-    std::unordered_map<std::type_index, std::unique_ptr<IQuery> > queries;
-  };
+    ArchetypeManager& archetypeManager;
+    std::vector<std::unique_ptr<IQuery>> queries;
+};
 
-  template<typename Query>
-  Query &QueryManager::get_query() {
-    auto [query,_] = queries.try_emplace(typeid(Query), std::make_unique<Query>(componentsManager));
+template<typename Query>
+Query&
+QueryManager::get_query()
+{
+    auto id = query_id<Query>();
 
-    return *static_cast<Query *>(query->second.get());
-  }
+    if (queries.size() <= id) {
+        queries.resize(id + 32);
+    }
+
+    if (queries[id] == nullptr) {
+        // For now, we make a big assumption that no archetypes exists at query registration.
+        // This will *probably* hold true forever. If queries are ever added dynamically throughout the runtime, this will be false
+        queries[id] = std::make_unique<Query>();
+    }
+
+    return *static_cast<Query*>(queries[id]);
 }
-
-
+}

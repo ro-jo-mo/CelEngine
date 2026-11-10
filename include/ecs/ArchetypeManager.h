@@ -11,6 +11,8 @@ namespace Cel {
 class ArchetypeManager
 {
   public:
+    ArchetypeManager();
+
     void get_components(Entity entity);
 
   private:
@@ -20,12 +22,27 @@ class ArchetypeManager
         size_t index;
     };
 
+    // Set the component data for this component
     template<typename T>
     void register_component();
 
-    std::unordered_map<Signature, Archetype> archetypes;
-    std::vector<EntityData> entityDatas;
+    // Transfer an entity from one archetype to another
+    void move_entity(
+        Entity entity,
+        const Signature& previousSig,
+        const Signature& newSig,
+        const std::unordered_map<ComponentId, void*>& addedComponents);
 
+    // Set the entity data for this entity
+    void update_entity_data(Entity entity, const Signature& signature);
+
+    // Storage of archetypes. We don't actually access them here, just store.
+    std::vector<std::unique_ptr<Archetype>> archetypes;
+    // Retrieve an archetype based on its signature
+    std::unordered_map<Signature, Archetype*> sigToArchetype;
+    // Stores data about the components an entity has and where it's stored
+    std::array<EntityData, MAX_ENTITIES> entityDatas;
+    // Stores details about the sizing, destructor and constructor of a component
     std::array<ComponentInfo, MAX_COMPONENTS> componentInfos{};
 };
 
@@ -36,6 +53,7 @@ ArchetypeManager::register_component()
     auto& info = componentInfos[component_id<T>()];
 
     info.size = sizeof(T);
+    info.align = alignof(T);
 
     // No need to set the destructor / move constructor if they're both trivial
     if (!std::is_trivially_copyable<T>()) {

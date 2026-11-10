@@ -5,7 +5,6 @@
 Cel::Archetype::Archetype(
     const std::array<ComponentInfo, MAX_COMPONENTS>& componentInfos,
     const Signature& signature)
-    : componentInfos(componentInfos)
 {
     for (size_t i = 0; i < MAX_COMPONENTS; i++) {
         if (signature.test(i)) {
@@ -38,7 +37,7 @@ Cel::Archetype::~Archetype()
         // If not trivially destructible, we must actually execute the
         // destructor
         if (store.info.destructor != nullptr) {
-            store.info.destructor(store.alloc, totalEntities);
+            store.info.destructor(store.alloc, get_total_entities());
         }
 
         // Lastly, free the allocation
@@ -47,19 +46,31 @@ Cel::Archetype::~Archetype()
 }
 
 void*
+Cel::ComponentStorage::get_component(const size_t index) const
+{
+    return alloc + size * index;
+}
+
+void*
 Cel::Archetype::get_component(const Entity entity, const ComponentId component)
 {
     assert(entityToIndex.contains(entity));
 
-    return get_component_from_entity_index(
-        entityToIndex.at(entity), storages[componentToIndex[component]]);
+    const auto index = entityToIndex.at(entity);
+
+    return storages[componentToIndex[component]].get_component(index);
 }
 
-void*
-Cel::Archetype::get_component_from_entity_index(const size_t index,
-                                                const ComponentStorage& store)
+void
+Cel::Archetype::copy_component_to_storage(const void* src,
+                                          void* dst,
+                                          const ComponentStorage& store)
 {
-    return store.alloc + store.size * index;
+    if (store.info.move != nullptr) {
+        store.info.move(src, dst);
+    } else {
+        memcpy(dst, src, store.size);
+    }
 }
 
 void
@@ -70,24 +81,38 @@ Cel::Archetype::delete_entity(const Entity entity)
     const auto index = entityToIndex[entity];
     // Swap the last element of the array to the deleted components place
     // This keeps the array tightly packed
-    const auto last = --totalEntities;
+    const auto last = indexToEntity.size() - 1;
 
     for (const auto& store : storages) {
-        auto position = get_component_from_entity_index(index, store);
+        auto position = store.get_component(index);
 
         if (store.info.destructor != nullptr) {
-            store.info.destructor(get_component_from_entity_index(index, store),
-                                  1);
+            store.info.destructor(position, 1);
+        }
+
+        // Skip swapping if there's nothing to swap with
+        if (index == last) {
+            continue;
         }
 
         // Swap with the last entity
-        auto lastPosition = get_component_from_entity_index(last, store);
+        auto lastPosition = store.get_component(last);
 
-        if (store.info.move != nullptr) {
-            store.info.move(lastPosition, position);
-        } else {
-            memcpy(position, lastPosition, store.size);
+        copy_component_to_storage(lastPosition, position, store);
+
+        // Once we've moved we must run the destructor for the swapped as well
+        if (store.info.destructor != nullptr) {
+            store.info.destructor(lastPosition, 1);
         }
+    }
+
+    // Remove this entity from the map
+    entityToIndex.erase(entity);
+    indexToEntity.pop_back();
+
+    // Skip the rest of we delete the last element
+    if (index == last) {
+        return;
     }
 
     // Update the mapping for the entity we're swapping
@@ -95,7 +120,42 @@ Cel::Archetype::delete_entity(const Entity entity)
 
     entityToIndex[swappedEntity] = index;
     indexToEntity[index] = swappedEntity;
+}
 
-    // Lastly remove this entity from the map
-    entityToIndex.erase(entity);
+void
+Cel::Archetype::register_entity(Entity entity)
+{
+    entityToIndex.emplace(entity, get_total_entities());
+    indexToEntity.push_back(entity);
+}
+
+void
+Cel::Archetype::move_component(const Entity entity,
+                               const ComponentId component,
+                               void* src)
+{
+    const auto index = entityToIndex.at(entity);
+
+    const auto& store = storages[componentToIndex[component]];
+
+    const auto dst = store.get_component(index);
+
+    copy_component_to_storage(src, dst, store);
+}
+
+size_t
+Cel::Archetype::get_entity_index(const Entity entity) const
+{
+    return entityToIndex.at(entity);
+}
+
+Cel::Entity
+Cel::Archetype::get_entity_from_index(const size_t index) const
+{
+    return indexToEntity[index];
+}
+size_t
+Cel::Archetype::get_total_entities() const
+{
+    return indexToEntity.size();
 }
