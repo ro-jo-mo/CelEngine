@@ -93,6 +93,11 @@ class Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
         Iterator& operator++();
 
         ReturnTuple operator*();
+
+        size_t matchIndex;
+        size_t entityIndex;
+
+        Query& query;
     };
 
     Iterator begin();
@@ -199,6 +204,66 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::size() const
     }
 
     return total;
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+bool
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
+operator!=(const Iterator& other) const
+{
+    return !(this == other);
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+bool
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
+operator==(const Iterator& other) const
+{
+    return matchIndex == other.matchIndex && entityIndex == other.entityIndex;
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::begin()
+{
+    return { .matchIndex = 0, .entityIndex = 0, .query = this };
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::end()
+{
+    if (matches.empty()) {
+        return begin();
+    }
+
+    return { .matchIndex = matches.size() - 1,
+             .entityIndex = matches.back().archetype.get_total_entities(),
+             .query = this };
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator&
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
+operator++()
+{
+    entityIndex++;
+
+    if (entityIndex ==
+        query.matches[matchIndex].archetype.get_total_entities()) {
+        entityIndex = 0;
+        matchIndex++;
+    }
+
+    return *this;
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+typename Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    ReturnTuple
+    Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
+    operator*()
+{
 }
 
 }

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Archetype.h"
 #include "Types.h"
 #include "core/TypeId.h"
