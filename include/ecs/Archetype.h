@@ -60,6 +60,8 @@ class Archetype
     [[nodiscard]] size_t get_entity_index(Entity entity) const;
     [[nodiscard]] Entity get_entity_from_index(size_t index) const;
     [[nodiscard]] size_t get_total_entities() const;
+    [[nodiscard]] const Signature& get_signature() const;
+    [[nodiscard]] ComponentStorage& get_storage(ComponentId component);
 
   private:
     // Copies the data from src to dst (a pointer inside the component storage)
@@ -78,6 +80,8 @@ class Archetype
     // Maps an index in the storage allocations to an entity
     // Also used to get the total number of entities in this archetype
     std::vector<Entity> indexToEntity;
+
+    Signature signature;
 };
 
 }

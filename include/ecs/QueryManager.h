@@ -24,7 +24,7 @@ class QueryManager
     Query& get_query();
 
     // When creating a new archetype, we find all queries that accept it
-    void find_matches_for_new_archetype(Archetype archetype);
+    void find_matches_for_new_archetype(Archetype& archetype) const;
 
   private:
     ArchetypeManager& archetypeManager;
@@ -42,8 +42,9 @@ QueryManager::get_query()
     }
 
     if (queries[id] == nullptr) {
-        // For now, we make a big assumption that no archetypes exists at query registration.
-        // This will *probably* hold true forever. If queries are ever added dynamically throughout the runtime, this will be false
+        // For now, we make a big assumption that no archetypes exists at query
+        // registration. This will *probably* hold true forever. If queries are
+        // ever added dynamically throughout the runtime, this will be false
         queries[id] = std::make_unique<Query>();
     }
 

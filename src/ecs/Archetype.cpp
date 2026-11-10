@@ -5,6 +5,7 @@
 Cel::Archetype::Archetype(
     const std::array<ComponentInfo, MAX_COMPONENTS>& componentInfos,
     const Signature& signature)
+    : signature(signature)
 {
     for (size_t i = 0; i < MAX_COMPONENTS; i++) {
         if (signature.test(i)) {
@@ -158,4 +159,16 @@ size_t
 Cel::Archetype::get_total_entities() const
 {
     return indexToEntity.size();
+}
+
+const Cel::Signature&
+Cel::Archetype::get_signature() const
+{
+    return signature;
+}
+
+Cel::ComponentStorage&
+Cel::Archetype::get_storage(const ComponentId component)
+{
+    return storages[componentToIndex[component]];
 }

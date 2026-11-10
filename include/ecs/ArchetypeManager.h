@@ -18,7 +18,7 @@ class ArchetypeManager
   private:
     struct EntityData
     {
-        Archetype& archetype;
+        Archetype* archetype;
         size_t index;
     };
 
@@ -41,8 +41,9 @@ class ArchetypeManager
     // Retrieve an archetype based on its signature
     std::unordered_map<Signature, Archetype*> sigToArchetype;
     // Stores data about the components an entity has and where it's stored
-    std::array<EntityData, MAX_ENTITIES> entityDatas;
-    // Stores details about the sizing, destructor and constructor of a component
+    std::array<EntityData, MAX_ENTITIES> entityDatas{};
+    // Stores details about the sizing, destructor and constructor of a
+    // component
     std::array<ComponentInfo, MAX_COMPONENTS> componentInfos{};
 };
 

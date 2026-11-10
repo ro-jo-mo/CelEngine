@@ -65,8 +65,8 @@ Cel::ArchetypeManager::update_entity_data(const Entity entity,
 {
     auto& data = entityDatas[entity];
 
-    auto& arch = *sigToArchetype.at(signature);
+    const auto arch = sigToArchetype.at(signature);
 
     data.archetype = arch;
-    data.index = arch.get_entity_index(entity);
+    data.index = arch->get_entity_index(entity);
 }

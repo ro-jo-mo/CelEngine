@@ -155,6 +155,8 @@ set(public_headers
         include/core/CorePlugin.h
         include/core/Running.h
         include/core/ThreadManager.h
+        include/core/Optional
+
 
         include/common/SlotMap.h
         include/common/GrowVector.h
