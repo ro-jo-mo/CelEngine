@@ -16,7 +16,7 @@ class ArchetypeManager
 
     void* get_component_for_entity(Entity entity, ComponentId component);
 
-    const Signature& get_entity_signature(Entity entity) const;
+    [[nodiscard]] const Signature& get_entity_signature(Entity entity) const;
 
   private:
     struct EntityData
@@ -55,6 +55,11 @@ void
 ArchetypeManager::register_component()
 {
     auto& info = componentInfos[component_id<T>()];
+
+    // Skip already registered components
+    if (info.size != 0) {
+        return;
+    }
 
     info.size = sizeof(T);
     info.align = alignof(T);

@@ -29,6 +29,11 @@ class IQuery
     // A list of archetypes that match this
     std::vector<QueryMatch> matches;
 
+    // The ordering the query uses when retrieving,
+    // matching Get<A,B,C> to { A.id, B.id, C.id }
+    std::array<ComponentId, MAX_QUERY_RETRIEVE> retrieveOrder;
+    size_t totalRetrieved;
+
     Signature retrieve{};
     Signature required{};
     Signature reject{};

@@ -12,11 +12,9 @@ struct Optional
 };
 
 template<typename T>
-struct IsOptional : std::false_type
-{};
+constexpr bool is_optional = false;
 
 template<typename T>
-struct IsOptional<Optional<T>> : std::true_type
-{};
+constexpr bool is_optional<Optional<T>> = true;
 
 }

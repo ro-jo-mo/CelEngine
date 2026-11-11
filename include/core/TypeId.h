@@ -1,4 +1,6 @@
 #pragma once
+#include "Optional.h"
+
 #include <cstdint>
 
 namespace Cel {
@@ -62,6 +64,8 @@ template<typename T>
 ComponentId
 component_id()
 {
+    static_assert(!std::is_same_v<T, Entity> && !is_optional<T> &&
+                  "Entity / Optional should never be passed as a component");
     return Detail::_component_id<std::remove_const_t<T>>();
 }
 

@@ -16,8 +16,8 @@ class EntityBuilder;
 class World
 {
   public:
-    World(ComponentsManager& componentsManager, EntityManager& entityManager)
-        : componentsManager(componentsManager)
+    World(ArchetypeManager& archetypeManager, EntityManager& entityManager)
+        : archetypeManager(archetypeManager)
         , entityManager(entityManager)
     {
     }
@@ -77,6 +77,9 @@ class World
     bool flush();
 
   private:
+    // TODO I think it's likely that I can replace this with a non
+    // polymorphistic approach where I store ComponentId and a pointer into an
+    // arena allocator I assume that would be much faster
     class Command
     {
       public:
@@ -126,8 +129,9 @@ class World
 
     void execute_destroy(Entity entity) const;
 
-    ComponentsManager& componentsManager;
+    ArchetypeManager& archetypeManager;
     EntityManager& entityManager;
+
     std::vector<std::unique_ptr<Command>> toAdd;
     std::vector<std::unique_ptr<Command>> toRemove;
     std::vector<AddChildCommand> toAddChild{};
@@ -204,7 +208,7 @@ class World::RemoveCommand final : public Command
 };
 
 template<typename... Components>
-inline EntityBuilder
+EntityBuilder
 World::spawn(Components... components)
 {
     auto entity = entityManager.allocate_entity();
@@ -234,7 +238,7 @@ World::spawn(Components... components)
 }
 
 template<typename Component>
-inline void
+void
 World::add_component(Entity entity, Component component)
 {
     toAdd.push_back(std::make_unique<AddCommand<Component>>(
@@ -242,7 +246,7 @@ World::add_component(Entity entity, Component component)
 }
 
 template<typename Component>
-inline void
+void
 World::remove_component(Entity entity)
 {
     toRemove.push_back(
@@ -250,14 +254,14 @@ World::remove_component(Entity entity)
 }
 
 template<typename T>
-inline void
+void
 World::AddCommand<T>::execute()
 {
     world.componentsManager.add_component(entity, component);
 }
 
 template<typename T>
-inline void
+void
 World::RemoveCommand<T>::execute()
 {
     world.componentsManager.remove_component<T>(entity);

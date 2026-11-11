@@ -1,8 +1,6 @@
 #pragma once
 
 #include "ArchetypeManager.h"
-#include "ComponentArray.h"
-#include "ComponentsManager.h"
 #include "IQuery.h"
 
 #include "Types.h"
@@ -10,12 +8,7 @@
 
 #include <algorithm>
 
-#include <iostream>
-#include <iterator>
-#include <limits>
-#include <memory>
 #include <tuple>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -42,6 +35,9 @@ template<typename... T>
 struct Without : TypeList<T...>
 {};
 
+template<typename T>
+constexpr bool is_entity = std::is_same_v<T, Entity>;
+
 /**
  * @}
  */
@@ -64,13 +60,14 @@ template<typename... Retrieves, typename... Requires, typename... Rejects>
 class Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
     : public IQuery
 {
+
     // Account for entity retrieval and optionals
     // If T == Entity "Entity" Else If IsOptional T::type* Else T&
     template<typename T>
     using ReturnT = std::conditional_t<
-        std::is_same_v<Entity, T>,
+        is_entity<T>,
         Entity,
-        std::conditional_t<IsOptional<T>::value, typename T::type*, T&>>;
+        std::conditional_t<is_optional<T>, typename T::type*, T&>>;
 
     // Type returned from get + iter
     using ReturnTuple = std::tuple<ReturnT<Retrieves>...>;
@@ -93,6 +90,9 @@ class Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
         Iterator& operator++();
 
         ReturnTuple operator*();
+
+        template<typename T, size_t Index>
+        ReturnT<T> get_component(QueryMatch& match);
 
         size_t matchIndex;
         size_t entityIndex;
@@ -117,6 +117,29 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Query(
     ArchetypeManager& archetypeManager)
     : archetypeManager(archetypeManager)
 {
+    // Set retrieve data
+    constexpr size_t SIZE = sizeof...(Retrieves);
+
+    totalRetrieved = SIZE;
+
+    auto set_retrieve = [&]<typename T, typename... Ts>(
+                            const size_t index, auto&& _recurse) -> void {
+        if (index == SIZE) {
+            return;
+        }
+        if (is_entity<T>) {
+
+        } else if (is_optional<T>) {
+            retrieveOrder[index] = component_id<typename T::type>();
+        } else {
+            retrieveOrder[index] = component_id<T>();
+        }
+
+        _recurse(index + 1, _recurse);
+    };
+
+    set_retrieve.template operator()<Retrieves...>(0, set_retrieve);
+
     // Set signatures
 
     auto mark_sig = []<typename T>(Signature& sig) {
@@ -124,15 +147,16 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Query(
     };
 
     // Version that ignores optional types
-    auto mark_sig_ignore_optional = []<typename T>(Signature& sig) {
-        if constexpr (!IsOptional<T>::value) {
+    auto mark_sig_ignore_optional_entity = []<typename T>(Signature& sig) {
+        if constexpr (!is_entity<T> && !is_optional<T>) {
             sig.set(component_id<T>(), true);
         }
     };
 
     // If type is optional, get type held
-    auto mark_sig_strip_optional = []<typename T>(Signature& sig) {
-        if constexpr (IsOptional<T>::value) {
+    auto mark_sig_strip_optional_entity = []<typename T>(Signature& sig) {
+        if constexpr (is_entity<T>) {
+        } else if constexpr (is_optional<T>) {
             sig.set(component_id<typename T::type>(), true);
         } else {
             sig.set(component_id<T>(), true);
@@ -140,12 +164,14 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Query(
     };
 
     // Components that this query requires an entity has
-    (void(mark_sig_ignore_optional.template operator()<Retrieves>(required)),
+    (void(mark_sig_ignore_optional_entity.template operator()<Retrieves>(
+         required)),
      ...);
     (void(mark_sig.template operator()<Requires>(required)), ...);
 
     // Components this query will retrieve, including optionals
-    (void(mark_sig_strip_optional.template operator()<Retrieves>(retrieve)),
+    (void(mark_sig_strip_optional_entity.template operator()<Retrieves>(
+         retrieve)),
      ...);
 
     // Components this query will reject
@@ -174,11 +200,14 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
     Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
         get_return_value(Entity entity)
 {
-    if constexpr (std::is_same_v<Entity, T>) {
+    if constexpr (is_entity<T>) {
         return entity;
+    } else if constexpr (is_optional<T>) {
+        return static_cast<ReturnT<T>>(
+            archetypeManager.get_component_for_entity(entity,
+                                                      component_id<T>()));
     } else {
-        // Reinterpret cast should handle ref vs pointer for optional
-        return reinterpret_cast<ReturnT<T>>(
+        return *static_cast<std::remove_reference_t<ReturnT<T>>*>(
             archetypeManager.get_component_for_entity(entity,
                                                       component_id<T>()));
     }
@@ -226,7 +255,7 @@ template<typename... Retrieves, typename... Requires, typename... Rejects>
 Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator
 Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::begin()
 {
-    return { .matchIndex = 0, .entityIndex = 0, .query = this };
+    return { .matchIndex = 0, .entityIndex = 0, .query = *this };
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
@@ -237,9 +266,7 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::end()
         return begin();
     }
 
-    return { .matchIndex = matches.size() - 1,
-             .entityIndex = matches.back().archetype.get_total_entities(),
-             .query = this };
+    return { .matchIndex = matches.size(), .entityIndex = 0, .query = this };
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
@@ -249,21 +276,53 @@ operator++()
 {
     entityIndex++;
 
-    if (entityIndex ==
-        query.matches[matchIndex].archetype.get_total_entities()) {
+    while (entityIndex ==
+           query.matches[matchIndex].archetype.get_total_entities()) {
+
         entityIndex = 0;
         matchIndex++;
+
+        if (matchIndex == query.matches.size()) {
+            break;
+        }
     }
 
     return *this;
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-typename Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
-    ReturnTuple
-    Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
-    operator*()
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::ReturnTuple
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
+operator*()
 {
+    auto& match = query.matches[matchIndex];
+
+    return ReturnTuple(
+        get_component<Retrieves, std::index_sequence_for<Retrieves>>(match)...);
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+template<typename T, size_t Index>
+Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    template ReturnT<T>
+    Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
+        get_component(QueryMatch& match)
+{
+    if constexpr (std::is_same_v<T, Entity>) {
+        return match.archetype.get_entity_from_index(entityIndex);
+    } else if constexpr (is_optional<T>) {
+
+        if (match.storages[Index] == nullptr) {
+            return nullptr;
+        }
+
+        return static_cast<ReturnT<T>>(
+            match.storages[Index]->get_component(entityIndex));
+
+    } else {
+        return *static_cast<std::remove_reference_t<ReturnT<T>>*>(
+            match.storages[Index]->get_component(entityIndex));
+    }
 }
 
 }

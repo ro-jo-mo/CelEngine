@@ -3,22 +3,23 @@
 using namespace Cel;
 
 static std::array<ComponentStorage*, MAX_QUERY_RETRIEVE>
-get_required_components(const Signature& signature, Archetype& archetype)
+get_retrieved_components(
+    const std::array<ComponentId, MAX_QUERY_RETRIEVE>& retrieveOrder,
+    Archetype& archetype)
 {
     std::array<ComponentStorage*, MAX_QUERY_RETRIEVE> storages{};
 
     size_t currentIndex = 0;
 
-    for (size_t i = 0; i < MAX_COMPONENTS; i++) {
-        if (signature.test(i)) {
+    for (const auto component : retrieveOrder) {
 
-            // Check for optional component
-            if (archetype.get_signature().test(i)) {
-                storages[currentIndex] = &archetype.get_storage(i);
-            }
-
-            currentIndex++;
+        // Optional components might not exist in this archetype
+        // We still increment the counter
+        if (archetype.get_signature().test(component)) {
+            storages[currentIndex] = &archetype.get_storage(component);
         }
+
+        currentIndex++;
     }
 
     return storages;
@@ -33,8 +34,8 @@ QueryManager::find_matches_for_new_archetype(Archetype& archetype) const
         if ((query->required & archetype.get_signature()) == query->required &&
             (query->reject & archetype.get_signature()).none()) {
 
-            query->matches.push_back({ .storages = get_required_components(
-                                           query->required, archetype),
+            query->matches.push_back({ .storages = get_retrieved_components(
+                                           query->retrieveOrder, archetype),
                                        .archetype = archetype });
         }
     }
