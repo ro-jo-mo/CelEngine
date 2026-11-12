@@ -58,7 +58,6 @@ target_compile_definitions(${PROJECT_NAME} PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE GL
 target_sources(${PROJECT_NAME}
         PRIVATE
         "ecs/EntityManager.cpp"
-        "ecs/ComponentsManager.cpp"
         "ecs/ScheduleGraph.cpp"
         "ecs/QueryManager.cpp"
         "ecs/Archetype.cpp"
@@ -69,6 +68,8 @@ target_sources(${PROJECT_NAME}
         "core/Transform.cpp"
         "core/CorePlugin.cpp"
         "core/ThreadManager.cpp"
+        "core/Arena.cpp"
+
 
         "input/Input.cpp"
 
@@ -125,8 +126,6 @@ target_include_directories(${PROJECT_NAME}
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 set(public_headers
-        include/ecs/ComponentArray.h
-        include/ecs/ComponentsManager.h
         include/core/App.h
         include/ecs/EntityManager.h
         include/ecs/Helpers.h
@@ -155,8 +154,8 @@ set(public_headers
         include/core/CorePlugin.h
         include/core/Running.h
         include/core/ThreadManager.h
-        include/core/Optional
-
+        include/core/Optional.h
+        include/core/Arena.h
 
         include/common/SlotMap.h
         include/common/GrowVector.h
