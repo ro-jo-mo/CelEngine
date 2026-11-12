@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Arena.h"
 #include "core/Transform.h"
-#include "ecs/ComponentsManager.h"
 #include "ecs/EntityManager.h"
 #include "ecs/Helpers.h"
 #include "ecs/Types.h"
@@ -77,22 +77,18 @@ class World
     bool flush();
 
   private:
-    // TODO I think it's likely that I can replace this with a non
-    // polymorphistic approach where I store ComponentId and a pointer into an
-    // arena allocator I assume that would be much faster
-    class Command
+    struct AddCommand
     {
-      public:
-        virtual ~Command() = default;
-
-        virtual void execute() = 0;
+        Entity entity;
+        ComponentId component;
+        void* data;
     };
 
-    template<typename T>
-    class AddCommand;
-
-    template<typename T>
-    class RemoveCommand;
+    struct RemoveCommand
+    {
+        Entity entity;
+        ComponentId component;
+    };
 
     class AddChildCommand
     {
@@ -132,8 +128,10 @@ class World
     ArchetypeManager& archetypeManager;
     EntityManager& entityManager;
 
-    std::vector<std::unique_ptr<Command>> toAdd;
-    std::vector<std::unique_ptr<Command>> toRemove;
+    Arena arena{};
+
+    std::vector<AddCommand> toAdd;
+    std::vector<RemoveCommand> toRemove;
     std::vector<AddChildCommand> toAddChild{};
     std::vector<RemoveChildCommand> toRemoveChild;
     std::vector<Entity> toDestroy;
@@ -175,38 +173,6 @@ class ChildBuilder
     World& world;
 };
 
-template<typename T>
-class World::AddCommand final : public Command
-{
-  public:
-    AddCommand(const Entity ent, T comp, World& wld)
-        : entity(ent)
-        , component(comp)
-        , world(wld) {};
-
-    void execute() override;
-
-  private:
-    Entity entity;
-    T component;
-    World& world;
-};
-
-template<typename T>
-class World::RemoveCommand final : public Command
-{
-  public:
-    RemoveCommand(const Entity ent, World& wld)
-        : entity(ent)
-        , world(wld) {};
-
-    void execute() override;
-
-  private:
-    Entity entity;
-    World& world;
-};
-
 template<typename... Components>
 EntityBuilder
 World::spawn(Components... components)
@@ -241,30 +207,21 @@ template<typename Component>
 void
 World::add_component(Entity entity, Component component)
 {
-    toAdd.push_back(std::make_unique<AddCommand<Component>>(
-        entity, std::forward<Component>(component), *this));
+    auto ptr = arena.allocate(sizeof(Component), alignof(Component));
+
+    memcpy(ptr, &component, sizeof(Component));
+
+    toAdd.push_back({ .entity = entity,
+                      .component = component_id<Component>(),
+                      .data = ptr });
 }
 
 template<typename Component>
 void
-World::remove_component(Entity entity)
+World::remove_component(const Entity entity)
 {
     toRemove.push_back(
-        std::make_unique<RemoveCommand<Component>>(entity, *this));
-}
-
-template<typename T>
-void
-World::AddCommand<T>::execute()
-{
-    world.componentsManager.add_component(entity, component);
-}
-
-template<typename T>
-void
-World::RemoveCommand<T>::execute()
-{
-    world.componentsManager.remove_component<T>(entity);
+        { .entity = entity, .component = component_id<Component>() });
 }
 
 EntityBuilder

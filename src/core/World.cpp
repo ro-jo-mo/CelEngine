@@ -22,8 +22,7 @@ World::remove_child(const Entity parent, const Entity child)
 
 void
 RecurseThroughChildren(const Entity entity,
-                       std::unordered_set<Entity>& toRemove,
-                       ComponentsManager& componentsManager)
+                       std::unordered_set<Entity>& toRemove)
 {
     toRemove.insert(entity);
     // Does this entity have children?
@@ -45,8 +44,34 @@ World::flush()
     // add
     // remove
     // destroy
+
+    struct UpdateInfo
+    {
+        Signature signature;
+        std::array<void*, MAX_COMPONENTS> datas{};
+    };
+
+    // We leak memory here when more than just an add or remove cmd is submitted
+    // in a single flush
+    std::unordered_map<Entity, UpdateInfo> updateInfo;
+
     for (const auto& cmd : toAdd) {
-        cmd->execute();
+        // if we edit this entity, add new sig to map. if already exists in map
+        // update it
+        auto [iter, justAdded] = updateInfo.emplace(cmd.entity, UpdateInfo{});
+
+        auto& info = iter->second;
+
+        if (justAdded) {
+            info.signature = archetypeManager.get_entity_signature(cmd.entity);
+        }
+
+        info.signature.set(cmd.component, true);
+
+        if (info.datas[cmd.component] != nullptr) {
+            // Call destructor
+        }
+        info.datas[cmd.component] = cmd.data;
     }
     for (const auto& cmd : toAddChild) {
         cmd.execute();

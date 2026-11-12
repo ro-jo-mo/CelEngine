@@ -20,7 +20,7 @@ class Arena
         size_t offset;
     };
 
-    explicit Arena(size_t defaultAllocSize = 2 << 16);
+    explicit Arena(size_t defaultAllocSize = 1 << 16);
 
     ArenaPointer allocate(size_t size, size_t align);
 
