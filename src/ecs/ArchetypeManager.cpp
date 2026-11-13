@@ -54,9 +54,15 @@ Cel::ArchetypeManager::move_entity(
     }
 
     // Delete from the previous archetype now
-    oldArchetype.delete_entity(entity);
+    oldArchetype.destroy_entity(entity);
 
     update_entity_data(entity, newSig);
+}
+
+void
+Cel::ArchetypeManager::destroy_entity(const Entity entity)
+{
+    entityData[entity].archetype->destroy_entity(entity);
 }
 
 void
@@ -89,4 +95,10 @@ const Cel::Signature&
 Cel::ArchetypeManager::get_entity_signature(const Entity entity) const
 {
     return entityData[entity].archetype->get_signature();
+}
+
+const Cel::ComponentInfo&
+Cel::ArchetypeManager::get_component_info(const ComponentId component) const
+{
+    return componentInfos[component];
 }

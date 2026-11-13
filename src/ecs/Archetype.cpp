@@ -31,15 +31,32 @@ Cel::Archetype::Archetype(
     }
 }
 
+void
+Cel::ComponentInfo::move(const void* src, void* dst) const
+{
+    if (_move != nullptr) {
+        _move(src, dst);
+    } else {
+        memcpy(dst, src, size);
+    }
+}
+
+void
+Cel::ComponentInfo::destructor(const void* ptr, const size_t n) const
+{
+    if (_destructor != nullptr) {
+        _destructor(ptr, n);
+    }
+}
+
 Cel::Archetype::~Archetype()
 {
     for (const auto& store : storages) {
 
         // If not trivially destructible, we must actually execute the
         // destructor
-        if (store.info.destructor != nullptr) {
-            store.info.destructor(store.alloc, get_total_entities());
-        }
+
+        store.info.destructor(store.alloc, get_total_entities());
 
         // Lastly, free the allocation
         ::operator delete(store.alloc, std::align_val_t{ store.info.align });
@@ -67,15 +84,11 @@ Cel::Archetype::copy_component_to_storage(const void* src,
                                           void* dst,
                                           const ComponentStorage& store)
 {
-    if (store.info.move != nullptr) {
-        store.info.move(src, dst);
-    } else {
-        memcpy(dst, src, store.size);
-    }
+    store.info.move(src, dst);
 }
 
 void
-Cel::Archetype::delete_entity(const Entity entity)
+Cel::Archetype::destroy_entity(const Entity entity)
 {
     assert(entityToIndex.contains(entity));
 
@@ -87,9 +100,7 @@ Cel::Archetype::delete_entity(const Entity entity)
     for (const auto& store : storages) {
         auto position = store.get_component(index);
 
-        if (store.info.destructor != nullptr) {
-            store.info.destructor(position, 1);
-        }
+        store.info.destructor(position, 1);
 
         // Skip swapping if there's nothing to swap with
         if (index == last) {
@@ -102,9 +113,8 @@ Cel::Archetype::delete_entity(const Entity entity)
         copy_component_to_storage(lastPosition, position, store);
 
         // Once we've moved we must run the destructor for the swapped as well
-        if (store.info.destructor != nullptr) {
-            store.info.destructor(lastPosition, 1);
-        }
+
+        store.info.destructor(lastPosition, 1);
     }
 
     // Remove this entity from the map
@@ -133,7 +143,7 @@ Cel::Archetype::register_entity(Entity entity)
 void
 Cel::Archetype::move_component(const Entity entity,
                                const ComponentId component,
-                               void* src)
+                               const void* src)
 {
     const auto index = entityToIndex.at(entity);
 
@@ -155,6 +165,7 @@ Cel::Archetype::get_entity_from_index(const size_t index) const
 {
     return indexToEntity[index];
 }
+
 size_t
 Cel::Archetype::get_total_entities() const
 {

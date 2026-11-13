@@ -11,14 +11,21 @@ namespace Cel {
 
 // Archetype manager?
 
-struct ComponentInfo
+class ComponentInfo
 {
+  public:
     size_t size = 0;
     size_t align = 0;
 
-    void (*move)(const void* src, const void* dst) = nullptr;
+    inline void move(const void* src, void* dst) const;
+    inline void destructor(const void* ptr, size_t n) const;
 
-    void (*destructor)(const void* ptr, size_t n) = nullptr;
+  private:
+    void (*_move)(const void* src, const void* dst) = nullptr;
+
+    void (*_destructor)(const void* ptr, size_t n) = nullptr;
+
+    friend class ArchetypeManager;
 };
 
 struct ComponentStorage
@@ -54,9 +61,9 @@ class Archetype
 
     void* get_component(Entity entity, ComponentId component);
 
-    void move_component(Entity, ComponentId component, void* src);
+    void move_component(Entity, ComponentId component, const void* src);
 
-    void delete_entity(Entity entity);
+    void destroy_entity(Entity entity);
 
     [[nodiscard]] size_t get_entity_index(Entity entity) const;
     [[nodiscard]] Entity get_entity_from_index(size_t index) const;

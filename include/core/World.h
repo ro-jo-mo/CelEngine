@@ -77,63 +77,61 @@ class World
     bool flush();
 
   private:
-    struct AddCommand
+    struct AddComponent
     {
         Entity entity;
         ComponentId component;
         void* data;
     };
 
-    struct RemoveCommand
+    struct RemoveComponent
     {
         Entity entity;
         ComponentId component;
     };
 
-    class AddChildCommand
+    struct AddChild
     {
-      public:
-        AddChildCommand(const Entity parent, const Entity child, World& world)
-            : parent(parent)
-            , child(child)
-            , world(world) {};
-        void execute() const;
-
-      private:
         Entity parent;
         Entity child;
-        std::reference_wrapper<World> world;
     };
 
-    class RemoveChildCommand
+    struct RemoveChild
     {
-      public:
-        RemoveChildCommand(const Entity parent,
-                           const Entity child,
-                           World& world)
-            : parent(parent)
-            , child(child)
-            , world(world) {};
-
-        void execute() const;
-
-      private:
         Entity parent;
         Entity child;
-        std::reference_wrapper<World> world;
     };
 
     void execute_destroy(Entity entity) const;
+
+    void execute_add_component(
+        const AddComponent& cmd,
+        std::unordered_map<Entity, ArchetypeManager::UpdateInfo>& updateInfo)
+        const;
+
+    void execute_remove_component(
+        const RemoveComponent& cmd,
+        std::unordered_map<Entity, ArchetypeManager::UpdateInfo>& updateInfo)
+        const;
+
+    void execute_add_child(
+        const AddChild& cmd,
+        std::unordered_map<Entity, ArchetypeManager::UpdateInfo>& updateInfo);
+
+    void execute_remove_child(
+        const RemoveChild& cmd,
+        std::unordered_map<Entity, ArchetypeManager::UpdateInfo>& updateInfo);
 
     ArchetypeManager& archetypeManager;
     EntityManager& entityManager;
 
     Arena arena{};
+    std::vector<Children> childStore;
 
-    std::vector<AddCommand> toAdd;
-    std::vector<RemoveCommand> toRemove;
-    std::vector<AddChildCommand> toAddChild{};
-    std::vector<RemoveChildCommand> toRemoveChild;
+    std::vector<AddComponent> toAdd;
+    std::vector<RemoveComponent> toRemove;
+    std::vector<AddChild> toAddChild{};
+    std::vector<RemoveChild> toRemoveChild;
     std::vector<Entity> toDestroy;
 };
 
@@ -209,7 +207,8 @@ World::add_component(Entity entity, Component component)
 {
     auto ptr = arena.allocate(sizeof(Component), alignof(Component));
 
-    memcpy(ptr, &component, sizeof(Component));
+    archetypeManager.get_component_info(component_id<Component>())
+        .move(&component, ptr.get());
 
     toAdd.push_back({ .entity = entity,
                       .component = component_id<Component>(),
