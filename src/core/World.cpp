@@ -71,9 +71,13 @@ World::execute_add_component(
     info.signature.set(cmd.component, true);
 
     if (info.datas[cmd.component] != nullptr) {
-        // Call destructor
-        archetypeManager.get_component_info(cmd.component)
-            .destructor(cmd.data, 1);
+
+        throw_error("Attempted to add the same component twice to the same "
+                    "entity in a single world flush!");
+
+        // In retrospect this will probably be confusing, so I'll just error
+        // archetypeManager.get_component_info(cmd.component)
+        //    .destructor(cmd.data, 1);
     } else {
         info.datas[cmd.component] = cmd.data;
     }
@@ -108,13 +112,12 @@ World::execute_add_child(const AddChild& cmd,
     // If parent has no children, add component
     if (archetypeManager.has_component<Children>(cmd.parent)) {
 
-        // The logic is tricky here. If the component does not exist, it goes to
-        // updateInfo. Otherwise edit the data in the archetype
-
+        // If the components exists we can simply add the child
         archetypeManager.get_component_for_entity<Children>(cmd.parent)
             ->children.emplace(cmd.child);
     } else {
-
+        // If the entity lacks the component we need to check if we're adding
+        // multiple children this flush
         auto& originalSignature =
             archetypeManager.get_entity_signature(cmd.parent);
 
@@ -130,38 +133,100 @@ World::execute_add_child(const AddChild& cmd,
         } else {
             // Otherwise create new child component
             const auto ptr =
-                &childStore.emplace_back(std::unordered_set<Entity>(cmd.child));
-            info.datas[component_id<Children>()] = ptr;
-        }
+                arena.allocate(sizeof(Children), alignof(Children)).get();
 
-        info.signature.set(cmd.component, true);
+            Children children{ .children = { cmd.child } };
+
+            archetypeManager.get_component_info(component_id<Children>())
+                .move(&children, ptr);
+
+            info.datas[component_id<Children>()] = ptr;
+            info.signature.set(component_id<Children>(), true);
+        }
     }
 
-    if (archetypeManager.has_component<Parent>(cmd.child)) {
-        throw std::runtime_error(
+    auto& originalSignature = archetypeManager.get_entity_signature(cmd.parent);
+
+    if (originalSignature.test(component_id<Parent>())) {
+        throw_error(
             "Child entity already has a parent! Unparent the object first if "
             "you want to change its parent");
     }
 
-    // Check we don't try to parent the same entity twice in the same flush
-    if ()
+    auto& info =
+        updateInfo
+            .emplace(cmd.parent, UpdateInfo{ .signature = originalSignature })
+            .first->second;
 
-        world.get().componentsManager.add_component(child, Parent{ parent });
-    auto& [children] =
-        world.get().componentsManager.get_component<Children>(parent);
-    children.insert(child);
+    if (info.signature.test(component_id<Parent>())) {
+        throw_error("Attempted to add a parent to the same entity twice in the "
+                    "same world flush!");
+    } else {
+
+        const auto ptr = arena.allocate(sizeof(Parent), alignof(Parent)).get();
+
+        Parent parent{ .parent = cmd.parent };
+
+        archetypeManager.get_component_info(component_id<Parent>())
+            .move(&parent, ptr);
+
+        info.datas[component_id<Parent>()] = ptr;
+        info.signature.set(component_id<Parent>(), true);
+    }
 }
 
 void
 World::execute_remove_child(const RemoveChild& cmd,
                             std::unordered_map<Entity, UpdateInfo>& updateInfo)
 {
-    world.get().componentsManager.remove_component<Parent>(child);
-    auto& [children] =
-        world.get().componentsManager.get_component<Children>(parent);
-    children.erase(child);
-    if (children.empty()) {
-        world.get().componentsManager.remove_component<Children>(parent);
+    // Remove child component only if there are no children left
+    // Otherwise just erase child from list
+    {
+        const auto& originalSignature =
+            archetypeManager.get_entity_signature(cmd.parent);
+
+        if (!originalSignature.test(component_id<Children>())) {
+            throw_error(
+                "Attempted to remove parent from entity with no parent");
+        }
+
+        auto& children =
+            *static_cast<Children*>(archetypeManager.get_component_for_entity(
+                cmd.parent, component_id<Children>()));
+
+        if (!children.children.contains(cmd.child)) {
+            throw_error("Attempted to remove a child entity  from an unrelated "
+                        "parent!");
+        }
+
+        children.children.erase(cmd.child);
+
+        if (children.children.empty()) {
+            auto& info =
+                updateInfo
+                    .emplace(cmd.parent,
+                             UpdateInfo{ .signature = originalSignature })
+                    .first->second;
+
+            info.signature.set(component_id<Children>(), false);
+        }
+    }
+
+    {
+        const auto& originalSignature =
+            archetypeManager.get_entity_signature(cmd.child);
+
+        if (!originalSignature.test(component_id<Parent>())) {
+            throw_error(
+                "Attempted to remove parent from entity with no parent");
+        }
+
+        auto& info = updateInfo
+                         .emplace(cmd.child,
+                                  UpdateInfo{ .signature = originalSignature })
+                         .first->second;
+
+        info.signature.set(component_id<Parent>(), false);
     }
 }
 

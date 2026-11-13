@@ -126,8 +126,7 @@ class World
     EntityManager& entityManager;
 
     Arena arena{};
-    std::vector<Children> childStore;
-
+    
     std::vector<AddComponent> toAdd;
     std::vector<RemoveComponent> toRemove;
     std::vector<AddChild> toAddChild{};
