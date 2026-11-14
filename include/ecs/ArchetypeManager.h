@@ -35,6 +35,12 @@ class ArchetypeManager
         std::array<void*, MAX_COMPONENTS> datas{};
     };
 
+    // Set the component data for this component
+    template<typename T>
+    void register_component();
+
+    void update_entities(std::unordered_map<Entity, UpdateInfo>& updateInfos);
+
   private:
     struct EntityData
     {
@@ -42,16 +48,8 @@ class ArchetypeManager
         size_t index;
     };
 
-    // Set the component data for this component
-    template<typename T>
-    void register_component();
-
     // Transfer an entity from one archetype to another
-    void move_entity(
-        Entity entity,
-        const Signature& previousSig,
-        const Signature& newSig,
-        const std::unordered_map<ComponentId, void*>& addedComponents);
+    void move_entity(Entity entity, const UpdateInfo& info);
 
     // Set the entity data for this entity
     void update_entity_data(Entity entity, const Signature& signature);

@@ -236,7 +236,8 @@ World::flush()
     // order
     // add
     // remove
-    // destroy
+    // flush archetypes
+    // destroy entities
 
     std::unordered_map<Entity, UpdateInfo> updateInfo;
 
@@ -246,20 +247,33 @@ World::flush()
 
     // At this stage we reuse the toAdd list to store child data
     for (const auto& cmd : toAddChild) {
-        execute_add_child(cmd, TODO);
+        execute_add_child(cmd, updateInfo);
     }
 
     for (const auto& cmd : toRemove) {
         execute_remove_component(cmd, updateInfo);
     }
     for (const auto& cmd : toRemoveChild) {
-        execute_remove_child(cmd, TODO);
+        execute_remove_child(cmd, updateInfo);
     }
 
-    // Destroy all child entities of destroyed entity
+    // Flush changes to archetypes
+    archetypeManager.update_entities(updateInfo);
+
+    // We must destroy all data stored after moving
+    for (const auto& info : updateInfo | std::views::values) {
+        for (size_t i = 0; i < MAX_COMPONENTS; i++) {
+            if (info.datas[i] != nullptr) {
+                archetypeManager.get_component_info(i).destructor(info.datas[i],
+                                                                  1);
+            }
+        }
+    }
+
+    // Destroy all child entities as well
     std::unordered_set<Entity> toDestroySet;
     for (const auto& entity : toDestroy) {
-        RecurseThroughChildren(entity, toDestroySet, componentsManager);
+        add_children_to_destroy(entity, toDestroySet, archetypeManager);
     }
     for (const auto& entity : toDestroySet) {
         execute_destroy(entity);
@@ -273,6 +287,7 @@ World::flush()
     toAddChild.clear();
     toRemoveChild.clear();
     toDestroy.clear();
+    arena.reset();
 
     return changesMade;
 }

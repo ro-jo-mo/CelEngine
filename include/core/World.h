@@ -126,7 +126,7 @@ class World
     EntityManager& entityManager;
 
     Arena arena{};
-    
+
     std::vector<AddComponent> toAdd;
     std::vector<RemoveComponent> toRemove;
     std::vector<AddChild> toAddChild{};
@@ -204,6 +204,8 @@ template<typename Component>
 void
 World::add_component(Entity entity, Component component)
 {
+    archetypeManager.register_component<Component>();
+
     auto ptr = arena.allocate(sizeof(Component), alignof(Component));
 
     archetypeManager.get_component_info(component_id<Component>())

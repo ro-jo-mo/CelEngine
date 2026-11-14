@@ -14,14 +14,19 @@ Cel::ArchetypeManager::ArchetypeManager()
 }
 
 void
-Cel::ArchetypeManager::move_entity(
-    const Entity entity,
-    const Signature& previousSig,
-    const Signature& newSig,
-    const std::unordered_map<ComponentId, void*>& addedComponents)
+Cel::ArchetypeManager::update_entities(
+    std::unordered_map<Entity, UpdateInfo>& updateInfos)
 {
-    // Basic idea with the code is, copy all of the previous archetype first.
-    // Then look at a map for the rest
+    for (const auto& [entity, updateInfo] : updateInfos) {
+        move_entity(entity, updateInfo);
+    }
+}
+
+void
+Cel::ArchetypeManager::move_entity(const Entity entity, const UpdateInfo& info)
+{
+    const auto& previousSig = get_entity_signature(entity);
+    const auto& newSig = info.signature;
 
     if (!sigToArchetype.contains(newSig)) {
         const auto& ptr = archetypes.emplace_back(
@@ -49,7 +54,7 @@ Cel::ArchetypeManager::move_entity(
         }
 
         if (toAdd.test(i)) {
-            archetype.move_component(entity, i, addedComponents.at(i));
+            archetype.move_component(entity, i, info.datas.at(i));
         }
     }
 
