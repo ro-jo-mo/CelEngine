@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 namespace Cel {
+class QueryManager;
 
 class ArchetypeManager
 {
@@ -25,7 +26,7 @@ class ArchetypeManager
         ComponentId component) const;
 
     template<typename T>
-    bool has_component(Entity entity) const;
+    [[nodiscard]] bool has_component(Entity entity) const;
 
     void destroy_entity(Entity entity);
 
@@ -39,7 +40,8 @@ class ArchetypeManager
     template<typename T>
     void register_component();
 
-    void update_entities(std::unordered_map<Entity, UpdateInfo>& updateInfos);
+    void update_entities(std::unordered_map<Entity, UpdateInfo>& updateInfos,
+                         QueryManager& queryManager);
 
   private:
     struct EntityData
@@ -49,7 +51,9 @@ class ArchetypeManager
     };
 
     // Transfer an entity from one archetype to another
-    void move_entity(Entity entity, const UpdateInfo& info);
+    void move_entity(Entity entity,
+                     const UpdateInfo& info,
+                     QueryManager& queryManager);
 
     // Set the entity data for this entity
     void update_entity_data(Entity entity, const Signature& signature);

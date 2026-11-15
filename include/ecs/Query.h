@@ -42,22 +42,20 @@ constexpr bool is_entity = std::is_same_v<T, Entity>;
  * @}
  */
 
-/**
- * Base form of query, no implementation
- * Always use Query<With<...>,Without<...>>
- */
 template<typename...>
-class Query;
+class BasicQuery;
 
 /**
  * @brief Standard query, requests a filtered set of entities required by a
  game
  * system
+ * @tparam Retrieves Get these components from entities that match the required
+ filters
  * @tparam Requires Only include entities with all of these components
  * @tparam Rejects Exclude all entities with any of these components
  */
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-class Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
+class BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
     : public IQuery
 {
 
@@ -73,7 +71,7 @@ class Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
     using ReturnTuple = std::tuple<ReturnT<Retrieves>...>;
 
   public:
-    explicit Query(ArchetypeManager& archetypeManager);
+    explicit BasicQuery(ArchetypeManager& archetypeManager);
 
     ReturnTuple get(Entity entity);
 
@@ -97,7 +95,7 @@ class Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
         size_t matchIndex;
         size_t entityIndex;
 
-        Query& query;
+        BasicQuery& query;
     };
 
     Iterator begin();
@@ -113,8 +111,8 @@ class Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
 };
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Query(
-    ArchetypeManager& archetypeManager)
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    BasicQuery(ArchetypeManager& archetypeManager)
     : archetypeManager(archetypeManager)
 {
     // Set retrieve data
@@ -179,9 +177,10 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Query(
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::ReturnTuple
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::get(
-    const Entity entity)
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    ReturnTuple
+    BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::get(
+        const Entity entity)
 {
     // Get uses a different routing to iteration
 
@@ -195,9 +194,9 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::get(
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
 template<typename T>
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
     template ReturnT<T>
-    Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
         get_return_value(Entity entity)
 {
     if constexpr (is_entity<T>) {
@@ -215,7 +214,7 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
 bool
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::has(
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::has(
     const Entity entity) const
 {
     return (archetypeManager.get_entity_signature(entity) & required) ==
@@ -224,7 +223,8 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::has(
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
 size_t
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::size() const
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::size()
+    const
 {
     size_t total = 0;
 
@@ -237,30 +237,30 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::size() const
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
 bool
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
-operator!=(const Iterator& other) const
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    Iterator::operator!=(const Iterator& other) const
 {
     return !(this == other);
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
 bool
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
-operator==(const Iterator& other) const
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    Iterator::operator==(const Iterator& other) const
 {
     return matchIndex == other.matchIndex && entityIndex == other.entityIndex;
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::begin()
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::begin()
 {
     return { .matchIndex = 0, .entityIndex = 0, .query = *this };
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::end()
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::end()
 {
     if (matches.empty()) {
         return begin();
@@ -270,9 +270,9 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::end()
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator&
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
-operator++()
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator&
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    Iterator::operator++()
 {
     entityIndex++;
 
@@ -291,9 +291,10 @@ operator++()
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::ReturnTuple
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
-operator*()
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    ReturnTuple
+    BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+        Iterator::operator*()
 {
     auto& match = query.matches[matchIndex];
 
@@ -303,10 +304,10 @@ operator*()
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
 template<typename T, size_t Index>
-Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
     template ReturnT<T>
-    Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator::
-        get_component(QueryMatch& match)
+    BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+        Iterator::get_component(QueryMatch& match)
 {
     if constexpr (std::is_same_v<T, Entity>) {
         return match.archetype.get_entity_from_index(entityIndex);
@@ -324,5 +325,19 @@ Query<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
             match.storages[Index]->get_component(entityIndex));
     }
 }
+
+// e.g. FindOrEmtpy<With,Get<...>,With<A,B,...>,Without<...>> reduces to
+// With<A,B,...>
+template<template<typename...> class T, typename... Ts>
+struct FindOrEmptyImpl
+{
+    using type = T<>;
+};
+
+template<template<typename...> class T, typename... Ts>
+using FindOrEmpty = typename FindOrEmptyImpl<T, Ts...>::type;
+
+template<typename... Ts>
+using Query = BasicQuery<FindOrEmpty<Get, Ts...>, >;
 
 }

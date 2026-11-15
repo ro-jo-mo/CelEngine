@@ -74,7 +74,7 @@ class World
      * @brief Flush changes to the world state
      * @return A checking whether any changes were made by the last system
      */
-    bool flush();
+    bool flush(QueryManager& queryManager);
 
   private:
     struct AddComponent

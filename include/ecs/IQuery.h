@@ -1,8 +1,5 @@
 #pragma once
 
-#include "ComponentsManager.h"
-#include <memory>
-
 namespace Cel {
 struct ComponentStorage;
 class Archetype;

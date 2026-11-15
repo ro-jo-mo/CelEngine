@@ -4,7 +4,7 @@
 #include "Running.h"
 #include "core/Time.h"
 #include "core/World.h"
-#include "ecs/ComponentsManager.h"
+
 #include "ecs/EntityManager.h"
 #include "ecs/QueryManager.h"
 #include "ecs/ResourceManager.h"
@@ -23,13 +23,11 @@ class App
 {
   public:
     App()
-        : componentsManager(ComponentsManager())
-        , queryManager(componentsManager)
+        : queryManager(archetypeManager)
         , systemAllocator(resourceManager, queryManager)
     {
         resourceManager.insert_resource<Time>();
-        resourceManager.insert_resource<World>(componentsManager,
-                                               entityManager);
+        resourceManager.insert_resource<World>(archetypeManager, entityManager);
         resourceManager.insert_resource<Running>();
     }
 
@@ -61,7 +59,7 @@ class App
 
     void flush();
 
-    ComponentsManager componentsManager;
+    ArchetypeManager archetypeManager{};
     EntityManager entityManager;
     ResourceManager resourceManager;
     QueryManager queryManager;
@@ -120,8 +118,7 @@ App::start(bool multithread)
 {
     (void(execute_schedule<ScheduleEnums>()), ...);
 
-    resourceManager.get_resource<World>()->flush();
-    queryManager.update_queries();
+    flush();
 
     return *this;
 }
@@ -155,8 +152,7 @@ App::end(bool multithread)
 {
     (void(execute_schedule<ScheduleEnums>()), ...);
 
-    resourceManager.get_resource<World>()->flush();
-    queryManager.update_queries();
+    flush();
 
     return *this;
 }
@@ -174,8 +170,7 @@ App::add_plugin(T plugin)
 inline void
 App::flush()
 {
-    resourceManager.get_resource<World>()->flush();
-    queryManager.update_queries();
+    resourceManager.get_resource<World>()->flush(queryManager);
 }
 
 }

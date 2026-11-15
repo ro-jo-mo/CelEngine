@@ -1,5 +1,7 @@
 #include "core/World.h"
 
+#include <ranges>
+
 using namespace Cel;
 
 using UpdateInfo = ArchetypeManager::UpdateInfo;
@@ -231,7 +233,7 @@ World::execute_remove_child(const RemoveChild& cmd,
 }
 
 bool
-World::flush()
+World::flush(QueryManager& queryManager)
 {
     // order
     // add
@@ -258,7 +260,7 @@ World::flush()
     }
 
     // Flush changes to archetypes
-    archetypeManager.update_entities(updateInfo);
+    archetypeManager.update_entities(updateInfo, queryManager);
 
     // We must destroy all data stored after moving
     for (const auto& info : updateInfo | std::views::values) {

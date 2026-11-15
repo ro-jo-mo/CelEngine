@@ -46,7 +46,7 @@ QueryManager::get_query()
         // ever added dynamically throughout the runtime, this will be false
         queries[id] = std::make_unique<Query>(archetypeManager);
     }
-    
+
     return *static_cast<Query*>(queries[id].get());
 }
 }

@@ -1,5 +1,7 @@
 #include "ecs/ArchetypeManager.h"
 
+#include "ecs/QueryManager.h"
+
 Cel::ArchetypeManager::ArchetypeManager()
 {
     // We start by simply making an empty archetype
@@ -15,15 +17,18 @@ Cel::ArchetypeManager::ArchetypeManager()
 
 void
 Cel::ArchetypeManager::update_entities(
-    std::unordered_map<Entity, UpdateInfo>& updateInfos)
+    std::unordered_map<Entity, UpdateInfo>& updateInfos,
+    QueryManager& queryManager)
 {
     for (const auto& [entity, updateInfo] : updateInfos) {
-        move_entity(entity, updateInfo);
+        move_entity(entity, updateInfo, queryManager);
     }
 }
 
 void
-Cel::ArchetypeManager::move_entity(const Entity entity, const UpdateInfo& info)
+Cel::ArchetypeManager::move_entity(const Entity entity,
+                                   const UpdateInfo& info,
+                                   QueryManager& queryManager)
 {
     const auto& previousSig = get_entity_signature(entity);
     const auto& newSig = info.signature;
@@ -33,6 +38,8 @@ Cel::ArchetypeManager::move_entity(const Entity entity, const UpdateInfo& info)
             std::make_unique<Archetype>(componentInfos, newSig));
 
         sigToArchetype.emplace(newSig, ptr.get());
+
+        queryManager.find_matches_for_new_archetype(*ptr);
     }
 
     auto& archetype = *sigToArchetype.at(newSig);
