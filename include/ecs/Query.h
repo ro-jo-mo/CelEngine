@@ -7,6 +7,8 @@
 #include "core/Optional.h"
 
 #include <algorithm>
+#include <cassert>
+#include <limits>
 
 #include <tuple>
 #include <utility>
@@ -38,6 +40,46 @@ struct Without : TypeList<T...>
 template<typename T>
 constexpr bool is_entity = std::is_same_v<T, Entity>;
 
+namespace Detail {
+// What a query hands back for each Get<...> entry:
+// Entity -> Entity, Optional<T> -> T*, T -> T&
+// (specialisations rather than std::conditional_t, so T::type is only
+// formed for Optional<T>)
+template<typename T>
+struct QueryReturn
+{
+    using type = T&;
+};
+
+template<>
+struct QueryReturn<Entity>
+{
+    using type = Entity;
+};
+
+template<typename T>
+struct QueryReturn<Optional<T>>
+{
+    using type = T*;
+};
+
+// Sentinel stored in retrieveOrder for Entity, which isn't a component
+constexpr ComponentId NO_COMPONENT = std::numeric_limits<ComponentId>::max();
+
+template<typename T>
+constexpr ComponentId
+retrieve_id()
+{
+    if constexpr (is_entity<T>) {
+        return NO_COMPONENT;
+    } else if constexpr (is_optional<T>) {
+        return component_id<typename T::type>();
+    } else {
+        return component_id<T>();
+    }
+}
+}
+
 /**
  * @}
  */
@@ -58,14 +100,11 @@ template<typename... Retrieves, typename... Requires, typename... Rejects>
 class BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
     : public IQuery
 {
+    static_assert(sizeof...(Retrieves) <= MAX_QUERY_RETRIEVE,
+                  "Query retrieves more components than MAX_QUERY_RETRIEVE");
 
-    // Account for entity retrieval and optionals
-    // If T == Entity "Entity" Else If IsOptional T::type* Else T&
     template<typename T>
-    using ReturnT = std::conditional_t<
-        is_entity<T>,
-        Entity,
-        std::conditional_t<is_optional<T>, typename T::type*, T&>>;
+    using ReturnT = typename Detail::QueryReturn<T>::type;
 
     // Type returned from get + iter
     using ReturnTuple = std::tuple<ReturnT<Retrieves>...>;
@@ -81,16 +120,65 @@ class BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
 
     struct Iterator
     {
-        bool operator!=(const Iterator& other) const;
+        bool operator!=(const Iterator& other) const
+        {
+            return !(*this == other);
+        }
 
-        bool operator==(const Iterator& other) const;
+        bool operator==(const Iterator& other) const
+        {
+            return matchIndex == other.matchIndex &&
+                   entityIndex == other.entityIndex;
+        }
 
-        Iterator& operator++();
+        Iterator& operator++()
+        {
+            entityIndex++;
+            skip_empty();
 
-        ReturnTuple operator*();
+            return *this;
+        }
+
+        ReturnTuple operator*()
+        {
+            auto& match = query.matches[matchIndex];
+
+            return [&]<size_t... Is>(std::index_sequence<Is...>) {
+                return ReturnTuple(get_component<Retrieves, Is>(match)...);
+            }(std::index_sequence_for<Retrieves...>{});
+        }
 
         template<typename T, size_t Index>
-        ReturnT<T> get_component(QueryMatch& match);
+        ReturnT<T> get_component(QueryMatch& match)
+        {
+            if constexpr (is_entity<T>) {
+                return match.archetype.get_entity_from_index(entityIndex);
+            } else if constexpr (is_optional<T>) {
+
+                if (match.storages[Index] == nullptr) {
+                    return nullptr;
+                }
+
+                return static_cast<ReturnT<T>>(
+                    match.storages[Index]->get_component(entityIndex));
+
+            } else {
+                return *static_cast<std::remove_reference_t<ReturnT<T>>*>(
+                    match.storages[Index]->get_component(entityIndex));
+            }
+        }
+
+        // Advance past archetypes that currently hold no entities
+        void skip_empty()
+        {
+            while (
+                matchIndex < query.matches.size() &&
+                entityIndex >=
+                    query.matches[matchIndex].archetype.get_total_entities()) {
+                entityIndex = 0;
+                matchIndex++;
+            }
+        }
 
         size_t matchIndex;
         size_t entityIndex;
@@ -116,27 +204,12 @@ BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
     : archetypeManager(archetypeManager)
 {
     // Set retrieve data
-    constexpr size_t SIZE = sizeof...(Retrieves);
+    totalRetrieved = sizeof...(Retrieves);
+    retrieveOrder.fill(Detail::NO_COMPONENT);
 
-    totalRetrieved = SIZE;
-
-    auto set_retrieve = [&]<typename T, typename... Ts>(
-                            const size_t index, auto&& _recurse) -> void {
-        if (index == SIZE) {
-            return;
-        }
-        if (is_entity<T>) {
-
-        } else if (is_optional<T>) {
-            retrieveOrder[index] = component_id<typename T::type>();
-        } else {
-            retrieveOrder[index] = component_id<T>();
-        }
-
-        _recurse(index + 1, _recurse);
-    };
-
-    set_retrieve.template operator()<Retrieves...>(0, set_retrieve);
+    [&]<size_t... Is>(std::index_sequence<Is...>) {
+        ((retrieveOrder[Is] = Detail::retrieve_id<Retrieves>()), ...);
+    }(std::index_sequence_for<Retrieves...>{});
 
     // Set signatures
 
@@ -177,7 +250,7 @@ BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+typename BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
     ReturnTuple
     BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::get(
         const Entity entity)
@@ -194,7 +267,7 @@ BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
 template<typename T>
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+typename BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
     template ReturnT<T>
     BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
         get_return_value(Entity entity)
@@ -203,8 +276,8 @@ BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
         return entity;
     } else if constexpr (is_optional<T>) {
         return static_cast<ReturnT<T>>(
-            archetypeManager.get_component_for_entity(entity,
-                                                      component_id<T>()));
+            archetypeManager.get_component_for_entity(
+                entity, component_id<typename T::type>()));
     } else {
         return *static_cast<std::remove_reference_t<ReturnT<T>>*>(
             archetypeManager.get_component_for_entity(entity,
@@ -217,8 +290,9 @@ bool
 BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::has(
     const Entity entity) const
 {
-    return (archetypeManager.get_entity_signature(entity) & required) ==
-           required;
+    const auto& signature = archetypeManager.get_entity_signature(entity);
+
+    return (signature & required) == required && (signature & reject).none();
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
@@ -236,108 +310,94 @@ BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::size()
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-bool
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
-    Iterator::operator!=(const Iterator& other) const
-{
-    return !(this == other);
-}
-
-template<typename... Retrieves, typename... Requires, typename... Rejects>
-bool
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
-    Iterator::operator==(const Iterator& other) const
-{
-    return matchIndex == other.matchIndex && entityIndex == other.entityIndex;
-}
-
-template<typename... Retrieves, typename... Requires, typename... Rejects>
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator
+typename BasicQuery<Get<Retrieves...>,
+                    With<Requires...>,
+                    Without<Rejects...>>::Iterator
 BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::begin()
 {
-    return { .matchIndex = 0, .entityIndex = 0, .query = *this };
+    Iterator it{ .matchIndex = 0, .entityIndex = 0, .query = *this };
+    it.skip_empty();
+    return it;
 }
 
 template<typename... Retrieves, typename... Requires, typename... Rejects>
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::end()
+typename BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    Iterator
+    BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::end()
 {
-    if (matches.empty()) {
-        return begin();
-    }
-
-    return { .matchIndex = matches.size(), .entityIndex = 0, .query = this };
+    return { .matchIndex = matches.size(), .entityIndex = 0, .query = *this };
 }
 
-template<typename... Retrieves, typename... Requires, typename... Rejects>
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::Iterator&
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
-    Iterator::operator++()
+template<template<typename...> class Wrapper, typename... Ts>
+struct FindOrEmptyImpl;
+
+// Base case, no wrapper
+template<template<typename...> class Wrapper>
+struct FindOrEmptyImpl<Wrapper>
 {
-    entityIndex++;
-
-    while (entityIndex ==
-           query.matches[matchIndex].archetype.get_total_entities()) {
-
-        entityIndex = 0;
-        matchIndex++;
-
-        if (matchIndex == query.matches.size()) {
-            break;
-        }
-    }
-
-    return *this;
-}
-
-template<typename... Retrieves, typename... Requires, typename... Rejects>
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
-    ReturnTuple
-    BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
-        Iterator::operator*()
-{
-    auto& match = query.matches[matchIndex];
-
-    return ReturnTuple(
-        get_component<Retrieves, std::index_sequence_for<Retrieves>>(match)...);
-}
-
-template<typename... Retrieves, typename... Requires, typename... Rejects>
-template<typename T, size_t Index>
-BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
-    template ReturnT<T>
-    BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
-        Iterator::get_component(QueryMatch& match)
-{
-    if constexpr (std::is_same_v<T, Entity>) {
-        return match.archetype.get_entity_from_index(entityIndex);
-    } else if constexpr (is_optional<T>) {
-
-        if (match.storages[Index] == nullptr) {
-            return nullptr;
-        }
-
-        return static_cast<ReturnT<T>>(
-            match.storages[Index]->get_component(entityIndex));
-
-    } else {
-        return *static_cast<std::remove_reference_t<ReturnT<T>>*>(
-            match.storages[Index]->get_component(entityIndex));
-    }
-}
-
-// e.g. FindOrEmtpy<With,Get<...>,With<A,B,...>,Without<...>> reduces to
-// With<A,B,...>
-template<template<typename...> class T, typename... Ts>
-struct FindOrEmptyImpl
-{
-    using type = T<>;
+    using type = Wrapper<>;
 };
 
+// Case we find wrapper
+template<template<typename...> class Wrapper, typename... Ts, typename... Rs>
+struct FindOrEmptyImpl<Wrapper, Wrapper<Ts...>, Rs...>
+{
+    using type = Wrapper<Ts...>;
+};
+
+// Recursive case for no match
+template<template<typename...> class Wrapper, typename T, typename... Ts>
+struct FindOrEmptyImpl<Wrapper, T, Ts...>
+{
+    using type = typename FindOrEmptyImpl<Wrapper, Ts...>::type;
+};
+
+// e.g. FindOrEmtpy<With,Get<...>,With<A,B,...>,Without<...>>
+// deduces to With<A,B,...>
 template<template<typename...> class T, typename... Ts>
 using FindOrEmpty = typename FindOrEmptyImpl<T, Ts...>::type;
 
+// Is T a specialisation of Wrapper<...>
+template<template<typename...> class Wrapper, typename T>
+constexpr bool is_specialisation_of = false;
+
+template<template<typename...> class Wrapper, typename... Ts>
+constexpr bool is_specialisation_of<Wrapper, Wrapper<Ts...>> = true;
+
+// How many of Ts are Wrapper<...>
+template<template<typename...> class Wrapper, typename... Ts>
+constexpr size_t count_specialisations_of =
+    (size_t{ 0 } + ... + (is_specialisation_of<Wrapper, Ts> ? 1 : 0));
+
 template<typename... Ts>
-using Query = BasicQuery<FindOrEmpty<Get, Ts...>, >;
+struct ValidateQueryArgs
+{
+    static_assert(count_specialisations_of<Get, Ts...> == 1,
+                  "Query requires exactly one Get<...>");
+    static_assert(count_specialisations_of<With, Ts...> <= 1,
+                  "Query accepts at most one With<...>");
+    static_assert(count_specialisations_of<Without, Ts...> <= 1,
+                  "Query accepts at most one Without<...>");
+    static_assert(
+        ((is_specialisation_of<Get, Ts> || is_specialisation_of<With, Ts> ||
+          is_specialisation_of<Without, Ts>) &&
+         ...),
+        "Query arguments must be Get<...>, With<...> or Without<...>");
+
+    using type = BasicQuery<FindOrEmpty<Get, Ts...>,
+                            FindOrEmpty<With, Ts...>,
+                            FindOrEmpty<Without, Ts...>>;
+};
+
+/**
+ * @brief Query<Get<...>, With<...>, Without<...>>
+ * Create a query that retrieves components in Get<...>
+ * Returns only entities that have both Get<...> and With<...>, and do not
+ * have Without<...>
+ *
+ * Use Cel::Get<Cel::Optional<MyComponent>> to optionally retrieve a component
+ */
+template<typename... Ts>
+using Query = typename ValidateQueryArgs<Ts...>::type;
 
 }

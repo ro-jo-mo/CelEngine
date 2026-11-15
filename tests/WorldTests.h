@@ -22,7 +22,7 @@ SpawnEntitiesWithoutDefaults(Resource<World>& world)
 
 inline void
 EnsureEntitiesHaveDefaults(
-    Query<With<GlobalTransform, Position, Rotation, Scale>>& query)
+    Query<Get<GlobalTransform, Position, Rotation, Scale>>& query)
 {
     size_t total = 0;
     for ( auto x : query) {
@@ -41,7 +41,7 @@ SpawnEntitiesWithKnownValues(Resource<World>& world)
 
 inline void
 EnsureEntitiesHaveKnownValues(
-    Query<With<Rotation, KnownValues::TestStruct>>& query)
+    Query<Get<Rotation, KnownValues::TestStruct>>& query)
 {
     for (auto [rot, t] : query) {
         ASSERT_EQ(rot.rotation, KnownValues::rotation.rotation)
@@ -71,7 +71,7 @@ AddHealthComponent(Resource<World>& world)
 }
 
 inline void
-VerifyHealthAdded(Query<With<Health>>& query)
+VerifyHealthAdded(Query<Get<Health>>& query)
 {
     ASSERT_TRUE(query.has(gAddRemoveEntity))
         << "Health component should be present after AddComponent";
@@ -87,7 +87,7 @@ RemoveHealthComponent(Resource<World>& world)
 }
 
 inline void
-VerifyHealthRemoved(Query<With<Health>>& query)
+VerifyHealthRemoved(Query<Get<Health>>& query)
 {
     ASSERT_FALSE(query.has(gAddRemoveEntity))
         << "Health component should be absent after RemoveComponent";
@@ -103,7 +103,7 @@ SpawnAndDestroyEntity(Resource<World>& world)
 }
 
 inline void
-VerifyEntityDestroyed(Query<With<Health>>& query)
+VerifyEntityDestroyed(Query<Get<Health>>& query)
 {
     ASSERT_FALSE(query.has(gDestroyedEntity))
         << "Destroyed entity should not appear in query";
@@ -122,8 +122,8 @@ SpawnParentAndChild(Resource<World>& world)
 }
 
 inline void
-VerifyChildAdded(Query<With<Children>>& parentQuery,
-                 Query<With<Parent>>& childQuery)
+VerifyChildAdded(Query<Get<Children>>& parentQuery,
+                 Query<Get<Parent>>& childQuery)
 {
     ASSERT_TRUE(parentQuery.has(gParentEntity))
         << "Parent should have Children component";
@@ -146,8 +146,8 @@ RemoveChildFromParent(Resource<World>& world)
 }
 
 inline void
-VerifyChildRemoved(Query<With<Children>>& parentQuery,
-                   Query<With<Parent>>& childQuery)
+VerifyChildRemoved(Query<Get<Children>>& parentQuery,
+                   Query<Get<Parent>>& childQuery)
 {
     ASSERT_FALSE(parentQuery.has(gParentEntity));
 
@@ -170,9 +170,9 @@ SpawnWithChildrenBuilder(Resource<World>& world)
 }
 
 inline void
-VerifyBuilderHierarchy(Query<With<Children>>& parentQuery,
-                       Query<With<Parent>>& childQuery,
-                       Query<With<Health>>& healthQuery)
+VerifyBuilderHierarchy(Query<Get<Children>>& parentQuery,
+                       Query<Get<Parent>>& childQuery,
+                       Query<Get<Health>>& healthQuery)
 {
     ASSERT_TRUE(parentQuery.has(gBuilderParent))
         << "Builder parent should have Children component";

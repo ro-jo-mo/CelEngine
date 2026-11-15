@@ -47,7 +47,7 @@ SpawnRootWithPosition(Resource<World>& world)
 }
 
 inline void
-VerifyRootGlobalTransform(Query<With<GlobalTransform,
+VerifyRootGlobalTransform(Query<Get<GlobalTransform,
                                      const Position,
                                      const Rotation,
                                      const Scale,
@@ -93,7 +93,7 @@ SpawnParentChildForPropagation(Resource<World>& world)
 
 inline void
 VerifyChildInheritsParentTransform(
-    Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
+    Query<Get<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery)
 {
     ASSERT_TRUE(childQuery.has(gChildOfRoot));
@@ -144,7 +144,7 @@ SpawnDeepHierarchy(Resource<World>& world)
 
 inline void
 VerifyGrandchildTransform(
-    Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
+    Query<Get<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery)
 {
     ASSERT_TRUE(childQuery.has(gGrandchild));
@@ -192,7 +192,7 @@ SpawnScaledHierarchy(Resource<World>& world)
 
 inline void
 VerifyChildWorldScale(
-    Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
+    Query<Get<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery)
 {
     ASSERT_TRUE(childQuery.has(gScaledChild));
@@ -222,7 +222,7 @@ SpawnStandaloneEntity(Resource<World>& world)
 
 inline void
 VerifyStandaloneGlobalTransform(
-    Query<With<GlobalTransform, const Position, const Rotation, const Scale>,
+    Query<Get<GlobalTransform, const Position, const Rotation, const Scale>,
           Without<Parent, Children>>& rootQuery)
 {
     ASSERT_TRUE(rootQuery.has(gStandaloneEntity));

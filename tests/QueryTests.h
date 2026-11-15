@@ -21,7 +21,7 @@ SpawnMixedEntities(Resource<World>& world)
 }
 
 inline void
-CountHealthEntities(Query<With<Health>>& query)
+CountHealthEntities(Query<Get<Health>>& query)
 {
     size_t count = 0;
     for (const auto& [h] : query) {
@@ -43,7 +43,7 @@ SpawnEnabledAndDisabled(Resource<World>& world)
 }
 
 inline void
-CountEnabledHealth(Query<With<Health>, Without<Disabled>>& query)
+CountEnabledHealth(Query<Get<Health>, Without<Disabled>>& query)
 {
     size_t count = 0;
     for (const auto& [h] : query) {
@@ -65,7 +65,7 @@ SpawnForHasCheck(Resource<World>& world)
 }
 
 inline void
-CheckHas(Query<With<Health>>& query)
+CheckHas(Query<Get<Health>>& query)
 {
     ASSERT_TRUE(query.has(gHasEntity))
         << "Entity with Health should be found by Has()";
@@ -83,7 +83,7 @@ SpawnForGet(Resource<World>& world)
 }
 
 inline void
-CheckGet(Query<With<Health, Velocity>>& query)
+CheckGet(Query<Get<Health, Velocity>>& query)
 {
     ASSERT_TRUE(query.has(gGetEntity));
     auto [h, v] = query.get(gGetEntity);
@@ -103,7 +103,7 @@ SpawnForEntityQuery(Resource<World>& world)
 }
 
 inline void
-CheckEntityInQuery(Query<With<Entity, Health>>& query)
+CheckEntityInQuery(Query<Get<Entity, Health>>& query)
 {
     bool found = false;
     for (const auto& [e, h] : query) {
@@ -113,7 +113,7 @@ CheckEntityInQuery(Query<With<Entity, Health>>& query)
         }
     }
     ASSERT_TRUE(found)
-        << "Entity should have been yielded by Query<With<Entity, Health>>";
+        << "Entity should have been yielded by Query<Get<Entity, Health>>";
 }
 
 // ========================================
@@ -129,7 +129,7 @@ SpawnForIntersection(Resource<World>& world)
 }
 
 inline void
-CountIntersection(Query<With<Health, Velocity>>& query)
+CountIntersection(Query<Get<Health, Velocity>>& query)
 {
     size_t count = 0;
     for (const auto& [h, v] : query) {
@@ -149,7 +149,7 @@ SpawnForMutation(Resource<World>& world)
 }
 
 inline void
-MutateHealth(Query<With<Health>>& query)
+MutateHealth(Query<Get<Health>>& query)
 {
     std::cout << "first" << std::endl;
     for (auto [h] : query) {
@@ -159,7 +159,7 @@ MutateHealth(Query<With<Health>>& query)
 }
 
 inline void
-VerifyMutation(Query<With<Health>>& query)
+VerifyMutation(Query<Get<Health>>& query)
 {
     ASSERT_TRUE(query.has(gMutateEntity));
     auto [h] = query.get(gMutateEntity);

@@ -49,7 +49,7 @@ spawn_asset(Resource<World>& world,
 }
 
 void
-spin_it(Query<With<RotateMe, Rotation>>& query, Resource<Time>& time)
+spin_it(Query<Get<RotateMe, Rotation>>& query, Resource<Time>& time)
 {
     const auto rot = glm::angleAxis(time->delta_time(), glm::vec3(0, 1, 0));
     for (auto [_, rotation] : query) {
@@ -59,7 +59,7 @@ spin_it(Query<With<RotateMe, Rotation>>& query, Resource<Time>& time)
 
 void
 camera_controller(
-    Query<With<Renderer::Camera, PlayerCamera, Rotation, Position>>& query,
+    Query<Get<Renderer::Camera, PlayerCamera, Rotation, Position>>& query,
     Resource<Input::Input>& input,
     Resource<Renderer::Window>& window,
     Resource<Time>& time)

@@ -25,7 +25,7 @@ register_indirect_draw_data_pass(Resource<RenderGraph::Graph>& graph);
 
 void
 create_indirect_draw_data(
-    Query<With<Entity, Handle<Asset::Primitive>, Handle<Asset::Material>>>&
+    Query<Get<Entity, Handle<Asset::Primitive>, Handle<Asset::Material>>>&
         renderables,
     ParallelResource<RenderGraph::PassServer>& passServer,
     Resource<Asset::AssetServer>& assetServer,
@@ -37,7 +37,7 @@ register_draw_mesh_pass(Resource<Asset::AssetServer>& server,
                         Resource<RenderExtent>& extent);
 
 void
-draw_mesh(Query<With<Entity, Handle<Asset::Primitive>, Handle<Asset::Material>>>&
+draw_mesh(Query<Get<Entity, Handle<Asset::Primitive>, Handle<Asset::Material>>>&
               renderables,
           ParallelResource<RenderGraph::PassServer>& passServer);
 

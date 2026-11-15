@@ -121,15 +121,15 @@ struct Scale
 
 void
 hierarchy_propagation(
-    Query<With<const GlobalTransform, const Children>, Without<Parent>>&
+    Query<Get<const GlobalTransform, const Children>, Without<Parent>>&
         rootQuery,
-    Query<With<const Children>>& parentQuery,
-    Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
+    Query<Get<const Children>>& parentQuery,
+    Query<Get<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery);
 
 void
 compute_root_global_transform(
-    Query<With<GlobalTransform, Position, Rotation, Scale>, Without<Parent>>&
+    Query<Get<GlobalTransform, Position, Rotation, Scale>, Without<Parent>>&
         rootQuery);
 
 }

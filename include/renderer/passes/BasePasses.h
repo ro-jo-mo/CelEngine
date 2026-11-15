@@ -32,8 +32,8 @@ struct PassFriend
         Resource<RenderGraph::Graph>& graph);
 
     static void create_scene_data(
-        Query<With<Handle<Asset::Material>, GlobalTransform>>& entities,
-        Query<With<Camera, GlobalTransform>>& camera,
+        Query<Get<Handle<Asset::Material>, GlobalTransform>>& entities,
+        Query<Get<Camera, GlobalTransform>>& camera,
         Resource<SceneData>& sceneData,
         Resource<Asset::SharedAssetData>& shared,
         ParallelResource<RenderGraph::PassServer>& passServer);

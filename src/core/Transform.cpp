@@ -75,8 +75,8 @@ GlobalTransform::transform_from_local(const Position& localPosition,
 void
 PropagateThroughChildren(
     const Entity& parent,
-    Query<With<const Children>>& parentQuery,
-    Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
+    Query<Get<const Children>>& parentQuery,
+    Query<Get<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery)
 {
     // for child of this node
@@ -102,10 +102,10 @@ PropagateThroughChildren(
 
 void
 Cel::hierarchy_propagation(
-    Query<With<const GlobalTransform, const Children>, Without<Parent>>&
+    Query<Get<const GlobalTransform, const Children>, Without<Parent>>&
         rootQuery,
-    Query<With<const Children>>& parentQuery,
-    Query<With<GlobalTransform, const Position, const Rotation, const Scale>>&
+    Query<Get<const Children>>& parentQuery,
+    Query<Get<GlobalTransform, const Position, const Rotation, const Scale>>&
         childQuery)
 {
     // Parents represents the list of root nodes in the hierarchy trees
@@ -129,7 +129,7 @@ Cel::hierarchy_propagation(
 
 void
 Cel::compute_root_global_transform(
-    Query<With<GlobalTransform, Position, Rotation, Scale>, Without<Parent>>&
+    Query<Get<GlobalTransform, Position, Rotation, Scale>, Without<Parent>>&
         rootQuery)
 {
     for (auto [global, pos, rot, scale] : rootQuery) {

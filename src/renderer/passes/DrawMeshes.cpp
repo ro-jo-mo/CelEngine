@@ -47,7 +47,7 @@ Cel::Renderer::Passes::register_indirect_draw_data_pass(
 
 void
 Cel::Renderer::Passes::create_indirect_draw_data(
-    Query<With<Entity, Handle<Asset::Primitive>, Handle<Asset::Material>>>&
+    Query<Get<Entity, Handle<Asset::Primitive>, Handle<Asset::Material>>>&
         renderables,
     ParallelResource<RenderGraph::PassServer>& passServer,
     Resource<Asset::AssetServer>& assetServer,
@@ -146,7 +146,7 @@ Cel::Renderer::Passes::register_draw_mesh_pass(
 
 void
 Cel::Renderer::Passes::draw_mesh(
-    Query<With<Entity, Handle<Asset::Primitive>, Handle<Asset::Material>>>&
+    Query<Get<Entity, Handle<Asset::Primitive>, Handle<Asset::Material>>>&
         renderables,
     ParallelResource<RenderGraph::PassServer>& passServer)
 {

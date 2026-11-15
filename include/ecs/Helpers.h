@@ -13,7 +13,7 @@ struct IsQuery : std::false_type
 {};
 
 template<typename... Ts>
-struct IsQuery<Query<Ts...>> : std::true_type
+struct IsQuery<BasicQuery<Ts...>> : std::true_type
 {};
 
 template<typename T>

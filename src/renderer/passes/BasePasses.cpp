@@ -43,8 +43,8 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
 
 void
 Cel::Renderer::Passes::PassFriend::create_scene_data(
-    Query<With<Handle<Asset::Material>, GlobalTransform>>& entities,
-    Query<With<Camera, GlobalTransform>>& camera,
+    Query<Get<Handle<Asset::Material>, GlobalTransform>>& entities,
+    Query<Get<Camera, GlobalTransform>>& camera,
     Resource<SceneData>& sceneData,
     Resource<Asset::SharedAssetData>& shared,
     ParallelResource<RenderGraph::PassServer>& passServer)

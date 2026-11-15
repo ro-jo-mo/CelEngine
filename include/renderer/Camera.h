@@ -61,11 +61,11 @@ class Camera
 
     Projection projection;
 
-    friend void camera_system(Query<With<Camera, GlobalTransform>>& cameras);
+    friend void camera_system(Query<Get<Camera, GlobalTransform>>& cameras);
 };
 
 // Update view matrix, run after transform propagation
 void
-camera_system(Query<With<Camera, GlobalTransform>>& cameras);
+camera_system(Query<Get<Camera, GlobalTransform>>& cameras);
 
 }
