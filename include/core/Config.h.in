@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace Cel {
 
 constexpr uint32_t MAX_ENTITIES = @MAX_ENTITIES@;

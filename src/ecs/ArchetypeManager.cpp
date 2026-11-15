@@ -72,6 +72,14 @@ Cel::ArchetypeManager::move_entity(const Entity entity,
 }
 
 void
+Cel::ArchetypeManager::register_entity(Entity entity)
+{
+    const auto empty = archetypes.front().get();
+    entityData[entity] = { .archetype = empty, .index = 0 };
+    empty->register_entity(entity);
+}
+
+void
 Cel::ArchetypeManager::destroy_entity(const Entity entity)
 {
     entityData[entity].archetype->destroy_entity(entity);

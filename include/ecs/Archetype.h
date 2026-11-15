@@ -17,11 +17,11 @@ class ComponentInfo
     size_t size = 0;
     size_t align = 0;
 
-    inline void move(const void* src, void* dst) const;
-    inline void destructor(const void* ptr, size_t n) const;
+    void move(const void* src, void* dst) const;
+    void destructor(const void* ptr, size_t n) const;
 
   private:
-    void (*_move)(const void* src, const void* dst) = nullptr;
+    void (*_move)(const void* src, void* dst) = nullptr;
 
     void (*_destructor)(const void* ptr, size_t n) = nullptr;
 

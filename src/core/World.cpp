@@ -73,13 +73,8 @@ World::execute_add_component(
     info.signature.set(cmd.component, true);
 
     if (info.datas[cmd.component] != nullptr) {
-
         throw_error("Attempted to add the same component twice to the same "
                     "entity in a single world flush!");
-
-        // In retrospect this will probably be confusing, so I'll just error
-        // archetypeManager.get_component_info(cmd.component)
-        //    .destructor(cmd.data, 1);
     } else {
         info.datas[cmd.component] = cmd.data;
     }

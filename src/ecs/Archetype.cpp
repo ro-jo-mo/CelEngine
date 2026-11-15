@@ -1,6 +1,7 @@
 #include "ecs/Archetype.h"
 
 #include <cassert>
+#include <cstring>
 
 Cel::Archetype::Archetype(
     const std::array<ComponentInfo, MAX_COMPONENTS>& componentInfos,

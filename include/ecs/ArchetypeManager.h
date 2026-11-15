@@ -28,6 +28,8 @@ class ArchetypeManager
     template<typename T>
     [[nodiscard]] bool has_component(Entity entity) const;
 
+    void register_entity(Entity entity);
+
     void destroy_entity(Entity entity);
 
     struct UpdateInfo
@@ -85,9 +87,9 @@ ArchetypeManager::register_component()
 
     // No need to set the destructor / move constructor if they're both trivial
     if (!std::is_trivially_copyable<T>()) {
-        info._move = [](const void* src, const void* dst) {
+        info._move = [](const void* src, void* dst) {
             std::construct_at(static_cast<T*>(dst),
-                              std::move(*static_cast<T*>(src)));
+                              std::move(*static_cast<const T*>(src)));
         };
     }
 

@@ -175,6 +175,9 @@ EntityBuilder
 World::spawn(Components... components)
 {
     auto entity = entityManager.allocate_entity();
+
+    archetypeManager.register_entity(entity);
+
     ((void)add_component(entity, std::forward<Components>(components)), ...);
 
     // lastly check for core components, add if not already there
@@ -211,9 +214,9 @@ World::add_component(Entity entity, Component component)
     archetypeManager.get_component_info(component_id<Component>())
         .move(&component, ptr.get());
 
-    toAdd.push_back({ .entity = entity,
-                      .component = component_id<Component>(),
-                      .data = ptr });
+    toAdd.push_back(AddComponent{ .entity = entity,
+                                  .component = component_id<Component>(),
+                                  .data = ptr.get() });
 }
 
 template<typename Component>
