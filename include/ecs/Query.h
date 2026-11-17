@@ -114,71 +114,27 @@ class BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
 
     ReturnTuple get(Entity entity);
 
-    bool has(Entity entity) const;
+    [[nodiscard]] bool has(Entity entity) const;
 
-    size_t size() const;
+    [[nodiscard]] size_t size() const;
 
     struct Iterator
     {
-        bool operator!=(const Iterator& other) const
-        {
-            return !(*this == other);
-        }
-
+        // msvc does not allow this to be conveniently defined out of class smh
         bool operator==(const Iterator& other) const
         {
             return matchIndex == other.matchIndex &&
                    entityIndex == other.entityIndex;
         }
 
-        Iterator& operator++()
-        {
-            entityIndex++;
+        Iterator& operator++();
 
-            find_next_archetype();
-
-            return *this;
-        }
-
-        ReturnTuple operator*()
-        {
-            auto& match = query.matches[matchIndex];
-
-            return [&]<size_t... Index>(std::index_sequence<Index...>) {
-                return ReturnTuple(get_component<Retrieves, Index>(match)...);
-            }(std::index_sequence_for<Retrieves...>{});
-        }
+        ReturnTuple operator*();
 
         template<typename T, size_t Index>
-        ReturnT<T> get_component(QueryMatch& match)
-        {
-            if constexpr (is_entity<T>) {
-                return match.archetype.get_entity_from_index(entityIndex);
-            } else if constexpr (is_optional<T>) {
+        ReturnT<T> get_component(QueryMatch& match);
 
-                if (match.storages[Index] == nullptr) {
-                    return nullptr;
-                }
-
-                return static_cast<ReturnT<T>>(
-                    match.storages[Index]->get_component(entityIndex));
-
-            } else {
-                return *static_cast<std::remove_reference_t<ReturnT<T>>*>(
-                    match.storages[Index]->get_component(entityIndex));
-            }
-        }
-
-        void find_next_archetype()
-        {
-            while (
-                matchIndex < query.matches.size() &&
-                entityIndex >=
-                    query.matches[matchIndex].archetype.get_total_entities()) {
-                entityIndex = 0;
-                matchIndex++;
-            }
-        }
+        void find_next_archetype();
 
         size_t matchIndex;
         size_t entityIndex;
@@ -327,6 +283,69 @@ typename BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
     BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::end()
 {
     return { .matchIndex = matches.size(), .entityIndex = 0, .query = *this };
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+typename BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    ReturnTuple
+    BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+        Iterator::operator*()
+{
+    auto& match = query.matches[matchIndex];
+
+    return [&]<size_t... Index>(std::index_sequence<Index...>) {
+        return ReturnTuple(get_component<Retrieves, Index>(match)...);
+    }(std::index_sequence_for<Retrieves...>{});
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+typename BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    Iterator&
+    BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+        Iterator::operator++()
+{
+    entityIndex++;
+
+    find_next_archetype();
+
+    return *this;
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+void
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    Iterator::find_next_archetype()
+{
+    while (matchIndex < query.matches.size() &&
+           entityIndex >=
+               query.matches[matchIndex].archetype.get_total_entities()) {
+        entityIndex = 0;
+        matchIndex++;
+    }
+}
+
+template<typename... Retrieves, typename... Requires, typename... Rejects>
+template<typename T, size_t Index>
+BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+    template ReturnT<T>
+    BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
+        Iterator::get_component(QueryMatch& match)
+{
+    if constexpr (is_entity<T>) {
+        return match.archetype.get_entity_from_index(entityIndex);
+    } else if constexpr (is_optional<T>) {
+
+        if (match.storages[Index] == nullptr) {
+            return nullptr;
+        }
+
+        return static_cast<ReturnT<T>>(
+            match.storages[Index]->get_component(entityIndex));
+
+    } else {
+        return *static_cast<std::remove_reference_t<ReturnT<T>>*>(
+            match.storages[Index]->get_component(entityIndex));
+    }
 }
 
 template<template<typename...> class Wrapper, typename... Ts>

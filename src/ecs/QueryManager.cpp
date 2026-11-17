@@ -33,16 +33,34 @@ QueryManager::find_matches_for_new_archetype(Archetype& archetype) const
             continue;
         }
 
-        // Does this archetype contain entities that match the required
-        // components and not the rejected components
-        if ((query->required & archetype.get_signature()) == query->required &&
-            (query->reject & archetype.get_signature()).none()) {
+        if (does_query_match(*query, archetype)) {
 
-            query->matches.push_back({ .storages = get_retrieved_components(
-                                           query->retrieveOrder,
-                                           query->totalRetrieved,
-                                           archetype),
-                                       .archetype = archetype });
+            query->matches.push_back(
+                { .storages = get_retrieved_components(
+                      query->retrieveOrder, query->totalRetrieved, archetype),
+                  .archetype = archetype });
+        }
+    }
+}
+
+bool
+QueryManager::does_query_match(const IQuery& query, const Archetype& archetype)
+{
+    // Does this archetype contain entities that match the required
+    // components and not the rejected components
+    return (query.required & archetype.get_signature()) == query.required &&
+           (query.reject & archetype.get_signature()).none();
+}
+
+void
+QueryManager::initialise_query(IQuery& query) const
+{
+    for (const auto& archetype : archetypeManager.archetypes) {
+        if (does_query_match(query, *archetype)) {
+            query.matches.push_back(
+                { .storages = get_retrieved_components(
+                      query.retrieveOrder, query.totalRetrieved, *archetype),
+                  .archetype = *archetype });
         }
     }
 }

@@ -26,6 +26,11 @@ class QueryManager
     void find_matches_for_new_archetype(Archetype& archetype) const;
 
   private:
+    void initialise_query(IQuery& query) const;
+
+    static bool does_query_match(const IQuery& query,
+                                 const Archetype& archetype);
+
     ArchetypeManager& archetypeManager;
     std::vector<std::unique_ptr<IQuery>> queries;
 };
@@ -45,6 +50,7 @@ QueryManager::get_query()
         // registration. This will *probably* hold true forever. If queries are
         // ever added dynamically throughout the runtime, this will be false
         queries[id] = std::make_unique<Query>(archetypeManager);
+        initialise_query(*queries[id]);
     }
 
     return *static_cast<Query*>(queries[id].get());

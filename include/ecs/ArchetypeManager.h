@@ -69,6 +69,8 @@ class ArchetypeManager
     // Stores details about the sizing, destructor and constructor of a
     // component
     std::array<ComponentInfo, MAX_COMPONENTS> componentInfos{};
+
+    friend class QueryManager;
 };
 
 template<typename T>

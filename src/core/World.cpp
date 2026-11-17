@@ -151,7 +151,7 @@ World::execute_add_child(const AddChild& cmd,
         }
     }
 
-    auto& originalSignature = archetypeManager.get_entity_signature(cmd.parent);
+    auto& originalSignature = archetypeManager.get_entity_signature(cmd.child);
 
     if (originalSignature.test(component_id<Parent>())) {
         throw_error(
@@ -161,7 +161,7 @@ World::execute_add_child(const AddChild& cmd,
 
     auto& info =
         updateInfo
-            .emplace(cmd.parent, UpdateInfo{ .signature = originalSignature })
+            .emplace(cmd.child, UpdateInfo{ .signature = originalSignature })
             .first->second;
 
     if (info.signature.test(component_id<Parent>())) {
