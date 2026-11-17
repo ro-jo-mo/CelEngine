@@ -16,6 +16,8 @@ Cel::Archetype::Archetype(
 
             auto& info = componentInfos[i];
 
+            assert(info.size != 0 && "Component must be initialised first!");
+
             // Create storage for this component
 
             storages.push_back({ .info = info,
@@ -94,9 +96,12 @@ Cel::Archetype::destroy_entity(const Entity entity)
     assert(entityToIndex.contains(entity));
 
     const auto index = entityToIndex[entity];
+
     // Swap the last element of the array to the deleted components place
     // This keeps the array tightly packed
     const auto last = indexToEntity.size() - 1;
+
+    auto swappedEntity = indexToEntity[last];
 
     for (const auto& store : storages) {
         auto position = store.get_component(index);
@@ -128,8 +133,6 @@ Cel::Archetype::destroy_entity(const Entity entity)
     }
 
     // Update the mapping for the entity we're swapping
-    auto swappedEntity = indexToEntity[last];
-
     entityToIndex[swappedEntity] = index;
     indexToEntity[index] = swappedEntity;
 }

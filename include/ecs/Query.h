@@ -134,7 +134,8 @@ class BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
         Iterator& operator++()
         {
             entityIndex++;
-            skip_empty();
+
+            find_next_archetype();
 
             return *this;
         }
@@ -143,8 +144,8 @@ class BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
         {
             auto& match = query.matches[matchIndex];
 
-            return [&]<size_t... Is>(std::index_sequence<Is...>) {
-                return ReturnTuple(get_component<Retrieves, Is>(match)...);
+            return [&]<size_t... Index>(std::index_sequence<Index...>) {
+                return ReturnTuple(get_component<Retrieves, Index>(match)...);
             }(std::index_sequence_for<Retrieves...>{});
         }
 
@@ -168,8 +169,7 @@ class BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>
             }
         }
 
-        // Advance past archetypes that currently hold no entities
-        void skip_empty()
+        void find_next_archetype()
         {
             while (
                 matchIndex < query.matches.size() &&
@@ -212,7 +212,6 @@ BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::
     }(std::index_sequence_for<Retrieves...>{});
 
     // Set signatures
-
     auto mark_sig = []<typename T>(Signature& sig) {
         sig.set(component_id<T>(), true);
     };
@@ -316,7 +315,9 @@ typename BasicQuery<Get<Retrieves...>,
 BasicQuery<Get<Retrieves...>, With<Requires...>, Without<Rejects...>>::begin()
 {
     Iterator it{ .matchIndex = 0, .entityIndex = 0, .query = *this };
-    it.skip_empty();
+    // If first archetype is empty skip over
+    it.find_next_archetype();
+
     return it;
 }
 

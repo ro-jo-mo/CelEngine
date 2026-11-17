@@ -12,6 +12,9 @@ Cel::ArchetypeManager::ArchetypeManager()
     const auto& ptr = archetypes.emplace_back(
         std::make_unique<Archetype>(componentInfos, empty));
 
+
+
+
     sigToArchetype.emplace(empty, ptr.get());
 }
 

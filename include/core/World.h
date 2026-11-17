@@ -16,11 +16,7 @@ class EntityBuilder;
 class World
 {
   public:
-    World(ArchetypeManager& archetypeManager, EntityManager& entityManager)
-        : archetypeManager(archetypeManager)
-        , entityManager(entityManager)
-    {
-    }
+    World(ArchetypeManager& archetypeManager, EntityManager& entityManager);
 
     /**
      * @brief Create a new entity with these components

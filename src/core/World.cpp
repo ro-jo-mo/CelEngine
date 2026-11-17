@@ -6,6 +6,15 @@ using namespace Cel;
 
 using UpdateInfo = ArchetypeManager::UpdateInfo;
 
+World::World(ArchetypeManager& archetypeManager, EntityManager& entityManager)
+    : archetypeManager(archetypeManager)
+    , entityManager(entityManager)
+{
+    // Register the only components that aren't created through add_component()
+    archetypeManager.register_component<Children>();
+    archetypeManager.register_component<Parent>();
+}
+
 void
 World::destroy(const Entity entity)
 {
