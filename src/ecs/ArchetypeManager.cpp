@@ -12,9 +12,6 @@ Cel::ArchetypeManager::ArchetypeManager()
     const auto& ptr = archetypes.emplace_back(
         std::make_unique<Archetype>(componentInfos, empty));
 
-
-
-
     sigToArchetype.emplace(empty, ptr.get());
 }
 
@@ -86,6 +83,7 @@ void
 Cel::ArchetypeManager::destroy_entity(const Entity entity)
 {
     entityData[entity].archetype->destroy_entity(entity);
+    entityData[entity] = { .archetype = archetypes[0].get(), .index = 0 };
 }
 
 void

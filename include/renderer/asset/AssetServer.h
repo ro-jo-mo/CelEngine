@@ -83,6 +83,10 @@ class AssetServer
 
     Handle<Primitive> create_cube(glm::vec3 size = glm::vec3(1.0f));
 
+    Handle<ImageAsset> create_image(const std::vector<uint32_t>& pixels,
+                                    VkFormat format,
+                                    VkExtent3D extent);
+
     Primitive& get_primitive(Handle<Primitive> handle);
 
     /**

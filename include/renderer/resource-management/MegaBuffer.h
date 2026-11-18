@@ -79,11 +79,11 @@ class MegaBuffer final : public PerFrameMegaBuffer
      * @param staging
      * @param server
      */
-    void upload_to_gpu(VkCommandBuffer cmd,
+    void record_upload_cmd(VkCommandBuffer cmd,
                        Handle<AllocatedBuffer> staging,
                        const RenderGraph::PassServer& server);
 
-    void register_upload(Handle<AllocatedBuffer> stagingHandle,
+    void register_upload_to_pass(Handle<AllocatedBuffer> stagingHandle,
                          RenderGraph::PassBuilder& pass) const;
 
     Handle<AllocatedBuffer> handle;

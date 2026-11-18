@@ -20,9 +20,8 @@ inline const auto indexStagingBuffer =
 inline const auto materialStagingBuffer =
     Passes::HandleAllocator::allocate_buffer("material_staging_buffer");
 
-// Set on primitive handles owned by the procedural loader. Loaders only see
-// the masked 0..n index
-constexpr uint32_t PRIMITIVE_MASK = 1u << 31;
+// Tag this bit to show a handle is from the procedural loader
+constexpr uint32_t PROCEDURAL_TAG = 1u << 31;
 }
 
 AssetServer::AssetServer(VulkanResourceManager& manager,
@@ -67,6 +66,74 @@ AssetServer::AssetServer(VulkanResourceManager& manager,
     vertexBufferHandle = shared->vertexBuffer.handle;
     indexBufferHandle = shared->indexBuffer.handle;
     materialBufferHandle = shared->materialBuffer.handle;
+
+    // I want to create a set of healthy default values
+    // This includes:
+    // 2 base samplers in sampler array
+    // magenta checkerboard, default normal, metallic/roughness textures
+    // Default material constants
+    // These should be accessed through the some enum for defaults. I might just
+    // merge them all into a single enum for convenience
+
+    assert(shared->samplers.add_sampler(SamplerSettings::Linear) ==
+           Defaults::LinearSampler);
+    assert(shared->samplers.add_sampler(SamplerSettings::Pixel) ==
+           Defaults::PixelSampler);
+
+    constexpr MaterialConstants defaultConstants = {
+        .baseColorFactors = { 1, 1, 1, 1 },
+        .metalRoughnessFactors = { 1, 1, 1, 1 },
+        .colorTextureIndex = Defaults::WhiteTexture,
+        .metalRoughnessTextureIndex = Defaults::WhiteTexture,
+        .normalTextureIndex = Defaults::NormalTexture,
+        .colorSamplerIndex = Defaults::LinearSampler,
+        .metalRoughnessSamplerIndex = Defaults::LinearSampler,
+        .normalSamplerIndex = Defaults::LinearSampler
+    };
+
+    assert(shared->materialBuffer.allocate(&defaultConstants,
+                                           sizeof(MaterialConstants)) ==
+           Defaults::Material);
+
+    auto create_img = [&](auto col) {
+        std::vector<uint32_t> pixels;
+        pixels.reserve(16 * 16);
+        // for 16x16 white texture
+        for (int i = 0; i < 16 * 16; i++) {
+            pixels.push_back(col);
+        }
+
+        // Create as UNORM.
+        // Suitable only for non colour textures, or a full white / black
+        // texture used for colour
+        return create_image(pixels, VK_FORMAT_R8G8B8A8_UNORM, { 16, 16, 1 });
+    };
+
+    assert((create_img(glm::packUnorm4x8(glm::vec4(1, 1, 1, 1))).index &
+            ~PROCEDURAL_TAG) == Defaults::WhiteTexture);
+
+    assert((create_img(glm::packUnorm4x8(glm::vec4(0.5, 0.5, 1, 1))).index &
+            ~PROCEDURAL_TAG) == Defaults::NormalTexture);
+
+    {
+        const uint32_t magenta = glm::packUnorm4x8(glm::vec4(1, 0, 1, 1));
+        const uint32_t black = glm::packUnorm4x8(glm::vec4(0, 0, 0, 1));
+
+        std::vector<uint32_t> pixels;
+        pixels.resize(16 * 16);
+        // for 16x16 checkerboard texture
+        for (int x = 0; x < 16; x++) {
+            for (int y = 0; y < 16; y++) {
+                pixels[y * 16 + x] = ((x % 2) ^ (y % 2)) ? magenta : black;
+            }
+        }
+
+        // Create as SRGB. It's unlikely to be used as any way other than a
+        // colour texture
+        assert((create_image(pixels, VK_FORMAT_R8G8B8A8_UNORM, { 16, 16, 1 })
+                    .index &
+                ~PROCEDURAL_TAG) == Defaults::MagentaCheckerboard);
+    }
 }
 
 Handle<SceneAsset>
@@ -76,19 +143,25 @@ AssetServer::load_gltf(std::string file, GltfLabel::Label label)
 }
 
 Handle<Primitive>
-AssetServer::create_cube(glm::vec3 size)
+AssetServer::create_cube(const glm::vec3 size)
 {
-    auto handle = proceduralLoader.create_cube(size);
-    handle.index |= PRIMITIVE_MASK;
-    return handle;
+    return { proceduralLoader.create_cube(size).index | PROCEDURAL_TAG };
+}
+Handle<ImageAsset>
+AssetServer::create_image(const std::vector<uint32_t>& pixels,
+                          const VkFormat format,
+                          const VkExtent3D extent)
+{
+    return { proceduralLoader.create_image(pixels, format, extent).index |
+             PROCEDURAL_TAG };
 }
 
 Primitive&
 AssetServer::get_primitive(Handle<Primitive> handle)
 {
-    if (handle.index & PRIMITIVE_MASK) {
-        handle.index &= ~PRIMITIVE_MASK;
-        return proceduralLoader.get_primitive(handle);
+    if (handle.index & PROCEDURAL_TAG) {
+        return proceduralLoader.get_primitive(
+            { handle.index & ~PROCEDURAL_TAG });
     }
     return gltfLoader.get_primitive(handle);
 }
@@ -102,6 +175,10 @@ AssetServer::load_image(std::string file)
 ImageAsset&
 AssetServer::get_image(Handle<ImageAsset> handle)
 {
+    if (handle.index & PROCEDURAL_TAG) {
+        return proceduralLoader.get_image({ handle.index & ~PROCEDURAL_TAG });
+    }
+
     return imageLoader.get_image(handle);
 }
 
@@ -131,11 +208,11 @@ AssetServer::flush_cpu(VulkanResourceManager& manager,
 {
     gltfLoader.flush_cpu(manager, world, shared, pass);
     imageLoader.flush_cpu(manager, shared, pass);
-    proceduralLoader.flush_cpu(shared);
+    proceduralLoader.flush_cpu(manager, shared, pass);
 
-    shared.vertexBuffer.register_upload(vertexStagingBuffer, pass);
-    shared.indexBuffer.register_upload(indexStagingBuffer, pass);
-    shared.materialBuffer.register_upload(materialStagingBuffer, pass);
+    shared.vertexBuffer.register_upload_to_pass(vertexStagingBuffer, pass);
+    shared.indexBuffer.register_upload_to_pass(indexStagingBuffer, pass);
+    shared.materialBuffer.register_upload_to_pass(materialStagingBuffer, pass);
 }
 
 void
@@ -149,12 +226,14 @@ AssetServer::flush_gpu(SharedAssetData& shared,
 
     auto access = server.partial_read();
 
-    shared.vertexBuffer.upload_to_gpu(cmd, vertexStagingBuffer, *access);
-    shared.indexBuffer.upload_to_gpu(cmd, indexStagingBuffer, *access);
-    shared.materialBuffer.upload_to_gpu(cmd, materialStagingBuffer, *access);
+    shared.vertexBuffer.record_upload_cmd(cmd, vertexStagingBuffer, *access);
+    shared.indexBuffer.record_upload_cmd(cmd, indexStagingBuffer, *access);
+    shared.materialBuffer.record_upload_cmd(
+        cmd, materialStagingBuffer, *access);
 
     gltfLoader.flush_gpu(cmd, *access);
     imageLoader.flush_gpu(cmd, *access);
+    proceduralLoader.flush_gpu(cmd, *access);
 }
 
 void

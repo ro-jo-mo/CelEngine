@@ -74,9 +74,10 @@ Cel::Renderer::MegaBuffer::MegaBuffer(const BufferRequirements& req,
 }
 
 void
-Cel::Renderer::MegaBuffer::upload_to_gpu(VkCommandBuffer cmd,
-                                         Handle<AllocatedBuffer> staging,
-                                         const RenderGraph::PassServer& server)
+Cel::Renderer::MegaBuffer::record_upload_cmd(
+    VkCommandBuffer cmd,
+    Handle<AllocatedBuffer> staging,
+    const RenderGraph::PassServer& server)
 {
     if (dataToUpload.empty()) {
         return;
@@ -86,7 +87,7 @@ Cel::Renderer::MegaBuffer::upload_to_gpu(VkCommandBuffer cmd,
 }
 
 void
-Cel::Renderer::MegaBuffer::register_upload(
+Cel::Renderer::MegaBuffer::register_upload_to_pass(
     Handle<AllocatedBuffer> stagingHandle,
     RenderGraph::PassBuilder& pass) const
 {

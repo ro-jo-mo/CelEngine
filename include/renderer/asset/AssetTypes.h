@@ -11,16 +11,34 @@
 
 namespace Cel::Renderer::Asset {
 
+// I have absolutely no idea why enums seem to be accessible without specifying
+// the enum Not good design so I wrap it in a namespace
+namespace Defaults {
+// Stores the indices used to access default values in the shared data
+// Can be used to access in shaders as well
+enum Defaults : uint32_t
+{
+    LinearSampler = 0,
+    PixelSampler = 1,
+    WhiteTexture = 0,
+    NormalTexture = 1,
+    MagentaCheckerboard = 2,
+    Material = 0
+};
+}
+
 // Indices into the global image and sampler descriptor arrays
 struct TextureAsset
 {
-    uint32_t texture;
+    uint32_t image;
     uint32_t sampler;
 };
 
 struct ImageAsset
 {
     AllocatedImage image;
+    // Index into allTextures[] in shader
+    uint32_t texture;
     uint32_t mipLevels;
     uint32_t arrayLayers;
     VkImageViewType viewType;

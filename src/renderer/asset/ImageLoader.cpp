@@ -48,14 +48,14 @@ Cel::Renderer::Asset::ImageLoader::load_image(const std::string& file)
 }
 
 Cel::Renderer::Asset::ImageAsset&
-Cel::Renderer::Asset::ImageLoader::get_image(Handle<ImageAsset> handle)
+Cel::Renderer::Asset::ImageLoader::get_image(const Handle<ImageAsset> handle)
 {
     return images[handle.index];
 }
 
 Cel::Renderer::Asset::TextureAsset
 Cel::Renderer::Asset::ImageLoader::get_texture_index(
-    Handle<TextureAsset> handle)
+    const Handle<TextureAsset> handle) const
 {
     return textureIndices[handle.index];
 }
@@ -159,7 +159,7 @@ Cel::Renderer::Asset::ImageLoader::flush_cpu(VulkanResourceManager& manager,
     // I'll have to check the image is loaded for async
     for (const auto& data : texturesToProcess) {
         textureIndices[data.texHandle.index] = {
-            .texture = shared.textures.add_texture(
+            .image = shared.textures.add_texture(
                 images[data.imgHandle.index].image.imageView),
             .sampler = shared.samplers.add_sampler(data.sampler)
         };

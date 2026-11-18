@@ -38,7 +38,7 @@ class ImageLoader
 
     ImageAsset& get_image(Handle<ImageAsset> handle);
 
-    TextureAsset get_texture_index(Handle<TextureAsset> handle);
+    TextureAsset get_texture_index(Handle<TextureAsset> handle) const;
 
     void flush_cpu(VulkanResourceManager& manager,
                    SharedAssetData& shared,

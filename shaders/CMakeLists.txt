@@ -19,7 +19,8 @@ set(CEL_SHADER_FLAGS
         -fvk-use-scalar-layout
         -matrix-layout-column-major
         -g
-        # Engine config shared with C++ (see include/core/Config.h.in)
+
+        # Defines for the shaders
         -DMAX_SAMPLERS=${MAX_SAMPLERS}
 )
 

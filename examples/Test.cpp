@@ -122,7 +122,6 @@ class MyPlugin
     {
         manager.add_system(Startup::Start, spawn_camera);
         manager.add_system(Startup::Start, spawn_asset);
-
         manager.add_system(MainUpdate::Update, spin_it);
         manager.add_system(MainUpdate::Last, camera_controller);
     }

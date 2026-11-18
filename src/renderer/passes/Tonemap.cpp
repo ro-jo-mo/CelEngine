@@ -29,7 +29,8 @@ Cel::Renderer::Passes::register_tonemap(Resource<RenderExtent>& extent,
                               VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
                           VK_IMAGE_ASPECT_COLOR_BIT)
             .write_image(Passes::finalImage,
-                         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                         VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT |
+                             VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             .build();
