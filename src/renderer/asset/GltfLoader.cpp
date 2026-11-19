@@ -461,14 +461,46 @@ GltfLoader::load_materials(fastgltf::Asset& asset, GltfData& data)
 }
 
 static void
-generate_mesh_normals(fastgltf::Asset& asset,
-                      fastgltf::Primitive& gltfPrimitive,
-                      std::vector<Vertex>& vertices,
+generate_mesh_normals(std::vector<Vertex>& vertices,
                       std::vector<uint32_t>& indices)
 {
     // We make a copy, so we can overwrite the references
     const auto verticesCopy = vertices;
     const auto indicesCopy = indices;
+
+    vertices.clear();
+    vertices.reserve(indicesCopy.size());
+    indices.clear();
+
+    for (size_t i = 0; i < indicesCopy.size(); i += 3) {
+        auto a = verticesCopy[i];
+        auto b = verticesCopy[i + 1];
+        auto c = verticesCopy[i + 2];
+
+        // Anti-clockwise winding
+
+        // Get the vector perpendicular to two edges of the triangle
+        auto normal = glm::normalize(
+            glm::cross(c.position - b.position, a.position - b.position));
+
+        a.normal = normal;
+        b.normal = normal;
+        c.normal = normal;
+
+        vertices.push_back(a);
+        vertices.push_back(b);
+        vertices.push_back(c);
+
+        indices.push_back(i);
+        indices.push_back(i + 1);
+        indices.push_back(i + 2);
+    }
+}
+
+// Required for generating tangents
+static void
+deindex_vertices(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
+{
 }
 
 void
