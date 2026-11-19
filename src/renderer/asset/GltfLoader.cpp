@@ -10,21 +10,24 @@
 #include "renderer/resource-management/VulkanResourceManager.h"
 
 #include <fastgltf/core.hpp>
+#include <fastgltf/glm_element_traits.hpp>
 #include <fastgltf/tools.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <mikktspace.h>
 #include <mutex>
 #include <ranges>
 #include <stb_image.h>
 
-Cel::Renderer::Asset::GltfLoader::GltfLoader(VkDevice device)
+using namespace Cel::Renderer::Asset;
+
+GltfLoader::GltfLoader(VkDevice device)
     : device(device)
 {
 }
 
-Cel::Handle<Cel::Renderer::Asset::SceneAsset>
-Cel::Renderer::Asset::GltfLoader::load_gltf(std::string file,
-                                            GltfLabel::Label label)
+Cel::Handle<SceneAsset>
+GltfLoader::load_gltf(std::string file, GltfLabel::Label label)
 {
     const Handle<SceneAsset> handle{ static_cast<uint32_t>(scenes.size()) };
 
@@ -35,23 +38,22 @@ Cel::Renderer::Asset::GltfLoader::load_gltf(std::string file,
     return handle;
 }
 
-Cel::Renderer::Asset::Primitive&
-Cel::Renderer::Asset::GltfLoader::get_primitive(Handle<Primitive> handle)
+Primitive&
+GltfLoader::get_primitive(Handle<Primitive> handle)
 {
     return primitives[handle.index];
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::add_scene_to_entity(Entity entity,
-                                                      Handle<SceneAsset> handle)
+GltfLoader::add_scene_to_entity(Entity entity, Handle<SceneAsset> handle)
 {
     scenesToSpawn.emplace_back(entity, handle);
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::prepare(Handle<SceneAsset> handle,
-                                          std::string file,
-                                          GltfLabel::Label label)
+GltfLoader::prepare(Handle<SceneAsset> handle,
+                    std::string file,
+                    GltfLabel::Label label)
 {
     std::filesystem::path path = file;
 
@@ -94,10 +96,10 @@ Cel::Renderer::Asset::GltfLoader::prepare(Handle<SceneAsset> handle,
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::flush_cpu(VulkanResourceManager& manager,
-                                            World& world,
-                                            SharedAssetData& shared,
-                                            RenderGraph::PassBuilder& pass)
+GltfLoader::flush_cpu(VulkanResourceManager& manager,
+                      World& world,
+                      SharedAssetData& shared,
+                      RenderGraph::PassBuilder& pass)
 {
     // We maintain a lock until we've completely finished with this batch
     processingLock.lock();
@@ -118,9 +120,7 @@ Cel::Renderer::Asset::GltfLoader::flush_cpu(VulkanResourceManager& manager,
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::add_scene(const Entity entity,
-                                            SceneAsset& node,
-                                            World& world)
+GltfLoader::add_scene(const Entity entity, SceneAsset& node, World& world)
 {
     auto transform = GlobalTransform{ node.localTransform };
 
@@ -148,7 +148,7 @@ Cel::Renderer::Asset::GltfLoader::add_scene(const Entity entity,
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::spawn_scenes(World& world)
+GltfLoader::spawn_scenes(World& world)
 {
     for (const auto& [entity, scene] : scenesToSpawn) {
         add_scene(entity, scenes[scene.index], world);
@@ -157,9 +157,8 @@ Cel::Renderer::Asset::GltfLoader::spawn_scenes(World& world)
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::flush_gpu(
-    VkCommandBuffer cmd,
-    const RenderGraph::PassServer& server)
+GltfLoader::flush_gpu(VkCommandBuffer cmd,
+                      const RenderGraph::PassServer& server)
 {
     // Resetting simply ticks the handles back to the start of the list.
     // As we iterate in the same order, this gives us the same handle for each
@@ -185,12 +184,12 @@ Cel::Renderer::Asset::GltfLoader::flush_gpu(
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
-                                         uint32_t primitiveOffset,
+GltfLoader::commit(GltfData& data,
+                   uint32_t primitiveOffset,
 
-                                         VulkanResourceManager& manager,
-                                         SharedAssetData& shared,
-                                         RenderGraph::PassBuilder& pass)
+                   VulkanResourceManager& manager,
+                   SharedAssetData& shared,
+                   RenderGraph::PassBuilder& pass)
 {
     for (const auto& extent : data.images | std::views::values) {
 
@@ -238,8 +237,7 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
             img += data.imageOffset;
         }
 
-        textureIndex =
-            shared.textures.add_texture(get_texture_view(img, srgb));
+        textureIndex = shared.textures.add_texture(get_texture_view(img, srgb));
 
         samplerIndex = sampler == UINT32_MAX ? SamplerCache::defaultSampler
                                              : samplerIndices[sampler];
@@ -321,8 +319,7 @@ Cel::Renderer::Asset::GltfLoader::commit(GltfData& data,
 }
 
 VkImageView
-Cel::Renderer::Asset::GltfLoader::get_texture_view(uint32_t imageIndice,
-                                                   bool srgb)
+GltfLoader::get_texture_view(uint32_t imageIndice, bool srgb)
 {
     if (!srgb) {
         return images[imageIndice].imageView;
@@ -393,8 +390,7 @@ extract_wrap(const fastgltf::Wrap wrap)
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::load_samplers(const fastgltf::Asset& asset,
-                                                GltfData& data)
+GltfLoader::load_samplers(const fastgltf::Asset& asset, GltfData& data)
 {
     data.samplers.reserve(asset.samplers.size());
     for (const auto& gltfSampler : asset.samplers) {
@@ -413,8 +409,7 @@ Cel::Renderer::Asset::GltfLoader::load_samplers(const fastgltf::Asset& asset,
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::load_materials(fastgltf::Asset& asset,
-                                                 GltfData& data)
+GltfLoader::load_materials(fastgltf::Asset& asset, GltfData& data)
 {
 
     data.materials.reserve(asset.materials.size());
@@ -465,9 +460,19 @@ Cel::Renderer::Asset::GltfLoader::load_materials(fastgltf::Asset& asset,
     }
 }
 
+static void
+generate_mesh_normals(fastgltf::Asset& asset,
+                      fastgltf::Primitive& gltfPrimitive,
+                      std::vector<Vertex>& vertices,
+                      std::vector<uint32_t>& indices)
+{
+    // We make a copy, so we can overwrite the references
+    const auto verticesCopy = vertices;
+    const auto indicesCopy = indices;
+}
+
 void
-Cel::Renderer::Asset::GltfLoader::load_meshes(fastgltf::Asset& asset,
-                                              GltfData& data)
+GltfLoader::load_meshes(fastgltf::Asset& asset, GltfData& data)
 {
 
     for (const auto& gltfMesh : asset.meshes) {
@@ -487,6 +492,13 @@ Cel::Renderer::Asset::GltfLoader::load_meshes(fastgltf::Asset& asset,
             }
 
             newMesh.materials.push_back(materialIndex);
+
+            // Rewrite:
+            // Three cases
+            // 1. Model has all required
+            // 2. Normals are missing -> Must calculate normals (requires
+            // possibly duplicating vertices) AND tangents
+            // 3. Tangents are missing -> Calculate tangents
 
             // Load indices
             {
@@ -509,54 +521,74 @@ Cel::Renderer::Asset::GltfLoader::load_meshes(fastgltf::Asset& asset,
 
                 vertices.reserve(accessor.count);
 
-                fastgltf::iterateAccessor<fastgltf::math::fvec3>(
-                    asset, accessor, [&](fastgltf::math::fvec3 vert) {
-                        Vertex newVertex;
-                        newVertex.position = { vert.x(), vert.y(), vert.z() };
-                        newVertex.normal = { 1, 0, 0 };
-                        newVertex.uvX = 0;
-                        newVertex.uvY = 0;
-                        vertices.push_back(newVertex);
+                fastgltf::iterateAccessor<glm::vec3>(
+                    asset, accessor, [&](const glm::vec3 pos) {
+                        vertices.push_back({ .position = pos,
+                                             .uvX = 0,
+                                             .uvY = 0,
+                                             .tangent = { 1, 0, 0, 1 } });
                     });
             }
 
-            // Load normals
-            {
-                const auto normals = gltfPrimitive.findAttribute("NORMALS");
-
-                if (normals != gltfPrimitive.attributes.end()) {
-                    fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec3>(
-                        asset,
-                        asset.accessors[normals->accessorIndex],
-                        [&](fastgltf::math::fvec3 normal, const size_t index) {
-                            vertices[index].normal = { normal.x(),
-                                                       normal.y(),
-                                                       normal.z() };
-                        });
-                }
-            }
-
             // Load uvs
+            bool hasUv = false;
             {
                 const auto uv = gltfPrimitive.findAttribute("TEXCOORD_0");
 
                 if (uv != gltfPrimitive.attributes.end()) {
-                    fastgltf::iterateAccessorWithIndex<fastgltf::math::fvec2>(
+                    hasUv = true;
+
+                    fastgltf::iterateAccessorWithIndex<glm::vec2>(
                         asset,
                         asset.accessors[uv->accessorIndex],
-                        [&](fastgltf::math::fvec2 vert, const size_t index) {
-                            vertices[index].uvX = vert.x();
-                            vertices[index].uvY = vert.y();
+                        [&](const glm::vec2 vert, const size_t index) {
+                            vertices[index].uvX = vert.x;
+                            vertices[index].uvY = vert.y;
                         });
                 }
+            }
+
+            // Cases:
+            // Model has normal and tangents -> simply iterateAccessor for both
+            // Model has normal and no tangents and has uv -> generate tangents
+            // Model has normal and no tangents and no uv -> use default value
+            // for tangents
+            // Model has no normals and has uv -> generate normals + tangents
+            // Model has no normals and does not have uv -> generate normals,
+            // use default tangents
+
+            const auto normals = gltfPrimitive.findAttribute("NORMAL");
+            const auto tangents = gltfPrimitive.findAttribute("TANGENT");
+
+            if (normals != gltfPrimitive.attributes.end()) {
+                fastgltf::iterateAccessorWithIndex<glm::vec3>(
+                    asset,
+                    asset.accessors[normals->accessorIndex],
+                    [&](const glm::vec3 normal, const size_t index) {
+                        vertices[index].normal = normal;
+                    });
+
+                // If tangents exist
+                if (tangents != gltfPrimitive.attributes.end()) {
+                    fastgltf::iterateAccessorWithIndex<glm::vec4>(
+                        asset,
+                        asset.accessors[tangents->accessorIndex],
+                        [&](const glm::vec4 tangent, const size_t index) {
+                            vertices[index].tangent = tangent;
+                        });
+                }
+                // Otherwise generate tangents
+
+            } else {
+                // Generate normals
+                // Generate tangents
             }
         }
     }
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::load_images(fastgltf::Asset& asset,
-                                              GltfData& data)
+GltfLoader::load_images(fastgltf::Asset& asset, GltfData& data)
 {
     for (auto& gltfImage : asset.images) {
         std::vector<std::byte> imageData;
@@ -618,8 +650,7 @@ Cel::Renderer::Asset::GltfLoader::load_images(fastgltf::Asset& asset,
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::load_nodes(fastgltf::Asset& asset,
-                                             GltfData& data)
+GltfLoader::load_nodes(fastgltf::Asset& asset, GltfData& data)
 {
     auto& scene = asset.scenes[asset.defaultScene.value_or(0)];
 
@@ -637,10 +668,10 @@ Cel::Renderer::Asset::GltfLoader::load_nodes(fastgltf::Asset& asset,
     data.scene = { .children = roots, .localTransform = glm::mat4x4(1.0f) };
 }
 
-Cel::Renderer::Asset::SceneAsset
-Cel::Renderer::Asset::GltfLoader::load_scene_tree(const size_t nodeIndex,
-                                                  fastgltf::Asset& asset,
-                                                  GltfData& data)
+SceneAsset
+GltfLoader::load_scene_tree(const size_t nodeIndex,
+                            fastgltf::Asset& asset,
+                            GltfData& data)
 {
     auto node = asset.nodes[nodeIndex];
 
@@ -681,8 +712,7 @@ Cel::Renderer::Asset::GltfLoader::load_scene_tree(const size_t nodeIndex,
     return newNode;
 }
 void
-Cel::Renderer::Asset::GltfLoader::declare_scene_access(
-    RenderGraph::PassBuilder& pass) const
+GltfLoader::declare_scene_access(RenderGraph::PassBuilder& pass) const
 {
     for (const auto& img : images) {
         pass.read_image(img.handle,
@@ -693,7 +723,7 @@ Cel::Renderer::Asset::GltfLoader::declare_scene_access(
 }
 
 void
-Cel::Renderer::Asset::GltfLoader::cleanup()
+GltfLoader::cleanup()
 {
     // Samplers are owned by the shared SamplerCache
     for (const auto view : srgbViews) {

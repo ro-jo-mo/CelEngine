@@ -53,6 +53,7 @@ struct Vertex
     float uvX;
     glm::vec3 normal;
     float uvY;
+    glm::vec4 tangent;
 };
 
 // TODO probably replace this with handle. Rename MaterialConstants -> Material

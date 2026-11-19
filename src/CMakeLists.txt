@@ -27,6 +27,7 @@ find_package(Ktx CONFIG REQUIRED)
 find_package(Stb REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 find_package(SPIRV-Headers CONFIG REQUIRED)
+find_package(mikktspace CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC)
 
@@ -47,6 +48,7 @@ target_link_libraries(${PROJECT_NAME}
         KTX::ktx
         unofficial::spirv-reflect
         SPIRV-Headers::SPIRV-Headers
+        mikktspace::mikktspace
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${Stb_INCLUDE_DIR})
@@ -82,6 +84,7 @@ target_sources(${PROJECT_NAME}
         "renderer/VulkanUtils.cpp"
         "renderer/asset/AssetServer.cpp"
         "renderer/asset/GltfLoader.cpp"
+        "renderer/asset/MikkTSpaceImplementation.cpp"
         "renderer/asset/ImageLoader.cpp"
         "renderer/asset/ProceduralLoader.cpp"
         "renderer/Descriptors.cpp"

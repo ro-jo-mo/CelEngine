@@ -18,6 +18,7 @@ public struct Vertex
   public float uvx;
   public float3 normal;
   public float uvy;
+  public float4 tangent;
 }
 
 public struct MaterialData

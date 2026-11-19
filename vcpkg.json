@@ -18,6 +18,8 @@
     "gtest",
     "ktx",
     "spirv-reflect",
-    "spirv-headers"
-  ]
+    "spirv-headers",
+    "mikktspace"
+  ],
+  "builtin-baseline": "2ebb714221ad4e482e596d64c129f63fbbfb3fd5"
 }

@@ -206,9 +206,12 @@ AssetServer::flush_cpu(VulkanResourceManager& manager,
                        SharedAssetData& shared,
                        RenderGraph::PassBuilder& pass)
 {
+    // We MUST flush the procedural loader first to ensure setup data comes
+    // first
+    proceduralLoader.flush_cpu(manager, shared, pass);
+
     gltfLoader.flush_cpu(manager, world, shared, pass);
     imageLoader.flush_cpu(manager, shared, pass);
-    proceduralLoader.flush_cpu(manager, shared, pass);
 
     shared.vertexBuffer.register_upload_to_pass(vertexStagingBuffer, pass);
     shared.indexBuffer.register_upload_to_pass(indexStagingBuffer, pass);
@@ -231,14 +234,15 @@ AssetServer::flush_gpu(SharedAssetData& shared,
     shared.materialBuffer.record_upload_cmd(
         cmd, materialStagingBuffer, *access);
 
+    proceduralLoader.flush_gpu(cmd, *access);
     gltfLoader.flush_gpu(cmd, *access);
     imageLoader.flush_gpu(cmd, *access);
-    proceduralLoader.flush_gpu(cmd, *access);
 }
 
 void
 AssetServer::declare_scene_access(RenderGraph::PassBuilder& pass)
 {
+
     pass.read_buffer(vertexBufferHandle,
                      VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
                      VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT)
@@ -255,6 +259,9 @@ AssetServer::declare_scene_access(RenderGraph::PassBuilder& pass)
                      VK_ACCESS_2_SHADER_READ_BIT,
                      VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
 
+    // TODO: Ideally instead of declaring access to every image, we'd only
+    // declare access to the ones created this frame.
+    // That way the render graph would only need to check transitions for those
     gltfLoader.declare_scene_access(pass);
     imageLoader.declare_image_access(pass);
 }
