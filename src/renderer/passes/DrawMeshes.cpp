@@ -1,9 +1,9 @@
 #include "renderer/passes/DrawMeshes.h"
 
 #include "../../../include/renderer/asset/AssetServer.h"
-#include "renderer/Queues.h"
+#include "../../../include/renderer/resource-management/Queues.h"
+#include "../../../include/renderer/vulkan/VulkanHelpers.h"
 #include "renderer/SceneData.h"
-#include "renderer/VulkanHelpers.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassBuilder.h"
 #include "renderer/render-graph/PassServer.h"
@@ -168,9 +168,11 @@ Cel::Renderer::Passes::draw_mesh(
         access->get_resource(Passes::depthImage).imageView,
         access->get_extent());
 
-    static auto pipeline = PipelineBuilder(access->get_device())
-                               .add_graphics_shader("mesh")
-                               .build();
+    static auto pipeline =
+        PipelineBuilder(access->get_device())
+            .add_shader_module("geometry", VK_SHADER_STAGE_VERTEX_BIT)
+            .add_shader_module("lighting\\unlit", VK_SHADER_STAGE_FRAGMENT_BIT)
+            .build();
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
 
@@ -183,3 +185,7 @@ Cel::Renderer::Passes::draw_mesh(
                              renderables.size(),
                              sizeof(VkDrawIndexedIndirectCommand));
 }
+
+// TODO List
+// set_scene_data set lighting data
+//

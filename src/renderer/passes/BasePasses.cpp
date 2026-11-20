@@ -1,13 +1,14 @@
 #include "renderer/passes/BasePasses.h"
 
-#include "../../../include/renderer/asset/AssetServer.h"
 #include "renderer/Camera.h"
-#include "renderer/Queues.h"
+#include "renderer/RenderComponents.h"
 #include "renderer/SceneData.h"
+#include "renderer/asset/AssetServer.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassBuilder.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/render-graph/RenderGraph.h"
+#include "renderer/resource-management/Queues.h"
 
 void
 Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
@@ -19,11 +20,11 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
     pass // Scene data
         .create_buffer(Passes::sceneDataBuffer,
                        false,
-                       sizeof(SceneData::data),
+                       sizeof(SceneData::sceneData),
                        VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
                            VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT,
                        VMA_MEMORY_USAGE_GPU_ONLY)
-        .upload_buffer(sizeof(SceneData::data),
+        .upload_buffer(sizeof(SceneData::sceneData),
                        Passes::sceneDataStagingBuffer,
                        Passes::sceneDataBuffer)
         // Entity data
@@ -44,6 +45,8 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
 void
 Cel::Renderer::Passes::PassFriend::create_scene_data(
     Query<Get<Handle<Asset::Material>, GlobalTransform>>& entities,
+    Query<Get<DirectionalLight>>& directionalLights,
+    Query<Get<PointLight, GlobalTransform>>& pointLights,
     Query<Get<Camera, GlobalTransform>>& camera,
     Resource<SceneData>& sceneData,
     Resource<Asset::SharedAssetData>& shared,
@@ -82,15 +85,15 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
     const auto entityAddress =
         vkGetBufferDeviceAddress(access->get_device(), &entityInfo);
 
-    sceneData->data = { .vertexBufferAddress = vertexAddress,
-                        .materialBufferAddress = materialAddress,
-                        .entityBufferAddress = entityAddress,
-                        .viewMatrix = cam.get_view_matrix(),
-                        .projectionMatrix =
-                            cam.get_projection_matrix(access->get_extent()),
-                        .viewProjMatrix =
-                            cam.get_projection_matrix(access->get_extent()) *
-                            cam.get_view_matrix() };
+    sceneData->sceneData = {
+        .vertexBufferAddress = vertexAddress,
+        .materialBufferAddress = materialAddress,
+        .entityBufferAddress = entityAddress,
+        .viewMatrix = cam.get_view_matrix(),
+        .projectionMatrix = cam.get_projection_matrix(access->get_extent()),
+        .viewProjMatrix = cam.get_projection_matrix(access->get_extent()) *
+                          cam.get_view_matrix()
+    };
 
     std::vector<PerEntityGpuData> entityData{ sceneData->entityToIndex.size() };
 
@@ -104,10 +107,15 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
                               .materialIndex = mat.index };
     }
 
+    sceneData->lightData  = {.directionalLightCount = directionalLights.size(), .pointLightCount = pointLights.size() , .directionalLightOffset =  , .pointLightOffset = };
+
+    directionalLights.size();
+
+
     Utils::upload_to_buffer(
         cmd,
-        &sceneData->data,
-        sizeof(sceneData->data),
+        &sceneData->sceneData,
+        sizeof(sceneData->sceneData),
         access->get_resource(Passes::sceneDataBuffer),
         0,
         access->get_resource(Passes::sceneDataStagingBuffer));

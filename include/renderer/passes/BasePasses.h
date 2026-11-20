@@ -3,6 +3,7 @@
 #include "core/App.h"
 #include "ecs/Query.h"
 #include "ecs/Resource.h"
+#include "renderer/RenderComponents.h"
 #include "renderer/asset/AssetTypes.h"
 
 namespace Cel {
@@ -33,7 +34,10 @@ struct PassFriend
 
     static void create_scene_data(
         Query<Get<Handle<Asset::Material>, GlobalTransform>>& entities,
-        Query<Get<Camera, GlobalTransform>>& camera,
+        BasicQuery<Get<DirectionalLight>, With<>, Without<>>& directionalLights,
+        BasicQuery<Get<PointLight, GlobalTransform>, With<>, Without<>>&
+            pointLights,
+        BasicQuery<Get<Camera, GlobalTransform>, With<>, Without<>>& camera,
         Resource<SceneData>& sceneData,
         Resource<Asset::SharedAssetData>& shared,
         ParallelResource<RenderGraph::PassServer>& passServer);

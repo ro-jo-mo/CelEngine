@@ -1,4 +1,22 @@
 @PACKAGE_INIT@
 
-include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+include(CMakeFindDependencyMacro)
 
+# Public dependencies
+find_dependency(fmt CONFIG)
+find_dependency(glm)
+find_dependency(Vulkan)
+find_dependency(VulkanMemoryAllocator CONFIG)
+
+# Private dependencies: CelEngine is a static library, so consumers must still
+# link these and the imported targets need to exist.
+find_dependency(SDL3 CONFIG)
+find_dependency(vk-bootstrap CONFIG)
+find_dependency(VulkanUtilityLibraries)
+find_dependency(fastgltf CONFIG)
+find_dependency(Ktx CONFIG)
+find_dependency(unofficial-spirv-reflect CONFIG)
+find_dependency(SPIRV-Headers CONFIG)
+find_dependency(mikktspace CONFIG)
+
+include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")

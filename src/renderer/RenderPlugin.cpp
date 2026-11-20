@@ -1,8 +1,8 @@
 #include "renderer/RenderPlugin.h"
 
+#include "../../include/renderer/resource-management/CleanupRenderer.h"
+#include "../../include/renderer/vulkan/VulkanSetup.h"
 #include "renderer/Camera.h"
-#include "renderer/CleanupRenderer.h"
-#include "renderer/VulkanSetup.h"
 #include "renderer/Window.h"
 #include "renderer/render-graph/RenderGraphPlugin.h"
 #include "renderer/resource-management/VulkanResourceManager.h"

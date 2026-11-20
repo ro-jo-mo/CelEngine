@@ -14,10 +14,21 @@ struct SceneData
         VkDeviceAddress vertexBufferAddress;
         VkDeviceAddress materialBufferAddress;
         VkDeviceAddress entityBufferAddress;
+        VkDeviceAddress lightBufferAddress;
         glm::mat4 viewMatrix;
         glm::mat4 projectionMatrix;
         glm::mat4 viewProjMatrix;
-    } data;
+    } sceneData;
+
+    struct
+    {
+        uint32_t directionalLightCount;
+        uint32_t pointLightCount;
+        uint32_t directionalLightOffset;
+        uint32_t pointLightOffset;
+
+        std::array<char, LIGHT_BUFFER_SIZE> data;
+    } lightData;
 
     /**
      * Contains a mapping of entity id to the entity buffer.

@@ -8,19 +8,11 @@ struct VSInput
   uint vertexId : SV_VulkanVertexID;
 }
 
-struct VSOutput
-{
-  float4 position : SV_Position;
-  float3 normal;
-  float2 uv;
-  nointerpolation uint32_t matIndex;
-}
-
 [shader("vertex")]
-VSOutput
-vertexMain(VSInput in)
+GeometryOut
+vertex_shader(VSInput in)
 {
-  VSOutput out;
+  GeometryOut out;
 
   let entityData = scene.entityDataBuffer[in.drawId];
   let vert = scene.vertexBuffer[in.vertexId];
@@ -29,18 +21,10 @@ vertexMain(VSInput in)
 
   out.position = mul(mul(scene.viewProj, entityData.transform), pos);
   out.normal = vert.normal;
+  out.tangent = vert.tangent;
   out.uv = float2(vert.uvx, vert.uvy);
   out.matIndex = entityData.materialIndex;
 
   return out;
 }
 
-[shader("fragment")]
-float4
-fragmentMain(VSOutput in)
-{
-  let material = scene.materialBuffer[in.matIndex];
-
-  return allTextures[material.colorTextureIndex].Sample(
-      allSamplers[material.colorSamplerIndex], in.uv);
-}

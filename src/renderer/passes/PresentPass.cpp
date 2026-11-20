@@ -1,7 +1,7 @@
 #include "renderer/passes/PresentPass.h"
 
-#include "renderer/Queues.h"
-#include "renderer/VulkanUtils.h"
+#include "../../../include/renderer/resource-management/Queues.h"
+#include "../../../include/renderer/vulkan/VulkanUtils.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassBuilder.h"
 #include "renderer/render-graph/PassServer.h"

@@ -2,9 +2,10 @@
 
 #include "renderer/asset/GltfLoader.h"
 
+#include "../../../include/renderer/vulkan/VulkanHelpers.h"
 #include "core/Error.h"
 #include "core/World.h"
-#include "renderer/VulkanHelpers.h"
+#include "renderer/asset/MikkTSpaceImplementation.h"
 #include "renderer/render-graph/PassBuilder.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
@@ -423,6 +424,9 @@ GltfLoader::load_materials(fastgltf::Asset& asset, GltfData& data)
             data.textureSamplers.emplace_back(UINT32_MAX, UINT32_MAX);
 
         if (textInfo.has_value()) {
+            // Don't currently support non 0 UV's
+            assert(textInfo.value().texCoordIndex == 0);
+
             auto& texture = asset.textures[textInfo.value().textureIndex];
 
             image = texture.imageIndex.value();
@@ -434,7 +438,6 @@ GltfLoader::load_materials(fastgltf::Asset& asset, GltfData& data)
     };
 
     for (auto& gltfMaterial : asset.materials) {
-
         auto& constants = data.materials.emplace_back();
 
         const auto& [baseColorFactor,
@@ -473,9 +476,9 @@ generate_mesh_normals(std::vector<Vertex>& vertices,
     indices.clear();
 
     for (size_t i = 0; i < indicesCopy.size(); i += 3) {
-        auto a = verticesCopy[i];
-        auto b = verticesCopy[i + 1];
-        auto c = verticesCopy[i + 2];
+        auto a = verticesCopy[indicesCopy[i]];
+        auto b = verticesCopy[indicesCopy[i + 1]];
+        auto c = verticesCopy[indicesCopy[i + 2]];
 
         // Anti-clockwise winding
 
@@ -501,6 +504,41 @@ generate_mesh_normals(std::vector<Vertex>& vertices,
 static void
 deindex_vertices(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices)
 {
+    // We make a copy, so we can overwrite the references
+    const auto verticesCopy = vertices;
+    const auto indicesCopy = indices;
+
+    vertices.clear();
+    vertices.reserve(indicesCopy.size());
+    indices.clear();
+
+    for (size_t i = 0; i < indicesCopy.size(); i += 3) {
+        auto a = verticesCopy[indicesCopy[i]];
+        auto b = verticesCopy[indicesCopy[i + 1]];
+        auto c = verticesCopy[indicesCopy[i + 2]];
+
+        vertices.push_back(a);
+        vertices.push_back(b);
+        vertices.push_back(c);
+
+        indices.push_back(i);
+        indices.push_back(i + 1);
+        indices.push_back(i + 2);
+    }
+}
+
+static void
+generate_tangents(std::vector<Vertex>& vertices,
+                  const std::vector<uint32_t>& indices)
+{
+
+    MikkTSpace::MikkTData data{ .vertices = vertices, .indices = indices };
+
+    const SMikkTSpaceContext context{ .m_pInterface =
+                                          MikkTSpace::get_interface(),
+                                      .m_pUserData = &data };
+
+    genTangSpaceDefault(&context);
 }
 
 void
@@ -590,7 +628,6 @@ GltfLoader::load_meshes(fastgltf::Asset& asset, GltfData& data)
             // use default tangents
 
             const auto normals = gltfPrimitive.findAttribute("NORMAL");
-            const auto tangents = gltfPrimitive.findAttribute("TANGENT");
 
             if (normals != gltfPrimitive.attributes.end()) {
                 fastgltf::iterateAccessorWithIndex<glm::vec3>(
@@ -599,6 +636,8 @@ GltfLoader::load_meshes(fastgltf::Asset& asset, GltfData& data)
                     [&](const glm::vec3 normal, const size_t index) {
                         vertices[index].normal = normal;
                     });
+
+                const auto tangents = gltfPrimitive.findAttribute("TANGENT");
 
                 // If tangents exist
                 if (tangents != gltfPrimitive.attributes.end()) {
@@ -609,11 +648,20 @@ GltfLoader::load_meshes(fastgltf::Asset& asset, GltfData& data)
                             vertices[index].tangent = tangent;
                         });
                 }
-                // Otherwise generate tangents
+                // Otherwise generate tangents (uv's are required)
+                else if (hasUv) {
+                    deindex_vertices(vertices, indices);
+                    generate_tangents(vertices, indices);
+                }
 
             } else {
                 // Generate normals
-                // Generate tangents
+                generate_mesh_normals(vertices, indices);
+                // Tangent data should be ignored if no normal data is present
+                // so we must generate Generate tangents (uv's are required)
+                if (hasUv) {
+                    generate_tangents(vertices, indices);
+                }
             }
         }
     }

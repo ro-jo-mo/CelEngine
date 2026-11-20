@@ -1,12 +1,18 @@
 set(namespace "CelEngine")
 
+# Must come before anything that uses CMAKE_INSTALL_INCLUDEDIR
+include(GNUInstallDirs)
+
 set(MAX_ENTITIES 2048 CACHE STRING "Max number of entities that can exist at once")
 set(MAX_COMPONENTS 128 CACHE STRING "Max number of components that be registered into the ECS")
 set(MAX_QUERY_RETRIEVE 15 CACHE STRING "Max number of components a query can retrieve. (Ideally 2^n - 1 for alignment")
 set(CMD_BUFFERS_PER_POOL 30 CACHE STRING "(Deprecated) Total number of cmd buffers created per pool for render passes")
 set(MAX_VARIABLE_DESCRIPTOR_ARRAY 4000 CACHE STRING "The number of descriptors assigned when creating a variable descriptor array for a shader")
 set(MAX_SAMPLERS 64 CACHE STRING "Size of the global sampler descriptor array (unique sampler settings). Also passed to shaders")
-
+set(MATERIAL_BUFFER_SIZE 8192 CACHE STRING "Amount of GPU memory allocated for the material buffer")
+set(VERTEX_BUFFER_SIZE 134217728 CACHE STRING "Amount of GPU memory allocated for the vertex buffer")
+set(INDEX_BUFFER_SIZE 8388608 CACHE STRING "Amount of GPU memory allocated for the index buffer")
+set(LIGHT_BUFFER_SIZE 1024 CACHE STRING "Amount of GPU memory allocated for the lights buffer")
 
 configure_file(
         ${CMAKE_CURRENT_SOURCE_DIR}/../include/core/Config.h.in
@@ -123,124 +129,26 @@ target_include_directories(${PROJECT_NAME}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/generated/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
-set(public_headers
-        include/core/App.h
-        include/ecs/EntityManager.h
-        include/ecs/Helpers.h
-        include/ecs/IResource.h
-        include/ecs/IQuery.h
-        include/ecs/Locks.h
-        include/ecs/Resource.h
-        include/ecs/ResourceManager.h
-        include/ecs/Schedule.h
-        include/ecs/ScheduleGraph.h
-        include/ecs/SystemScheduler.h
-        include/ecs/System.h
-        include/ecs/QueryManager.h
-        include/ecs/Types.h
-        include/ecs/Query.h
-        include/ecs/Archetype.h
-
-
-        include/core/Plugin.h
-        include/core/World.h
-        include/core/Time.h
-        include/core/Transform.h
-        include/core/Hierarchy.h
-        include/core/Error.h
-        include/core/PluginManager.h
-        include/core/CorePlugin.h
-        include/core/Running.h
-        include/core/ThreadManager.h
-        include/core/Optional.h
-        include/core/Arena.h
-
-        include/common/SlotMap.h
-        include/common/GrowVector.h
-        include/common/Graph.h
-        include/common/Handle.h
-        include/common/Scheduler.h
-        include/common/Misc.h
-
-        include/input/Input.h
-
-        include/renderer/asset/AssetServer.h
-        include/renderer/asset/AssetTypes.h
-        include/renderer/asset/GltfLabels.h
-        include/renderer/asset/GltfLoader.h
-        include/renderer/asset/ImageLoader.h
-        include/renderer/asset/ProceduralLoader.h
-
-        include/renderer/RenderPlugin.h
-        include/renderer/VulkanSetup.h
-        include/renderer/Window.h
-        include/renderer/VulkanHelpers.h
-        include/renderer/VulkanTypes.h
-        include/renderer/VulkanUtils.h
-        include/renderer/Descriptors.h
-        include/renderer/Camera.h
-        include/renderer/Queues.h
-        include/renderer/SceneData.h
-        include/renderer/CleanupRenderer.h
-        include/renderer/RenderTypes.h
-
-
-        include/renderer/render-graph/RenderGraph.h
-        include/renderer/render-graph/RenderGraphPlugin.h
-        include/renderer/render-graph/PassBuilder.h
-        include/renderer/render-graph/RenderPass.h
-        include/renderer/render-graph/AccessFlags.h
-        include/renderer/render-graph/ExecutionPlan.h
-        include/renderer/render-graph/SubmitSplitter.h
-        include/renderer/render-graph/PassServer.h
-        include/renderer/render-graph/RenderGraphTypes.h
-
-        include/renderer/passes/HandleAllocator.h
-        include/renderer/passes/Passes.h
-        include/renderer/passes/BasePasses.h
-        include/renderer/passes/DrawMeshes.h
-        include/renderer/passes/DrawSkybox.h
-        include/renderer/passes/PresentPass.h
-        include/renderer/passes/PassPlugin.h
-        include/renderer/passes/BasePasses.h
-        include/renderer/passes/StagingPool.h
-        include/renderer/passes/Tonemap.h
-
-        include/renderer/passes/DrawMeshes.h
-        include/renderer/passes/DrawSkybox.h
-        include/renderer/passes/UploadAssets.h
-
-
-        include/renderer/resource-management/ResourceTracker.h
-        include/renderer/resource-management/VulkanResourceManager.h
-        include/renderer/resource-management/PipelineBuilder.h
-        include/renderer/resource-management/DeletionQueue.h
-        include/renderer/resource-management/MegaBuffer.h
-)
-
-# -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
-
-set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${public_headers}")
-
-include(GNUInstallDirs)
-
+# Installs the include tree with its folder layout (core/, ecs/, renderer/...)
+# so the same #include paths work against the build tree and an install.
 install(TARGETS ${PROJECT_NAME}
         EXPORT "${PROJECT_NAME}Targets"
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/include/core/Config.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME}/core
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.h"
 )
 
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/include/core/Config.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/core
+)
 
 install(EXPORT "${PROJECT_NAME}Targets"
         FILE "${PROJECT_NAME}Targets.cmake"
@@ -252,7 +160,7 @@ include(CMakePackageConfigHelpers)
 
 write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-        VERSION " ${version} "
+        VERSION ${PROJECT_VERSION}
         COMPATIBILITY AnyNewerVersion
 )
 

@@ -1,7 +1,7 @@
 #include "renderer/resource-management/VulkanResourceManager.h"
 
-#include "renderer/VulkanHelpers.h"
-#include "renderer/VulkanUtils.h"
+#include "../../../include/renderer/vulkan/VulkanHelpers.h"
+#include "../../../include/renderer/vulkan/VulkanUtils.h"
 #include "renderer/resource-management/ResourceTracker.h"
 
 const Cel::Renderer::BufferRequirements&

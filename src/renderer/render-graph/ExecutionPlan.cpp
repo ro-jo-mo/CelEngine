@@ -1,9 +1,9 @@
 #include "renderer/render-graph/ExecutionPlan.h"
 
+#include "../../../include/renderer/vulkan/VulkanHelpers.h"
+#include "../../../include/renderer/vulkan/VulkanUtils.h"
 #include "common/Graph.h"
 #include "core/Error.h"
-#include "renderer/VulkanHelpers.h"
-#include "renderer/VulkanUtils.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassServer.h"
 

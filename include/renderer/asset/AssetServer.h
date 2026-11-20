@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../../core/World.h"
-#include "../Descriptors.h"
 #include "../RenderTypes.h"
+#include "../resource-management/Descriptors.h"
 #include "../resource-management/MegaBuffer.h"
 #include "AssetTypes.h"
 #include "GltfLoader.h"

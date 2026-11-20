@@ -1,8 +1,8 @@
 #pragma once
-#include "RenderTypes.h"
-#include "asset/AssetServer.h"
+#include "../RenderTypes.h"
+#include "../asset/AssetServer.h"
+#include "DeletionQueue.h"
 #include "ecs/System.h"
-#include "resource-management/DeletionQueue.h"
 
 namespace Cel::Renderer {
 

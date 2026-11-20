@@ -6,9 +6,10 @@ find_program(SLANGC_EXECUTABLE slangc
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 set(CEL_SHADER_SOURCES
-        mesh.slang
+        geometry.slang
         skybox.slang
-        tonemap.slang
+        post-process/tonemap.slang
+        lighting/unlit.slang
 )
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -19,6 +20,9 @@ set(CEL_SHADER_FLAGS
         -fvk-use-scalar-layout
         -matrix-layout-column-major
         -g
+
+        # Module search root, so `import common;` resolves from any subfolder
+        -I "${CMAKE_CURRENT_SOURCE_DIR}"
 
         # Defines for the shaders
         -DMAX_SAMPLERS=${MAX_SAMPLERS}
@@ -59,5 +63,18 @@ foreach (source IN LISTS CEL_SHADER_SOURCES)
     list(APPEND cel_spv_outputs "${output}")
 endforeach ()
 
-add_custom_target(CelShaders ALL DEPENDS ${cel_spv_outputs}
-        SOURCES ${CEL_SHADER_SOURCES} common.slang)
+# List of shaders that should exist; anything else in the output dir is stale.
+# file(CONFIGURE) only rewrites the file when the contents change.
+set(cel_shader_manifest "${CMAKE_CURRENT_BINARY_DIR}/shader_manifest.txt")
+file(CONFIGURE OUTPUT "${cel_shader_manifest}" CONTENT "${cel_spv_outputs}")
+
+add_custom_target(CelShaders ALL
+        # Runs every build after all shaders compile: deletes .spv files
+        # whose source was renamed/removed, so they can't be loaded by mistake
+        COMMAND ${CMAKE_COMMAND}
+        -DOUT_DIR=${CEL_SHADER_OUTPUT_DIR}
+        -DMANIFEST=${cel_shader_manifest}
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/CMakeDeleteOld.cmake"
+        DEPENDS ${cel_spv_outputs}
+        SOURCES ${CEL_SHADER_SOURCES} common.slang CMakeDeleteOld.cmake
+        VERBATIM)

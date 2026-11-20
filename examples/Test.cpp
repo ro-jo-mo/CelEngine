@@ -6,6 +6,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "input/Input.h"
+#include "renderer/RenderComponents.h"
 #include "renderer/Window.h"
 #include "renderer/passes/PassPlugin.h"
 #include "renderer/render-graph/RenderGraphPlugin.h"
@@ -34,18 +35,20 @@ void
 spawn_asset(Resource<World>& world,
             Resource<Renderer::Asset::AssetServer>& server)
 {
-    auto handle = server->load_gltf("../../examples/assets/horse.glb", {});
+    auto handle = server->load_gltf("../../examples/assets/helmet.glb", {});
 
     // Spawn a parent class that we rotate for fun (test transform propagation)
     world->spawn(RotateMe{}).with_children([&](ChildBuilder builder) {
-        // astoundingly large horse
-        // In order to view it we must bring it to a 100th scale
-        auto child =
-            builder.spawn(Position{ 0, 0, -1 }, Scale{ 0.01 }, RotateMe{});
+        auto child = builder.spawn(Position{ 0, 0, -1 }, RotateMe{});
         server->add_scene_to_entity(child.get(), handle);
     });
-    server->add_scene_to_entity(
-        world->spawn(Position{ 0, 0, 10 }, Scale{ 0.01 }).get(), handle);
+    server->add_scene_to_entity(world->spawn(Position{ 0, 0, 10 }).get(),
+                                handle);
+
+    world->spawn(Renderer::DirectionalLight{
+        .direction = glm::normalize(glm::vec3{ 0, -1, -0.2 }),
+        .colour = { 1, 1, 1 },
+        .intensity = 1 });
 }
 
 void

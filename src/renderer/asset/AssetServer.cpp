@@ -1,7 +1,7 @@
 #include "renderer/asset/AssetServer.h"
 
+#include "../../../include/renderer/vulkan/VulkanUtils.h"
 #include "core/Error.h"
-#include "renderer/VulkanUtils.h"
 #include "renderer/passes/HandleAllocator.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassBuilder.h"
@@ -33,7 +33,7 @@ AssetServer::AssetServer(VulkanResourceManager& manager,
     SharedAssetData data{
         .device = manager.device,
         .vertexBuffer =
-            MegaBuffer({ .allocSize = 2 << 16,
+            MegaBuffer({ .allocSize = VERTEX_BUFFER_SIZE,
                          .usages = VK_BUFFER_USAGE_2_VERTEX_BUFFER_BIT |
                                    VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
                                    VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT |
@@ -42,7 +42,7 @@ AssetServer::AssetServer(VulkanResourceManager& manager,
                        "vertex_buffer",
                        manager),
         .indexBuffer =
-            MegaBuffer({ .allocSize = 2 << 16,
+            MegaBuffer({ .allocSize = INDEX_BUFFER_SIZE,
                          .usages = VK_BUFFER_USAGE_2_INDEX_BUFFER_BIT |
                                    VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
                                    VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT |
@@ -51,12 +51,20 @@ AssetServer::AssetServer(VulkanResourceManager& manager,
                        "index_buffer",
                        manager),
         .materialBuffer =
-            MegaBuffer({ .allocSize = 2 << 16,
+            MegaBuffer({ .allocSize = MATERIAL_BUFFER_SIZE,
                          .usages = VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
                                    VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT |
                                    VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT,
                          .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
                        "material_buffer",
+                       manager),
+        .lightBuffer =
+            MegaBuffer({ .allocSize = LIGHT_BUFFER_SIZE,
+                         .usages = VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
+                                   VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT |
+                                   VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT,
+                         .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
+                       "light_buffer",
                        manager),
         .samplers = SamplerCache(manager.device)
     };

@@ -14,15 +14,18 @@ class VulkanResourceManager;
 }
 namespace Cel::Renderer {
 
-// Specialisation of a mega buffer, where it's reset each frame and holds no
-// reference to a buffer
-// Reinspecting this now, I am not sure why this exists
-class PerFrameMegaBuffer
+/**
+ * @brief A large gpu buffer storing a collection of objects unknown size
+ * For now the allocation method is very simple, no memory reuse
+ * Typically used for vertex/index buffer
+ */
+class MegaBuffer
 {
   public:
-    virtual ~PerFrameMegaBuffer() = default;
-
-    explicit PerFrameMegaBuffer(uint32_t alignment = 0);
+    explicit MegaBuffer(const BufferRequirements& req,
+                        const std::string& name,
+                        VulkanResourceManager& manager,
+                        uint32_t alignment = 0);
 
     /**
      * @brief Allocate a block in the mega buffer. Data is uploaded to the gpu
@@ -34,60 +37,31 @@ class PerFrameMegaBuffer
     uint32_t allocate(const void* data, uint32_t size);
 
     /**
-     * Check how much data we need to upload. If zero, we needn't do anything.
-     * Used to size the staging buffer.
-     * @return
-     */
-    [[nodiscard]] uint32_t current_upload_size() const;
-
-    /**
-     * Upload data to the gpu
-     * @param buffer
-     * @param cmd
-     * @param staging
-     */
-    void push_to_gpu(const AllocatedBuffer& buffer,
-                     VkCommandBuffer cmd,
-                     const AllocatedBuffer& staging);
-
-  protected:
-    std::vector<std::byte> dataToUpload;
-
-    uint32_t currentUsage = 0;
-    uint32_t alignment = 0;
-
-    // Flag as max int to show we haven't set it yet
-    uint32_t uploadOffset = UINT32_MAX;
-};
-
-/**
- * @brief A large gpu buffer storing a collection of objects unknown size
- * For now the allocation method is very simple, no memory reuse
- * Typically used for vertex/index buffer
- */
-class MegaBuffer final : public PerFrameMegaBuffer
-{
-  public:
-    explicit MegaBuffer(const BufferRequirements& req,
-                        const std::string& name,
-                        VulkanResourceManager& manager,
-                        uint32_t alignment = 0);
-
-    /**
      * Upload data to the gpu
      * @param cmd
      * @param staging
      * @param server
      */
     void record_upload_cmd(VkCommandBuffer cmd,
-                       Handle<AllocatedBuffer> staging,
-                       const RenderGraph::PassServer& server);
+                           Handle<AllocatedBuffer> staging,
+                           const RenderGraph::PassServer& server);
 
     void register_upload_to_pass(Handle<AllocatedBuffer> stagingHandle,
-                         RenderGraph::PassBuilder& pass) const;
+                                 RenderGraph::PassBuilder& pass) const;
 
     Handle<AllocatedBuffer> handle;
     AllocatedBuffer buffer;
+
+  private:
+    std::vector<std::byte> dataToUpload;
+
+    uint32_t currentUsage = 0;
+    uint32_t alignment = 0;
+
+    uint32_t totalSize;
+
+    // Flag as max int to show we haven't set it yet
+    uint32_t uploadOffset = UINT32_MAX;
 };
 
 }

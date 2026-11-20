@@ -1,7 +1,7 @@
 #include "renderer/passes/DrawSkybox.h"
 
-#include "renderer/Queues.h"
-#include "renderer/VulkanHelpers.h"
+#include "../../../include/renderer/resource-management/Queues.h"
+#include "../../../include/renderer/vulkan/VulkanHelpers.h"
 #include "renderer/asset/AssetServer.h"
 #include "renderer/render-graph/PassBuilder.h"
 #include "renderer/resource-management/PipelineBuilder.h"

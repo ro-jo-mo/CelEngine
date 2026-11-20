@@ -1,13 +1,13 @@
 #include "renderer/render-graph/PassServer.h"
 
 #include "../../../include/renderer/asset/AssetServer.h"
+#include "../../../include/renderer/resource-management/Queues.h"
+#include "../../../include/renderer/vulkan/VulkanHelpers.h"
+#include "../../../include/renderer/vulkan/VulkanUtils.h"
 #include "core/Config.h"
 #include "core/Error.h"
 #include "core/ThreadManager.h"
-#include "renderer/Queues.h"
 #include "renderer/SceneData.h"
-#include "renderer/VulkanHelpers.h"
-#include "renderer/VulkanUtils.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/resource-management/PipelineBuilder.h"
 
@@ -393,7 +393,7 @@ Cel::Renderer::RenderGraph::PassServer::update_frame(
     {
         writer.write_buffer(0,
                             get_resource(Passes::sceneDataBuffer).buffer,
-                            sizeof(Passes::SceneData::data),
+                            sizeof(Passes::SceneData::sceneData),
                             0,
                             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 

@@ -1,7 +1,7 @@
 #include "renderer/render-graph/RenderGraphPlugin.h"
 
-#include "renderer/Queues.h"
-#include "renderer/VulkanSetup.h"
+#include "../../../include/renderer/resource-management/Queues.h"
+#include "../../../include/renderer/vulkan/VulkanSetup.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/render-graph/RenderGraph.h"
 

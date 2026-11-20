@@ -7,6 +7,7 @@ public struct SceneData
   public Vertex* vertexBuffer;
   public MaterialData* materialBuffer;
   public PerEntityData* entityDataBuffer;
+  public LightData* lightBuffer;
   public float4x4 view;
   public float4x4 projection;
   public float4x4 viewProj;
@@ -40,9 +41,32 @@ public struct PerEntityData
   public uint32_t materialIndex;
 }
 
+public struct LightData
+{
+
+public    uint32_t directionalLightCount;
+public    uint32_t pointLightCount;
+public uint32_t directionalLightOffset;
+public uint32_t pointLightOffset;
+}
+
+public struct PointLight
+{}
+
+public struct DirectionalLight
+{}
+
+public struct GeometryOut
+{
+  public float4 position : SV_Position;
+  public float3 normal;
+  public float4 tangent;
+  public float2 uv;
+  public nointerpolation uint32_t matIndex;
+}
+
 [vk::binding(0, 0)]
 public ConstantBuffer<SceneData> scene;
-
 
 #ifndef MAX_SAMPLERS
 #error "MAX_SAMPLERS value must be defined!"

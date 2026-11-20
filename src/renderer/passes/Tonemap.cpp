@@ -1,8 +1,8 @@
 #include "renderer/passes/Tonemap.h"
 
+#include "../../../include/renderer/resource-management/Queues.h"
+#include "../../../include/renderer/vulkan/VulkanHelpers.h"
 #include "ecs/Resource.h"
-#include "renderer/Queues.h"
-#include "renderer/VulkanHelpers.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassBuilder.h"
 #include "renderer/render-graph/PassServer.h"
@@ -52,7 +52,7 @@ Cel::Renderer::Passes::tonemap_pass(
 
     const static auto pipeline =
         PipelineBuilder(access->get_device())
-            .add_graphics_shader("tonemap")
+            .add_graphics_shader("post-process/tonemap")
             .disable_depth_test()
             .set_color_attachment(VK_FORMAT_R8G8B8A8_UNORM)
             .set_cull_mode(VK_CULL_MODE_NONE)

@@ -1,8 +1,8 @@
 #include "../../../include/renderer/resource-management/PipelineBuilder.h"
 
+#include "../../../include/renderer/vulkan/VulkanHelpers.h"
+#include "../../../include/renderer/vulkan/VulkanUtils.h"
 #include "core/Error.h"
-#include "renderer/VulkanHelpers.h"
-#include "renderer/VulkanUtils.h"
 
 #include <core/Config.h>
 #include <filesystem>

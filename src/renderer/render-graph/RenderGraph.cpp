@@ -1,6 +1,6 @@
 #include "renderer/render-graph/RenderGraph.h"
 
-#include "renderer/Queues.h"
+#include "../../../include/renderer/resource-management/Queues.h"
 #include "renderer/render-graph/ExecutionPlan.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/resource-management/ResourceTracker.h"

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "renderer/Descriptors.h"
+#include "../resource-management/Descriptors.h"
 #include "renderer/resource-management/MegaBuffer.h"
 
 #include <glm/ext/matrix_float4x4.hpp>
@@ -110,6 +110,7 @@ struct SharedAssetData
     MegaBuffer vertexBuffer;
     MegaBuffer indexBuffer;
     MegaBuffer materialBuffer;
+    MegaBuffer lightBuffer;
     TextureCache textures;
     SamplerCache samplers;
 };

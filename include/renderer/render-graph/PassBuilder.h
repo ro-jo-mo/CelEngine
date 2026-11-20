@@ -1,8 +1,8 @@
 #pragma once
 
+#include "../vulkan/VulkanUtils.h"
 #include "RenderGraphTypes.h"
 #include "renderer/RenderTypes.h"
-#include "renderer/VulkanUtils.h"
 
 #include <string>
 #include <utility>

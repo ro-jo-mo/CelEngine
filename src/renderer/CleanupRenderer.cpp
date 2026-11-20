@@ -1,4 +1,4 @@
-#include "renderer/CleanupRenderer.h"
+#include "../../include/renderer/resource-management/CleanupRenderer.h"
 #include "renderer/RenderTypes.h"
 
 void

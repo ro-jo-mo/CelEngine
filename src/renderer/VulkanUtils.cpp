@@ -1,7 +1,7 @@
-#include "renderer/VulkanUtils.h"
+#include "../../include/renderer/vulkan/VulkanUtils.h"
 
+#include "../../include/renderer/vulkan/VulkanHelpers.h"
 #include "core/Error.h"
-#include "renderer/VulkanHelpers.h"
 
 #include <SDL3/SDL_filesystem.h>
 #include <algorithm>
