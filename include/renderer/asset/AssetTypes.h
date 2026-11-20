@@ -110,7 +110,6 @@ struct SharedAssetData
     MegaBuffer vertexBuffer;
     MegaBuffer indexBuffer;
     MegaBuffer materialBuffer;
-    MegaBuffer lightBuffer;
     TextureCache textures;
     SamplerCache samplers;
 };

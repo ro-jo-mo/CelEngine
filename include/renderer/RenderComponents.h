@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glm/vec3.hpp>
+#include <glm/common.hpp>
 
 namespace Cel::Renderer {
 
@@ -20,8 +20,17 @@ struct DirectionalLight
 
 struct PointLight
 {
+    // Gpu representation
+    struct Data;
+
     glm::vec3 colour;
     float intensity;
+};
+
+struct PointLight::Data
+{
+    PointLight light;
+    glm::vec3 position;
 };
 
 }

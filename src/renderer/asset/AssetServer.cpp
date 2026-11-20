@@ -58,14 +58,6 @@ AssetServer::AssetServer(VulkanResourceManager& manager,
                          .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
                        "material_buffer",
                        manager),
-        .lightBuffer =
-            MegaBuffer({ .allocSize = LIGHT_BUFFER_SIZE,
-                         .usages = VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
-                                   VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT |
-                                   VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT,
-                         .memoryUsage = VMA_MEMORY_USAGE_GPU_ONLY },
-                       "light_buffer",
-                       manager),
         .samplers = SamplerCache(manager.device)
     };
 

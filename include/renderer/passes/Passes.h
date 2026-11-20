@@ -41,6 +41,8 @@ inline const auto sceneDataStagingBuffer =
     HandleAllocator::allocate_buffer("scene_data_staging_buffer");
 inline const auto entityDataStagingBuffer =
     HandleAllocator::allocate_buffer("entity_data_staging_buffer");
+inline const auto lightDataBuffer =
+    HandleAllocator::allocate_buffer("light_data_buffer");
 
 // Asset server pass
 inline const auto uploadAssetsPass =

@@ -27,7 +27,7 @@ struct SceneData
         uint32_t directionalLightOffset;
         uint32_t pointLightOffset;
 
-        std::array<char, LIGHT_BUFFER_SIZE> data;
+        std::array<char, LIGHT_BUFFER_SIZE - 16> data;
     } lightData;
 
     /**

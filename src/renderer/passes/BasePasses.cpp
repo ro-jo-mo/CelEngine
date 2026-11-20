@@ -10,6 +10,16 @@
 #include "renderer/render-graph/RenderGraph.h"
 #include "renderer/resource-management/Queues.h"
 
+using namespace Cel;
+
+namespace {
+
+inline const auto lightDataStagingBuffer =
+    Cel::Renderer::Passes::HandleAllocator::allocate_buffer(
+        "light_data_staging_buffer");
+
+}
+
 void
 Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
     Resource<RenderGraph::Graph>& graph)
@@ -37,9 +47,67 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
                        VMA_MEMORY_USAGE_GPU_ONLY)
         .upload_buffer(sizeof(PerEntityGpuData) * MAX_ENTITIES,
                        Passes::entityDataStagingBuffer,
-                       Passes::entityDataBuffer);
+                       Passes::entityDataBuffer)
+        .create_buffer(Passes::lightDataBuffer,
+                       true,
+                       LIGHT_BUFFER_SIZE,
+                       VK_BUFFER_USAGE_2_TRANSFER_DST_BIT |
+                           VK_BUFFER_USAGE_2_STORAGE_BUFFER_BIT |
+                           VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
+                       VMA_MEMORY_USAGE_GPU_ONLY)
+        .upload_buffer(
+            LIGHT_BUFFER_SIZE, lightDataStagingBuffer, Passes::lightDataBuffer);
 
     graph->add_setup_pass(pass.build());
+}
+
+void
+upload_light_data(
+    VkCommandBuffer cmd,
+    const Renderer::AllocatedBuffer& buffer,
+    const Renderer::AllocatedBuffer& staging,
+    Resource<Renderer::Passes::SceneData>& sceneData,
+    Query<Get<Renderer::DirectionalLight>>& directionalLights,
+    Query<Get<Renderer::PointLight, GlobalTransform>>& pointLights)
+{
+    sceneData->lightData = {
+        .directionalLightCount =
+            static_cast<uint32_t>(directionalLights.size()),
+        .pointLightCount = static_cast<uint32_t>(pointLights.size()),
+        .directionalLightOffset = 16,
+        .pointLightOffset = static_cast<uint32_t>(
+            16 + directionalLights.size() * sizeof(Renderer::DirectionalLight))
+    };
+
+    std::vector<Renderer::PointLight::Data> pointLightData;
+    pointLightData.reserve(pointLights.size());
+
+    for (auto [light, trans] : pointLights) {
+        pointLightData.push_back(
+            { .light = light, .position = trans.get_translation() });
+    }
+
+    std::vector<Renderer::DirectionalLight> directionalLightData;
+    directionalLightData.reserve(directionalLights.size());
+
+    for (auto [light] : directionalLights) {
+        directionalLightData.push_back(light);
+    }
+
+    // Copy into light data
+    size_t offset =
+        directionalLightData.size() * sizeof(Renderer::DirectionalLight);
+
+    memcpy(
+        sceneData->lightData.data.data(), directionalLightData.data(), offset);
+    
+    memcpy(sceneData->lightData.data.data() + offset,
+           pointLightData.data(),
+           pointLightData.size() * sizeof(Renderer::PointLight::Data));
+    ;
+
+    Renderer::Utils::upload_to_buffer(
+        cmd, &sceneData->lightData, LIGHT_BUFFER_SIZE, buffer, 0, staging);
 }
 
 void
@@ -106,11 +174,6 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
                                   glm::inverse(glm::mat3(trans.transform))),
                               .materialIndex = mat.index };
     }
-
-    sceneData->lightData  = {.directionalLightCount = directionalLights.size(), .pointLightCount = pointLights.size() , .directionalLightOffset =  , .pointLightOffset = };
-
-    directionalLights.size();
-
 
     Utils::upload_to_buffer(
         cmd,
