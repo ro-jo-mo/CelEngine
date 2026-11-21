@@ -43,7 +43,6 @@ public struct PerEntityData
 
 public struct LightData
 {
-
 public    uint32_t directionalLightCount;
 public    uint32_t pointLightCount;
 public uint32_t directionalLightOffset;
@@ -51,10 +50,18 @@ public uint32_t pointLightOffset;
 }
 
 public struct PointLight
-{}
+{
+    public float3 colour;
+    public float intensity;
+    public float3 position;
+}
 
 public struct DirectionalLight
-{}
+{
+    public float3  direction;
+     public float3 colour;
+     public float intensity;
+}
 
 public struct GeometryOut
 {

@@ -29,7 +29,6 @@ AssetServer::AssetServer(VulkanResourceManager& manager,
     : gltfLoader(manager.device)
     , imageLoader(manager.device)
 {
-
     SharedAssetData data{
         .device = manager.device,
         .vertexBuffer =
@@ -256,6 +255,9 @@ AssetServer::declare_scene_access(RenderGraph::PassBuilder& pass)
                      VK_ACCESS_2_SHADER_READ_BIT,
                      VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
         .read_buffer(Passes::entityDataBuffer,
+                     VK_ACCESS_2_SHADER_READ_BIT,
+                     VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT)
+        .read_buffer(Passes::lightDataBuffer,
                      VK_ACCESS_2_SHADER_READ_BIT,
                      VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT);
 

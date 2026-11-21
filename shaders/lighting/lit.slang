@@ -14,6 +14,11 @@ fragment_shader(GeometryOut in)
 {
   let material = scene.materialBuffer[in.matIndex];
 
-  return allTextures[material.colorTextureIndex].Sample(
-    allSamplers[material.colorSamplerIndex], in.uv);
+
+for (uint i = 0 ; i < scene.lightBuffer.directionalLightCount)  {
+
+let ptr = (DirectionalLight*)(uint64_t(scene.lightBuffer) + scene.lightBuffer.directionalLightOffset + i * sizeof(DirectionalLight));
+
+
+}
 }

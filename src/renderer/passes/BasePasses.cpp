@@ -100,11 +100,10 @@ upload_light_data(
 
     memcpy(
         sceneData->lightData.data.data(), directionalLightData.data(), offset);
-    
+
     memcpy(sceneData->lightData.data.data() + offset,
            pointLightData.data(),
            pointLightData.size() * sizeof(Renderer::PointLight::Data));
-    ;
 
     Renderer::Utils::upload_to_buffer(
         cmd, &sceneData->lightData, LIGHT_BUFFER_SIZE, buffer, 0, staging);
@@ -174,6 +173,13 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
                                   glm::inverse(glm::mat3(trans.transform))),
                               .materialIndex = mat.index };
     }
+
+    upload_light_data(cmd,
+                      access->get_resource(Passes::lightDataBuffer),
+                      access->get_resource(lightDataStagingBuffer),
+                      sceneData,
+                      directionalLights,
+                      pointLights);
 
     Utils::upload_to_buffer(
         cmd,
