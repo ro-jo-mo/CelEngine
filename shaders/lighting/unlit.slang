@@ -4,16 +4,16 @@ import common;
 
 struct VSInput
 {
-  uint drawId : SV_StartInstanceLocation;
-  uint vertexId : SV_VulkanVertexID;
+    uint drawId : SV_StartInstanceLocation;
+    uint vertexId : SV_VulkanVertexID;
 }
 
 [shader("fragment")]
 float4
 fragment_shader(GeometryOut in)
 {
-  let material = scene.materialBuffer[in.matIndex];
+    let material = scene.materialBuffer[in.matIndex];
 
-  return allTextures[material.colorTextureIndex].Sample(
-    allSamplers[material.colorSamplerIndex], in.uv);
+    return allTextures[material.colorTextureIndex].Sample(
+        allSamplers[material.colorSamplerIndex], in.uv);
 }

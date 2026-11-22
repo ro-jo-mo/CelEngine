@@ -95,17 +95,12 @@ AssetServer::AssetServer(VulkanResourceManager& manager,
            Defaults::Material);
 
     auto create_img = [&](auto col) {
-        std::vector<uint32_t> pixels;
-        pixels.reserve(16 * 16);
-        // for 16x16 white texture
-        for (int i = 0; i < 16 * 16; i++) {
-            pixels.push_back(col);
-        }
+        const std::vector<uint32_t> pixels{ col };
 
         // Create as UNORM.
         // Suitable only for non colour textures, or a full white / black
         // texture used for colour
-        return create_image(pixels, VK_FORMAT_R8G8B8A8_UNORM, { 16, 16, 1 });
+        return create_image(pixels, VK_FORMAT_R8G8B8A8_UNORM, { 1, 1, 1 });
     };
 
     assert((create_img(glm::packUnorm4x8(glm::vec4(1, 1, 1, 1))).index &

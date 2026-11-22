@@ -61,7 +61,7 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
     graph->add_setup_pass(pass.build());
 }
 
-void
+static void
 upload_light_data(
     VkCommandBuffer cmd,
     const Renderer::AllocatedBuffer& buffer,
@@ -90,7 +90,7 @@ upload_light_data(
     std::vector<Renderer::DirectionalLight> directionalLightData;
     directionalLightData.reserve(directionalLights.size());
 
-    for (auto [light] : directionalLights) {
+    for (const auto& [light] : directionalLights) {
         directionalLightData.push_back(light);
     }
 
