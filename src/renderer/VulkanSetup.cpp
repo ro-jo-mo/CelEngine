@@ -52,7 +52,8 @@ init_vulkan(Resource<VulkanContext>& context,
     features10.multiDrawIndirect = true;
     features10.drawIndirectFirstInstance = true;
     features10.shaderSampledImageArrayDynamicIndexing = true;
-
+    features10.shaderInt64 = true;
+    
     VkPhysicalDeviceVulkan11Features features11{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES
     };

@@ -134,9 +134,6 @@ struct SamplerSettingsHash
 class SamplerCache
 {
   public:
-    // Index of SamplerSettings::Linear, always present
-    static constexpr uint32_t defaultSampler = 0;
-
     explicit SamplerCache(VkDevice device);
 
     // Returns the index into the sampler array, creating the sampler if needed

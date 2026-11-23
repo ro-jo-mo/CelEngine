@@ -2,6 +2,7 @@
 #include "ecs/System.h"
 
 #include <glm/glm.hpp>
+#include <vulkan/vulkan_core.h>
 
 struct VkExtent2D;
 
@@ -20,6 +21,15 @@ class Camera
 {
 
   public:
+    // Data accessible in shaders
+    struct Data
+    {
+        glm::vec3 cameraPosition;
+        glm::mat4 view;
+        glm::mat4 projection;
+        glm::mat4 viewProj;
+    };
+
     enum class Projection : char
     {
         Perspective,
@@ -27,7 +37,7 @@ class Camera
     };
 
     /**
-     * @brief Default constructor is required for std::array
+     * @brief Default constructor is required by stl container
      * Please do not use
      */
     Camera() {}
@@ -43,6 +53,8 @@ class Camera
     [[nodiscard]] glm::mat4 get_projection_matrix(VkExtent2D extent) const;
 
     [[nodiscard]] glm::mat4 get_view_matrix() const;
+
+    Data get_gpu_upload_data(glm::vec3 cameraPosition, VkExtent2D extent) const;
 
     float fov;
     float farPlane;

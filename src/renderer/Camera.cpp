@@ -26,6 +26,15 @@ Cel::Renderer::Camera::get_view_matrix() const
 {
     return viewMatrix;
 }
+Cel::Renderer::Camera::Data
+Cel::Renderer::Camera::get_gpu_upload_data(glm::vec3 cameraPosition,
+                                           VkExtent2D extent) const
+{
+    return { .cameraPosition = cameraPosition,
+             .view = get_view_matrix(),
+             .projection = get_projection_matrix(extent),
+             .viewProj = get_projection_matrix(extent) * get_view_matrix() };
+}
 
 void
 Cel::Renderer::Camera::update_view_matrix(const glm::mat4& transform)

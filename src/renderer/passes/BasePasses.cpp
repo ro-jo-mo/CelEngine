@@ -126,9 +126,9 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
         cmd = server->get_cmd_buffer(Passes::createSceneDataPass);
     }
 
-    const auto& [cam, camTrans] = *camera.begin();
-
     auto access = passServer.partial_read();
+
+    const auto& [cam, camTrans] = *camera.begin();
 
     VkBufferDeviceAddressInfo vertInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
@@ -143,6 +143,11 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
         .buffer = shared->materialBuffer.buffer.buffer
     };
 
+    VkBufferDeviceAddressInfo lightInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        .buffer = access->get_resource(lightDataBuffer).buffer
+    };
+
     const auto vertexAddress =
         vkGetBufferDeviceAddress(access->get_device(), &vertInfo);
 
@@ -152,15 +157,16 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
     const auto entityAddress =
         vkGetBufferDeviceAddress(access->get_device(), &entityInfo);
 
-    sceneData->sceneData = {
-        .vertexBufferAddress = vertexAddress,
-        .materialBufferAddress = materialAddress,
-        .entityBufferAddress = entityAddress,
-        .viewMatrix = cam.get_view_matrix(),
-        .projectionMatrix = cam.get_projection_matrix(access->get_extent()),
-        .viewProjMatrix = cam.get_projection_matrix(access->get_extent()) *
-                          cam.get_view_matrix()
-    };
+    const auto lightAddress =
+        vkGetBufferDeviceAddress(access->get_device(), &lightInfo);
+
+    sceneData->sceneData = { .vertexBufferAddress = vertexAddress,
+                             .materialBufferAddress = materialAddress,
+                             .entityBufferAddress = entityAddress,
+                             .lightBufferAddress = lightAddress,
+                             .camera = cam.get_gpu_upload_data(
+                                 camTrans.get_translation(),
+                                 access->get_extent()) };
 
     std::vector<PerEntityGpuData> entityData{ sceneData->entityToIndex.size() };
 

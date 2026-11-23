@@ -138,7 +138,8 @@ GltfLoader::add_scene(const Entity entity, SceneAsset& node, World& world)
             for (const auto& [prim, material] :
                  std::ranges::views::zip(prims, mats)) {
                 parent.spawn(Handle<Primitive>{ .index = prim.index },
-                             Handle<Material>{ .index = material.value_or(0) });
+                             Handle<Material>{ .index = material.value_or(
+                                                   Defaults::Material) });
             }
         });
     }
@@ -233,14 +234,14 @@ GltfLoader::commit(GltfData& data,
         auto [img, sampler] = pair;
 
         if (img == UINT32_MAX) {
-            img = defaultImg;
+            textureIndex = defaultImg;
         } else {
             img += data.imageOffset;
+            textureIndex =
+                shared.textures.add_texture(get_texture_view(img, srgb));
         }
 
-        textureIndex = shared.textures.add_texture(get_texture_view(img, srgb));
-
-        samplerIndex = sampler == UINT32_MAX ? SamplerCache::defaultSampler
+        samplerIndex = sampler == UINT32_MAX ? Defaults::LinearSampler
                                              : samplerIndices[sampler];
     };
 
@@ -249,19 +250,19 @@ GltfLoader::commit(GltfData& data,
         add_texture(data.textureSamplers[i * 3],
                     material.colorTextureIndex,
                     material.colorSamplerIndex,
-                    0,
+                    Defaults::WhiteTexture,
                     true);
 
         add_texture(data.textureSamplers[i * 3 + 1],
                     material.metalRoughnessTextureIndex,
                     material.metalRoughnessSamplerIndex,
-                    0,
+                    Defaults::WhiteTexture,
                     false);
 
         add_texture(data.textureSamplers[i * 3 + 2],
                     material.normalTextureIndex,
                     material.normalSamplerIndex,
-                    0,
+                    Defaults::NormalTexture,
                     false);
     }
 

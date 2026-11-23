@@ -10,6 +10,7 @@ set(CEL_SHADER_SOURCES
         skybox.slang
         post-process/tonemap.slang
         lighting/unlit.slang
+        lighting/lit.slang
 )
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

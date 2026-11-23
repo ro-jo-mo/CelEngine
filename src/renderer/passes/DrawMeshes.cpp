@@ -171,7 +171,7 @@ Cel::Renderer::Passes::draw_mesh(
     static auto pipeline =
         PipelineBuilder(access->get_device())
             .add_shader_module("geometry", VK_SHADER_STAGE_VERTEX_BIT)
-            .add_shader_module("lighting\\unlit", VK_SHADER_STAGE_FRAGMENT_BIT)
+            .add_shader_module("lighting\\lit", VK_SHADER_STAGE_FRAGMENT_BIT)
             .build();
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
@@ -185,7 +185,3 @@ Cel::Renderer::Passes::draw_mesh(
                              renderables.size(),
                              sizeof(VkDrawIndexedIndirectCommand));
 }
-
-// TODO List
-// set_scene_data set lighting data
-//

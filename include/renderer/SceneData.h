@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Camera.h"
 #include "ecs/Types.h"
 #include "resource-management/MegaBuffer.h"
 
@@ -15,9 +16,7 @@ struct SceneData
         VkDeviceAddress materialBufferAddress;
         VkDeviceAddress entityBufferAddress;
         VkDeviceAddress lightBufferAddress;
-        glm::mat4 viewMatrix;
-        glm::mat4 projectionMatrix;
-        glm::mat4 viewProjMatrix;
+        Camera::Data camera;
     } sceneData;
 
     struct

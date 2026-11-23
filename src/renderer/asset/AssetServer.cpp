@@ -1,3 +1,5 @@
+#include <utility>
+
 #include "renderer/asset/AssetServer.h"
 
 #include "../../../include/renderer/vulkan/VulkanUtils.h"
@@ -66,14 +68,7 @@ AssetServer::AssetServer(VulkanResourceManager& manager,
     indexBufferHandle = shared->indexBuffer.handle;
     materialBufferHandle = shared->materialBuffer.handle;
 
-    // I want to create a set of healthy default values
-    // This includes:
-    // 2 base samplers in sampler array
-    // magenta checkerboard, default normal, metallic/roughness textures
-    // Default material constants
-    // These should be accessed through the some enum for defaults. I might just
-    // merge them all into a single enum for convenience
-
+    // Create default values
     assert(shared->samplers.add_sampler(SamplerSettings::Linear) ==
            Defaults::LinearSampler);
     assert(shared->samplers.add_sampler(SamplerSettings::Pixel) ==
@@ -133,7 +128,7 @@ AssetServer::AssetServer(VulkanResourceManager& manager,
 Handle<SceneAsset>
 AssetServer::load_gltf(std::string file, GltfLabel::Label label)
 {
-    return gltfLoader.load_gltf(file, label);
+    return gltfLoader.load_gltf(std::move(file), label);
 }
 
 Handle<Primitive>
@@ -161,7 +156,7 @@ AssetServer::get_primitive(Handle<Primitive> handle)
 }
 
 Handle<ImageAsset>
-AssetServer::load_image(std::string file)
+AssetServer::load_image(const std::string& file)
 {
     return imageLoader.load_image(file);
 }
@@ -177,7 +172,7 @@ AssetServer::get_image(Handle<ImageAsset> handle)
 }
 
 Handle<TextureAsset>
-AssetServer::load_texture(std::string file, SamplerSettings sampler)
+AssetServer::load_texture(const std::string& file, SamplerSettings sampler)
 {
     return imageLoader.load_texture(file, sampler);
 }

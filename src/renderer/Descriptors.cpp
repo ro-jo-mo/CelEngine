@@ -326,7 +326,6 @@ Cel::Renderer::SamplerCache::SamplerCache(VkDevice device)
     : device(device)
 {
     infos.reserve(MAX_SAMPLERS);
-    add_sampler(SamplerSettings::Linear);
 }
 
 uint32_t

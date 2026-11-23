@@ -71,12 +71,12 @@ class AssetServer
 
     void add_scene_to_entity(Entity entity, Handle<SceneAsset> handle);
 
-    Handle<ImageAsset> load_image(std::string file);
+    Handle<ImageAsset> load_image(const std::string& file);
 
     ImageAsset& get_image(Handle<ImageAsset> handle);
 
     Handle<TextureAsset> load_texture(
-        std::string file,
+        const std::string& file,
         SamplerSettings sampler = SamplerSettings::Linear);
 
     TextureAsset get_texture(Handle<TextureAsset> handle);

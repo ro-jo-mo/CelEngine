@@ -243,9 +243,9 @@ WhitespaceSensitiveMacros:
   - PP_STRINGIZE
   - STRINGIZE
 ---
-# Slang shaders: slangd formats .slang files as C# (via --assume-filename *.slang.cs)
+# For slang
 Language: CSharp
-# BasedOnStyle:  Mozilla
+BasedOnStyle: Mozilla
 AccessModifierOffset: -2
 AlignAfterOpenBracket: Align
 AlignArrayOfStructures: None

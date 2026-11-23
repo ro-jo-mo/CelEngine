@@ -19,7 +19,10 @@ vertex_shader(VSInput in)
 
     float4 pos = float4(vert.position, 1.0);
 
-    out.position = mul(mul(scene.viewProj, entityData.transform), pos);
+    out.clipSpaceCoord =
+        mul(mul(scene.camera.viewProj, entityData.transform), pos);
+
+    out.position = mul(entityData.transform, pos).xyz;
 
     out.uv = float2(vert.uvx, vert.uvy);
     out.matIndex = entityData.materialIndex;

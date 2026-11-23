@@ -35,19 +35,30 @@ void
 spawn_asset(Resource<World>& world,
             Resource<Renderer::Asset::AssetServer>& server)
 {
-    auto handle = server->load_gltf("../../examples/assets/helmet.glb", {});
+    auto helmet = server->load_gltf("../../examples/assets/helmet.glb", {});
+    auto horse = server->load_gltf("../../examples/assets/horse.glb", {});
 
     // Spawn a parent class that we rotate for fun (test transform propagation)
     world->spawn(RotateMe{}).with_children([&](ChildBuilder builder) {
         auto child = builder.spawn(Position{ 0, 0, -1 }, RotateMe{});
-        server->add_scene_to_entity(child.get(), handle);
+        server->add_scene_to_entity(child.get(), helmet);
     });
-    server->add_scene_to_entity(world->spawn(Position{ 0, 0, 10 }).get(),
-                                handle);
+    server->add_scene_to_entity(
+        world->spawn(Position{ 0, 0, 10 })
+            .with_children([](ChildBuilder builder) {
+                builder.spawn(RotateMe{},
+                              Position{ 1, 0, 0 },
+                              Renderer::PointLight{ .colour = { 0, 0, 1 },
+                                                    .intensity = 1 });
+            })
+            .get(),
+        helmet);
+
+    server->add_scene_to_entity(world->spawn(Position{ 0, 0, 5 }).get(), horse);
 
     world->spawn(Renderer::DirectionalLight{
         .direction = glm::normalize(glm::vec3{ 0, -1, -0.2 }),
-        .colour = { 1, 1, 1 },
+        .colour = { 1, 0.6, 0.6 },
         .intensity = 1 });
 }
 
@@ -106,7 +117,7 @@ camera_controller(
         rot.rotation = glm::angleAxis(ms.totalX, glm::vec3(0.0, 1.0, 0)) *
                        glm::angleAxis(ms.totalY, glm::vec3(1.0, 0, 0));
 
-        cam.fov -= scroll.y * 0.1;
+        cam.fov -= scroll.y;
 
         pos.position += rot.rotation * translation * time->delta_time();
     }

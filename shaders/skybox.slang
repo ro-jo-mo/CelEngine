@@ -24,9 +24,9 @@ vertex_main(VSInput in)
     out.uvw = pos;
 
     // Remove the translation from the transform
-    float3 viewDir = mul(scene.view, float4(pos, 0.0)).xyz;
+    float3 viewDir = mul(scene.camera.view, float4(pos, 0.0)).xyz;
 
-    out.pos = mul(scene.projection, float4(viewDir, 1.0));
+    out.pos = mul(scene.camera.projection, float4(viewDir, 1.0));
 
     // Reverse Z buffer
     // Set skybox behind all

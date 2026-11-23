@@ -4,49 +4,55 @@ module common;
 
 public struct SceneData
 {
-  public Vertex* vertexBuffer;
-  public MaterialData* materialBuffer;
-  public PerEntityData* entityDataBuffer;
-  public LightData* lightBuffer;
-  public float4x4 view;
-  public float4x4 projection;
-  public float4x4 viewProj;
+    public Vertex* vertexBuffer;
+    public MaterialData* materialBuffer;
+    public PerEntityData* entityDataBuffer;
+    public LightData* lightBuffer;
+    public Camera camera;
+}
+
+public struct Camera
+{
+    public float3 position;
+    public float4x4 view;
+    public float4x4 projection;
+    public float4x4 viewProj;
 }
 
 public struct Vertex
 {
-  public float3 position;
-  public float uvx;
-  public float3 normal;
-  public float uvy;
-  public float4 tangent;
+    public float3 position;
+    public float uvx;
+    public float3 normal;
+    public float uvy;
+    public float4 tangent;
 }
 
 public struct MaterialData
 {
-  public float4 colorFactors;
-  public float4 metalRoughFactors;
-  public uint colorTextureIndex;
-  public uint metalRoughnessTextureIndex;
-  public uint normalTextureIndex;
-  public uint colorSamplerIndex;
-  public uint metalRoughnessSamplerIndex;
-  public uint normalSamplerIndex;
+    public float4 colorFactors;
+    public float4 metalRoughFactors;
+    public uint colorTextureIndex;
+    public uint metalRoughnessTextureIndex;
+    public uint normalTextureIndex;
+    public uint colorSamplerIndex;
+    public uint metalRoughnessSamplerIndex;
+    public uint normalSamplerIndex;
 }
 
 public struct PerEntityData
 {
-  public float4x4 transform;
-  public float4x4 normalTransform;
-  public uint32_t materialIndex;
+    public float4x4 transform;
+    public float4x4 normalTransform;
+    public uint32_t materialIndex;
 }
 
 public struct LightData
 {
-public    uint32_t directionalLightCount;
-public    uint32_t pointLightCount;
-public uint32_t directionalLightOffset;
-public uint32_t pointLightOffset;
+    public uint32_t directionalLightCount;
+    public uint32_t pointLightCount;
+    public uint32_t directionalLightOffset;
+    public uint32_t pointLightOffset;
 }
 
 public struct PointLight
@@ -58,18 +64,19 @@ public struct PointLight
 
 public struct DirectionalLight
 {
-    public float3  direction;
-     public float3 colour;
-     public float intensity;
+    public float3 direction;
+    public float3 colour;
+    public float intensity;
 }
 
 public struct GeometryOut
 {
-  public float4 position : SV_Position;
-  public float3 normal;
-  public float4 tangent;
-  public float2 uv;
-  public nointerpolation uint32_t matIndex;
+    public float4 clipSpaceCoord : SV_Position;
+    public float3 position;
+    public float3 normal;
+    public float4 tangent;
+    public float2 uv;
+    public nointerpolation uint32_t matIndex;
 }
 
 [vk::binding(0, 0)]
