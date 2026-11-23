@@ -53,7 +53,7 @@ init_vulkan(Resource<VulkanContext>& context,
     features10.drawIndirectFirstInstance = true;
     features10.shaderSampledImageArrayDynamicIndexing = true;
     features10.shaderInt64 = true;
-    
+
     VkPhysicalDeviceVulkan11Features features11{
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES
     };
@@ -238,21 +238,23 @@ select_unorm_surface_format(VkPhysicalDevice gpu, VkSurfaceKHR surface)
 }
 
 static void
-init_swapchain(Resource<VulkanContext>& context,
-               Resource<Swapchain>& swapchain,
-               Resource<FinalCleanup>& cleanup)
+create_swapchain(const VulkanContext& context,
+                 const VkExtent2D extent,
+                 Swapchain& swapchain,
+                 const VkSwapchainKHR oldSwapchain)
 {
-    vkb::SwapchainBuilder builder{ context->gpu,
-                                   context->device,
-                                   context->surface };
+    vkb::SwapchainBuilder builder{ context.gpu,
+                                   context.device,
+                                   context.surface };
 
     const VkSurfaceFormatKHR surfaceFormat =
-        select_unorm_surface_format(context->gpu, context->surface);
+        select_unorm_surface_format(context.gpu, context.surface);
 
     auto swapchainBuild =
         builder.set_desired_format(surfaceFormat)
             .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
-            .set_desired_extent(1600, 900)
+            .set_desired_extent(extent.width, extent.height)
+            .set_old_swapchain(oldSwapchain)
             .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
             .build()
             .value();
@@ -262,39 +264,101 @@ init_swapchain(Resource<VulkanContext>& context,
         throw_error("Swapchain was created with non UNORM format");
     }
 
-    swapchain.initialise(swapchainBuild.swapchain,
-                         swapchainBuild.get_images().value(),
-                         swapchainBuild.get_image_views().value(),
-                         swapchainBuild.image_format,
-                         swapchainBuild.extent);
+    swapchain.swapchain = swapchainBuild.swapchain;
+    swapchain.images = swapchainBuild.get_images().value();
+    swapchain.imageViews = swapchainBuild.get_image_views().value();
+    swapchain.format = swapchainBuild.image_format;
+    swapchain.extent = swapchainBuild.extent;
+    swapchain.imageIndex = 0;
+    swapchain.imageAcquired = false;
+    swapchain.needsRecreate = false;
 
     // Create semaphores for swapchain images
     VkSemaphoreCreateInfo semaphoreCreateInfo =
         Initialisers::semaphore_create_info();
 
-    swapchain->presentSemaphores.resize(swapchain->images.size());
+    swapchain.presentSemaphores.resize(swapchain.images.size());
 
-    for (size_t i = 0; i < swapchain->images.size(); i++) {
-        vkCreateSemaphore(context->device,
+    for (size_t i = 0; i < swapchain.images.size(); i++) {
+        vkCreateSemaphore(context.device,
                           &semaphoreCreateInfo,
                           nullptr,
-                          &swapchain->presentSemaphores[i]);
+                          &swapchain.presentSemaphores[i]);
         Utils::set_resource_name(
-            context->device,
-            reinterpret_cast<uint64_t>(swapchain->presentSemaphores[i]),
+            context.device,
+            reinterpret_cast<uint64_t>(swapchain.presentSemaphores[i]),
             VK_OBJECT_TYPE_SEMAPHORE,
             fmt::format("present_semaphore_{}", i).c_str());
     }
+}
 
-    cleanup->push([&]() {
-        vkDestroySwapchainKHR(context->device, swapchain->swapchain, nullptr);
-        for (int i = 0; i < swapchain->imageViews.size(); i++) {
-            vkDestroyImageView(
-                context->device, swapchain->imageViews[i], nullptr);
-            vkDestroySemaphore(
-                context->device, swapchain->presentSemaphores[i], nullptr);
-        }
+// Destroys the image views and semaphores belonging to the swapchain. The
+// swapchain handle itself is left alive, so it can be passed as the old
+// swapchain during recreation
+static void
+destroy_swapchain_resources(const VulkanContext& context, Swapchain& swapchain)
+{
+    for (const auto view : swapchain.imageViews) {
+        vkDestroyImageView(context.device, view, nullptr);
+    }
+    for (const auto semaphore : swapchain.presentSemaphores) {
+        vkDestroySemaphore(context.device, semaphore, nullptr);
+    }
+
+    swapchain.imageViews.clear();
+    swapchain.images.clear();
+    swapchain.presentSemaphores.clear();
+}
+
+static void
+init_swapchain(Resource<VulkanContext>& context,
+               Resource<Window>& window,
+               Resource<Swapchain>& swapchain,
+               Resource<FinalCleanup>& cleanup)
+{
+    swapchain.initialise();
+
+    create_swapchain(
+        *context, window->get_pixel_extent(), *swapchain, VK_NULL_HANDLE);
+
+    // Capture the underlying objects, the swapchain may be recreated many
+    // times before this runs, so it must destroy whatever is current
+    VulkanContext* ctx = context.get();
+    Swapchain* sc = swapchain.get();
+
+    cleanup->push([ctx, sc]() {
+        destroy_swapchain_resources(*ctx, *sc);
+        vkDestroySwapchainKHR(ctx->device, sc->swapchain, nullptr);
     });
+}
+
+void
+Renderer::recreate_swapchain_if_needed(Resource<VulkanContext>& context,
+                                       Resource<Window>& window,
+                                       Resource<Swapchain>& swapchain)
+{
+    if (!window->resized && !swapchain->needsRecreate) {
+        return;
+    }
+
+    // Can't create a zero sized swapchain. Keep the old one and try again
+    // once the window is visible
+    const VkExtent2D extent = window->get_pixel_extent();
+    if (window->minimized || extent.width == 0 || extent.height == 0) {
+        return;
+    }
+
+    // Nothing may be using the old swapchain images or semaphores
+    vkDeviceWaitIdle(context->device);
+
+    const VkSwapchainKHR old = swapchain->swapchain;
+
+    destroy_swapchain_resources(*context, *swapchain);
+    create_swapchain(*context, extent, *swapchain, old);
+
+    vkDestroySwapchainKHR(context->device, old, nullptr);
+
+    window->resized = false;
 }
 
 void
@@ -308,7 +372,7 @@ Renderer::initialise_renderer(Resource<VulkanContext>& context,
                               Resource<FinalCleanup>& cleanup)
 {
     init_vulkan(context, allocator, window, cleanup);
-    init_swapchain(context, swapchain, cleanup);
+    init_swapchain(context, window, swapchain, cleanup);
     manager.initialise(context->device, *allocator);
     server.initialise(*manager, shared);
 }

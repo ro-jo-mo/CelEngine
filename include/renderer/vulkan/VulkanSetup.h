@@ -23,4 +23,10 @@ initialise_renderer(Resource<VulkanContext>& context,
                     Resource<Asset::AssetServer>& server,
                     Resource<Asset::SharedAssetData>& shared,
                     Resource<FinalCleanup>& cleanup);
+
+// Must run before set_render_extent.
+void
+recreate_swapchain_if_needed(Resource<VulkanContext>& context,
+                             Resource<Window>& window,
+                             Resource<Swapchain>& swapchain);
 }

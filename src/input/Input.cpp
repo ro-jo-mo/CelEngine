@@ -1,6 +1,9 @@
 #include "input/Input.h"
 
+#include "renderer/Window.h"
+
 #include <SDL3/SDL_events.h>
+
 bool
 Cel::Input::Input::key_up(SDL_Scancode key) const
 {
@@ -50,7 +53,7 @@ Cel::Input::Input::mouse_button_held(uint32_t button) const
 }
 
 void
-Cel::Input::Input::TickInput()
+Cel::Input::Input::tick_input()
 {
     // copy last frames input buffer into array
     previousKeyState = currentKeyState;
@@ -62,10 +65,11 @@ Cel::Input::Input::TickInput()
 
 void
 Cel::Input::process_input_events(Resource<Input>& input,
-                               Resource<Running>& isRunning)
+                                 Resource<Running>& isRunning,
+                                 Resource<Renderer::Window>& window)
 {
 
-    input->TickInput();
+    input->tick_input();
 
     SDL_Event event;
 
@@ -91,6 +95,18 @@ Cel::Input::process_input_events(Resource<Input>& input,
                 break;
             case SDL_EVENT_MOUSE_BUTTON_UP:
                 input->currentMouseButtonState[event.button.button] = false;
+                break;
+            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+                window->resized = true;
+                break;
+            case SDL_EVENT_WINDOW_MINIMIZED:
+                window->minimized = true;
+                break;
+            case SDL_EVENT_WINDOW_RESTORED:
+            case SDL_EVENT_WINDOW_MAXIMIZED:
+                window->minimized = false;
+                // The surface may have changed size while minimised
+                window->resized = true;
                 break;
             default:
                 // Unimplemented events

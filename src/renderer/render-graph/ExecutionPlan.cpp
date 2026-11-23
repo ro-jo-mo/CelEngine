@@ -522,11 +522,10 @@ ExecutionPlan::execute(
     Swapchain& swapchain,
     VulkanResourceManager& manager)
 {
-    // The swapchain should be acquired prior to execution here
-    if (!swapchain.imageAcquired) {
-        throw_error("Present ordering / sync error");
-    }
-
+    // If the swapchain image couldn't be acquired (out of date swapchain) we
+    // still submit the frame's work, so uploads happen and the frame fence is
+    // signalled, but don't wait on acquire or present
+    const bool presenting = swapchain.imageAcquired;
     const uint32_t swapchainIndex = swapchain.imageIndex;
 
     // Create submit infos
@@ -557,7 +556,7 @@ ExecutionPlan::execute(
 
     const auto presentQueue = passes.at(presentPass).queue;
 
-    {
+    if (presenting) {
         auto& present = submits[passServer.queueToIndex[presentQueue]].back();
         present.signalSemaphoreInfoCount = 1;
         present.pSignalSemaphoreInfos = &presentSemInfo;
@@ -613,6 +612,12 @@ ExecutionPlan::execute(
                                 fence));
     }
 
+    swapchain.imageAcquired = false;
+
+    if (!presenting) {
+        return;
+    }
+
     // Lastly present
     VkPresentInfoKHR presentInfo{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -625,9 +630,15 @@ ExecutionPlan::execute(
         .pResults = nullptr
     };
 
-    vkQueuePresentKHR(
+    const VkResult result = vkQueuePresentKHR(
         passServer.queues[passServer.queueToIndex[presentQueue]].queue,
         &presentInfo);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        swapchain.needsRecreate = true;
+    } else {
+        vk_check(result);
+    }
 }
 
 void

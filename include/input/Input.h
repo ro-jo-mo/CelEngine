@@ -1,6 +1,7 @@
 #pragma once
 #include "core/Running.h"
 #include "ecs/Resource.h"
+#include "renderer/Window.h"
 
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_scancode.h>
@@ -64,7 +65,7 @@ class Input
     [[nodiscard]] bool mouse_button_held(uint32_t button) const;
 
   private:
-    void TickInput();
+    void tick_input();
 
     std::array<bool, SDL_SCANCODE_COUNT> currentKeyState{};
     std::array<bool, SDL_SCANCODE_COUNT> previousKeyState{};
@@ -77,10 +78,13 @@ class Input
     glm::vec2 mouseDelta;
 
     friend void process_input_events(Resource<Input>& input,
-                                   Resource<Running>& isRunning);
+                                     Resource<Running>& isRunning,
+                                     Resource<Renderer::Window>& window);
 };
 
 void
-process_input_events(Resource<Input>& input, Resource<Running>& isRunning);
+process_input_events(Resource<Input>& input,
+                     Resource<Running>& isRunning,
+                     Resource<Renderer::Window>& window);
 
 }

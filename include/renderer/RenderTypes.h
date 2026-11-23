@@ -26,6 +26,11 @@ struct Swapchain
     // is true
     uint32_t imageIndex = 0;
     bool imageAcquired = false;
+
+    // Set when acquire / present report the swapchain is out of date or
+    // suboptimal, or the window is resized. The swapchain is rebuilt at the
+    // start of the next render frame
+    bool needsRecreate = false;
 };
 
 struct Queue

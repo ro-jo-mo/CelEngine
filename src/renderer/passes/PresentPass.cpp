@@ -27,14 +27,16 @@ Cel::Renderer::Passes::record_present_pass(
     Resource<Swapchain>& swapchain,
     ParallelResource<RenderGraph::PassServer>& passServer)
 {
-    // Nothing will be submitted this frame
-    if (!swapchain->imageAcquired) {
-        return;
-    }
-
     VkCommandBuffer cmd;
     {
         cmd = passServer.write()->get_cmd_buffer(Passes::presentPass);
+    }
+
+    // The swapchain was out of date, there is no image to copy to. The pass
+    // still needs a (empty) command buffer, as the rest of the frame is
+    // submitted as normal, and the present submit signals the frame fence
+    if (!swapchain->imageAcquired) {
+        return;
     }
 
     auto access = passServer.partial_read();

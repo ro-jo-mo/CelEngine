@@ -59,6 +59,9 @@ class PassServer
      * Acquire the next swapchain image for this frame, signalling this
      * frame's acquire semaphore.
      * Must run between release_resources, and present pass recording.
+     * If the swapchain is out of date, imageAcquired is left false and the
+     * swapchain is flagged for recreation. The frame then runs without
+     * presenting.
      */
     void acquire_swapchain_image(Swapchain& swapchain);
 

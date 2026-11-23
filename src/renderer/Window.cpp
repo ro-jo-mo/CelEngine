@@ -7,13 +7,25 @@ Renderer::Window::Window()
 {
     SDL_Init(SDL_INIT_VIDEO);
 
-    constexpr SDL_WindowFlags flags = SDL_WINDOW_VULKAN;
+    constexpr SDL_WindowFlags flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE;
 
-    window = SDL_CreateWindow("CelEngine", 1600, 900, flags);
+    window = SDL_CreateWindow(
+        "CelEngine", DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, flags);
 
     if (window == nullptr) {
         throw std::runtime_error(SDL_GetError());
     }
+}
+
+VkExtent2D
+Renderer::Window::get_pixel_extent() const
+{
+    int width = 0;
+    int height = 0;
+    SDL_GetWindowSizeInPixels(window, &width, &height);
+
+    return { .width = static_cast<uint32_t>(width),
+             .height = static_cast<uint32_t>(height) };
 }
 
 void

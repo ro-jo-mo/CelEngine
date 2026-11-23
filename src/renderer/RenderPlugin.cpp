@@ -24,7 +24,11 @@ Renderer::RenderPlugin::build(PluginManager& manager)
 
     manager.add_system(Startup::PreStart, initialise_renderer);
 
-    manager.add_group(Render::First, set_render_extent, camera_system);
+    // Rebuild the swapchain first, so the render extent and every pass
+    // registered this frame see the new size
+    manager.add_system(Render::First, recreate_swapchain_if_needed);
+    manager.add_group(Render::First, set_render_extent, camera_system)
+        .after(recreate_swapchain_if_needed);
 
     manager.add_chain(
         TearDown::Middle, cleanup_asset_server, cleanup_renderer);

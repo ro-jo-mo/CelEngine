@@ -223,12 +223,26 @@ Cel::Renderer::RenderGraph::PassServer::acquire_swapchain_image(
                               VK_NULL_HANDLE,
                               &swapchain.imageIndex);
 
-    swapchain.imageAcquired = true;
-
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        // Introduce code to handle resizing swapchain
-        fmt::println("Out of date swapchain, needs resizing");
-        swapchain.imageAcquired = false;
+    switch (result) {
+        case VK_SUCCESS:
+            swapchain.imageAcquired = true;
+            break;
+        case VK_SUBOPTIMAL_KHR:
+            // The image was acquired and the semaphore will be signalled, so
+            // this frame must still use it. Rebuild before the next frame
+            swapchain.imageAcquired = true;
+            swapchain.needsRecreate = true;
+            break;
+        case VK_ERROR_OUT_OF_DATE_KHR:
+            // No image was acquired and the semaphore is untouched. The frame
+            // still executes, but nothing is presented
+            swapchain.imageAcquired = false;
+            swapchain.needsRecreate = true;
+            break;
+        default:
+            vk_check(result);
+            swapchain.imageAcquired = false;
+            break;
     }
 }
 
