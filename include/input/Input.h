@@ -72,13 +72,16 @@ class Input
   private:
     void tick_input();
 
-    std::array<bool, SDL_SCANCODE_COUNT> currentKeyState{};
-    std::array<bool, SDL_SCANCODE_COUNT> previousKeyState{};
+    // Whether the key is currently down, as of the last event this frame
+    std::array<bool, SDL_SCANCODE_COUNT> keyState{};
+    // Edges seen this frame. Tracked separately from keyState so a key pressed
+    // and released within one frame still reports both key_down and key_up
+    std::array<bool, SDL_SCANCODE_COUNT> keyPressedThisFrame{};
+    std::array<bool, SDL_SCANCODE_COUNT> keyReleasedThisFrame{};
 
-    // Only 5 codes from SDL_MouseButtonFlags
-    std::array<bool, 5> currentMouseButtonState{};
-    std::array<bool, 5> previousMouseButtonState{};
-
+    // Codes go 1 - 5 in SDL_MouseButtonFlags
+    std::array<bool, 6> currentMouseButtonState{};
+    std::array<bool, 6> previousMouseButtonState{};
     glm::vec2 mouseScroll;
     glm::vec2 mouseDelta;
 

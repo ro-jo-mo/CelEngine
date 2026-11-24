@@ -7,19 +7,20 @@
 bool
 Cel::Input::Input::key_up(SDL_Scancode key) const
 {
-    return !currentKeyState[key] && previousKeyState[key];
+    return keyReleasedThisFrame[key];
 }
 
 bool
 Cel::Input::Input::key_down(SDL_Scancode key) const
 {
-    return currentKeyState[key] && !previousKeyState[key];
+    return keyPressedThisFrame[key];
 }
 
 bool
 Cel::Input::Input::key_held(SDL_Scancode key) const
 {
-    return currentKeyState[key] && previousKeyState[key];
+    // Down now, and not freshly pressed this frame, i.e. it was down last frame
+    return keyState[key] && !keyPressedThisFrame[key];
 }
 
 glm::vec2
@@ -55,8 +56,11 @@ Cel::Input::Input::mouse_button_held(uint32_t button) const
 void
 Cel::Input::Input::tick_input()
 {
+    // Reset key up down
+    keyPressedThisFrame.fill(false);
+    keyReleasedThisFrame.fill(false);
+
     // copy last frames input buffer into array
-    previousKeyState = currentKeyState;
     previousMouseButtonState = currentMouseButtonState;
 
     mouseDelta = glm::vec2(0.0f);
@@ -71,7 +75,6 @@ Cel::Input::process_input_events(Resource<Input>& input,
                                  Resource<Running>& isRunning,
                                  Resource<Renderer::Window>& window)
 {
-
     input->tick_input();
 
     SDL_Event event;
@@ -84,16 +87,21 @@ Cel::Input::process_input_events(Resource<Input>& input,
                 isRunning->isRunning = false;
                 break;
             case SDL_EVENT_KEY_DOWN:
-                input->currentKeyState[event.key.scancode] = true;
+                if (!event.key.repeat) {
+                    input->keyPressedThisFrame[event.key.scancode] = true;
+                }
+                input->keyState[event.key.scancode] = true;
                 break;
             case SDL_EVENT_KEY_UP:
-                input->currentKeyState[event.key.scancode] = false;
+                input->keyReleasedThisFrame[event.key.scancode] = true;
+                input->keyState[event.key.scancode] = false;
                 break;
             case SDL_EVENT_MOUSE_WHEEL:
-                input->mouseScroll = { event.wheel.x, event.wheel.y };
+                input->mouseScroll += glm::vec2{ event.wheel.x, event.wheel.y };
                 break;
             case SDL_EVENT_MOUSE_MOTION:
-                input->mouseDelta = { event.motion.xrel, event.motion.yrel };
+                input->mouseDelta +=
+                    glm::vec2{ event.motion.xrel, event.motion.yrel };
                 break;
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 input->currentMouseButtonState[event.button.button] = true;

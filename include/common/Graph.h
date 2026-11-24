@@ -313,15 +313,12 @@ Graph<Key>::Iterator::add_dependents(Key key)
 {
     const auto& dependents = graph.get_dependents(key);
 
-    // No reason to read the map in the loop
-    auto depLength = criticalPaths.at(key) - 1;
-
-    for (const auto& dep : dependents) {
-        const auto& requirements = graph.get_dependencies(dep);
+    for (const auto& dependency : dependents) {
+        const auto& requirements = graph.get_dependencies(dependency);
 
         if (std::ranges::all_of(requirements,
                                 [&](auto x) { return finished.contains(x); })) {
-            readyNodes.emplace(depLength, dep);
+            readyNodes.emplace(criticalPaths.at(dependency), dependency);
         }
     }
 }

@@ -7,7 +7,8 @@ class PassBuilder;
 }
 namespace Cel::Renderer::Passes {
 
-// All passes run *after* the base pass. Used as a marker for existing resources. Not to be used directly
+// All passes run *after* the base pass. Used as a marker for existing
+// resources. Not to be used directly
 inline const auto basePass = HandleAllocator::allocate_pass("base_pass");
 
 // Used for inserting transitions. Not to be used directly
@@ -39,7 +40,6 @@ inline const auto sceneDataBuffer =
 inline const auto entityDataBuffer =
     HandleAllocator::allocate_buffer("entity_data_buffer");
 
-
 inline const auto lightDataBuffer =
     HandleAllocator::allocate_buffer("light_data_buffer");
 
@@ -53,5 +53,7 @@ inline const auto drawMeshPass =
 inline const auto skyboxPass = HandleAllocator::allocate_pass("skybox_pass");
 
 inline const auto tonemapPass = HandleAllocator::allocate_pass("tonemap_pass");
+
+inline const auto debugUiPass = HandleAllocator::allocate_pass("debug_ui_pass");
 
 }

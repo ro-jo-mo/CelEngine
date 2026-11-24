@@ -196,14 +196,14 @@ Graph::search_branch(Common::Graph<Handle<RenderPass>>::Iterator& iter,
         // The only case where setup should be available is when all setup
         // passes have run, in which case it will be the only available node
 
-        if (nodes[0] == Passes::setupPass) {
+        if (nodes.front() == Passes::setupPass) {
             iter.mark_finished(Passes::setupPass);
             continue;
         }
 
         // No need to branch if it's linear
         if (nodes.size() == 1) {
-            add_pass_to_plan(nodes[0], plan, iter, tracker);
+            add_pass_to_plan(nodes.front(), plan, iter, tracker);
             continue;
         }
 

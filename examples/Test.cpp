@@ -10,7 +10,7 @@
 #include "renderer/components/Window.h"
 #include "renderer/passes/PassPlugin.h"
 #include "renderer/render-graph/RenderGraphPlugin.h"
-#include "ui/UiPlugin.h"
+#include "ui/DebugUi.h"
 
 #include <fastgltf/types.hpp>
 #include <glm/gtx/string_cast.hpp>
@@ -161,14 +161,12 @@ class MyPlugin
 int
 main()
 {
-    static_assert(sizeof(GlobalTransform) > 0);
-
     App ecs;
     ecs.add_plugin<CorePlugin>()
         .add_plugin<Renderer::RenderPlugin>()
         .add_plugin<Renderer::RenderGraph::RenderGraphPlugin>()
         .add_plugin<Renderer::Passes::PassPlugin>()
-        .add_plugin<Ui::UiPlugin>()
+        .add_plugin<Ui::DebugUiPlugin>()
         .add_plugin<MyPlugin>();
     ecs.start<Startup>()
         .loop<FixedSchedule<PhysicsUpdate, 50>,
