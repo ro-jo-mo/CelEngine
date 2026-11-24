@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../components/RenderTypes.h"
 #include "common/Handle.h"
-#include "renderer/RenderTypes.h"
 
 #include <string>
 

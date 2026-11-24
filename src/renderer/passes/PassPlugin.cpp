@@ -1,8 +1,8 @@
 #include "renderer/passes/PassPlugin.h"
 
 #include "core/Transform.h"
-#include "renderer/Camera.h"
-#include "renderer/SceneData.h"
+#include "renderer/components/Camera.h"
+#include "renderer/components/SceneData.h"
 #include "renderer/passes/BasePasses.h"
 #include "renderer/passes/DrawMeshes.h"
 #include "renderer/passes/DrawSkybox.h"

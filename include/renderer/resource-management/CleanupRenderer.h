@@ -1,6 +1,6 @@
 #pragma once
-#include "../RenderTypes.h"
 #include "../asset/AssetServer.h"
+#include "../components/RenderTypes.h"
 #include "DeletionQueue.h"
 #include "ecs/System.h"
 

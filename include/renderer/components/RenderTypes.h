@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../resource-management/Descriptors.h"
 #include "common/Handle.h"
-#include "resource-management/Descriptors.h"
 
 #include <glm/glm.hpp>
 #include <vector>

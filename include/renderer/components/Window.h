@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/Running.h"
+#include "../../core/Running.h"
 #include "RenderTypes.h"
 #include "ecs/System.h"
 

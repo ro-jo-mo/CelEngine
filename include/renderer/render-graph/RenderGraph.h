@@ -1,10 +1,10 @@
 #pragma once
 
+#include "../components/RenderTypes.h"
 #include "ExecutionPlan.h"
 #include "RenderGraphTypes.h"
 #include "common/Handle.h"
 #include "common/Scheduler.h"
-#include "renderer/RenderTypes.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/resource-management/ResourceTracker.h"
 #include "renderer/resource-management/VulkanResourceManager.h"

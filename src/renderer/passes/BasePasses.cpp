@@ -1,8 +1,8 @@
 #include "renderer/passes/BasePasses.h"
 
-#include "renderer/Camera.h"
-#include "renderer/RenderComponents.h"
-#include "renderer/SceneData.h"
+#include "../../../include/renderer/components/Camera.h"
+#include "../../../include/renderer/components/RenderComponents.h"
+#include "../../../include/renderer/components/SceneData.h"
 #include "renderer/asset/AssetServer.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassBuilder.h"
@@ -14,8 +14,16 @@ using namespace Cel;
 
 namespace {
 
+inline const auto sceneDataStagingBuffer =
+    Renderer::Passes::HandleAllocator::allocate_buffer(
+        "scene_data_staging_buffer");
+
+inline const auto entityDataStagingBuffer =
+    Renderer::Passes::HandleAllocator::allocate_buffer(
+        "entity_data_staging_buffer");
+
 inline const auto lightDataStagingBuffer =
-    Cel::Renderer::Passes::HandleAllocator::allocate_buffer(
+    Renderer::Passes::HandleAllocator::allocate_buffer(
         "light_data_staging_buffer");
 
 }
@@ -35,7 +43,7 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
                            VK_BUFFER_USAGE_2_UNIFORM_BUFFER_BIT,
                        VMA_MEMORY_USAGE_GPU_ONLY)
         .upload_buffer(sizeof(SceneData::sceneData),
-                       Passes::sceneDataStagingBuffer,
+                       sceneDataStagingBuffer,
                        Passes::sceneDataBuffer)
         // Entity data
         .create_buffer(Passes::entityDataBuffer,
@@ -46,7 +54,7 @@ Cel::Renderer::Passes::PassFriend::register_create_scene_data_pass(
                            VK_BUFFER_USAGE_2_SHADER_DEVICE_ADDRESS_BIT,
                        VMA_MEMORY_USAGE_GPU_ONLY)
         .upload_buffer(sizeof(PerEntityGpuData) * MAX_ENTITIES,
-                       Passes::entityDataStagingBuffer,
+                       entityDataStagingBuffer,
                        Passes::entityDataBuffer)
         .create_buffer(Passes::lightDataBuffer,
                        true,
@@ -187,25 +195,23 @@ Cel::Renderer::Passes::PassFriend::create_scene_data(
                       directionalLights,
                       pointLights);
 
-    Utils::upload_to_buffer(
-        cmd,
-        &sceneData->sceneData,
-        sizeof(sceneData->sceneData),
-        access->get_resource(Passes::sceneDataBuffer),
-        0,
-        access->get_resource(Passes::sceneDataStagingBuffer));
+    Utils::upload_to_buffer(cmd,
+                            &sceneData->sceneData,
+                            sizeof(sceneData->sceneData),
+                            access->get_resource(Passes::sceneDataBuffer),
+                            0,
+                            access->get_resource(sceneDataStagingBuffer));
 
     if (entityData.empty()) {
         return;
     }
 
-    Utils::upload_to_buffer(
-        cmd,
-        entityData.data(),
-        entityData.size() * sizeof(PerEntityGpuData),
-        access->get_resource(Passes::entityDataBuffer),
-        0,
-        access->get_resource(Passes::entityDataStagingBuffer));
+    Utils::upload_to_buffer(cmd,
+                            entityData.data(),
+                            entityData.size() * sizeof(PerEntityGpuData),
+                            access->get_resource(Passes::entityDataBuffer),
+                            0,
+                            access->get_resource(entityDataStagingBuffer));
 }
 
 void

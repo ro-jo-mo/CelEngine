@@ -1,14 +1,14 @@
 #include "renderer/passes/DrawMeshes.h"
 
-#include "../../../include/renderer/asset/AssetServer.h"
-#include "../../../include/renderer/resource-management/Queues.h"
-#include "../../../include/renderer/vulkan/VulkanHelpers.h"
-#include "renderer/SceneData.h"
+#include "renderer/asset/AssetServer.h"
+#include "renderer/components/SceneData.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/render-graph/PassBuilder.h"
 #include "renderer/render-graph/PassServer.h"
 #include "renderer/render-graph/RenderGraph.h"
 #include "renderer/resource-management/PipelineBuilder.h"
+#include "renderer/resource-management/Queues.h"
+#include "renderer/vulkan/VulkanHelpers.h"
 
 namespace {
 

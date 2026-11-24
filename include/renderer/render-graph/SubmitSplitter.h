@@ -1,6 +1,6 @@
 #pragma once
+#include "../components/RenderTypes.h"
 #include "RenderGraphTypes.h"
-#include "renderer/RenderTypes.h"
 
 #include <array>
 #include <cstdint>

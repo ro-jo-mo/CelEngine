@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/common.hpp>
+#include <glm/vec3.hpp>
 
 namespace Cel::Renderer {
 

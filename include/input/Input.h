@@ -1,7 +1,7 @@
 #pragma once
 #include "core/Running.h"
 #include "ecs/Resource.h"
-#include "renderer/Window.h"
+#include "renderer/components/Window.h"
 
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_scancode.h>
@@ -64,6 +64,11 @@ class Input
      */
     [[nodiscard]] bool mouse_button_held(uint32_t button) const;
 
+    // Mark an SDL event as already been consumed by the UI
+    // This does make the assumption that the same input is not repeated several
+    // times in a single tick
+    void mark_consumed_by_ui(const SDL_Event& event);
+
   private:
     void tick_input();
 
@@ -76,6 +81,8 @@ class Input
 
     glm::vec2 mouseScroll;
     glm::vec2 mouseDelta;
+
+    std::vector<SDL_Event> events;
 
     friend void process_input_events(Resource<Input>& input,
                                      Resource<Running>& isRunning,

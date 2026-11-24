@@ -1,8 +1,8 @@
 #pragma once
 
+#include "../components/RenderTypes.h"
 #include "VulkanResourceManager.h"
 #include "common/Handle.h"
-#include "renderer/RenderTypes.h"
 
 #include <optional>
 #include <variant>

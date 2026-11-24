@@ -1,11 +1,11 @@
-#include "renderer/RenderPlugin.h"
+#include "../../../include/renderer/components/RenderPlugin.h"
 
-#include "../../include/renderer/resource-management/CleanupRenderer.h"
-#include "../../include/renderer/vulkan/VulkanSetup.h"
-#include "renderer/Camera.h"
-#include "renderer/Window.h"
+#include "renderer/components/Camera.h"
+#include "renderer/components/Window.h"
 #include "renderer/render-graph/RenderGraphPlugin.h"
+#include "renderer/resource-management/CleanupRenderer.h"
 #include "renderer/resource-management/VulkanResourceManager.h"
+#include "renderer/vulkan/VulkanSetup.h"
 
 using namespace Cel;
 
@@ -30,6 +30,5 @@ Renderer::RenderPlugin::build(PluginManager& manager)
     manager.add_group(Render::First, set_render_extent, camera_system)
         .after(recreate_swapchain_if_needed);
 
-    manager.add_chain(
-        TearDown::Middle, cleanup_asset_server, cleanup_renderer);
+    manager.add_chain(TearDown::Middle, cleanup_asset_server, cleanup_renderer);
 }

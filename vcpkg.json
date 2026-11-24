@@ -19,7 +19,16 @@
     "ktx",
     "spirv-reflect",
     "spirv-headers",
-    "mikktspace"
+    "mikktspace",
+    {
+      "name": "imgui",
+      "version>=": "1.93.0",
+      "features": [
+        "sdl3-binding",
+        "vulkan-binding",
+        "docking-experimental"
+      ]
+    }
   ],
   "builtin-baseline": "2ebb714221ad4e482e596d64c129f63fbbfb3fd5"
 }

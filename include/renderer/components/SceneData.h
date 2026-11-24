@@ -1,8 +1,8 @@
 #pragma once
 
+#include "../resource-management/MegaBuffer.h"
 #include "Camera.h"
 #include "ecs/Types.h"
-#include "resource-management/MegaBuffer.h"
 
 namespace Cel::Renderer::Passes {
 

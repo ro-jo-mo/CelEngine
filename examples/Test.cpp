@@ -1,18 +1,20 @@
-#include "../include/renderer/RenderPlugin.h"
-#include "../include/renderer/asset/AssetServer.h"
 #include "core/App.h"
 #include "core/CorePlugin.h"
-#include "renderer/Camera.h"
+#include "renderer/asset/AssetServer.h"
+#include "renderer/components/Camera.h"
+#include "renderer/components/RenderPlugin.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include "input/Input.h"
-#include "renderer/RenderComponents.h"
-#include "renderer/Window.h"
+#include "renderer/components/RenderComponents.h"
+#include "renderer/components/Window.h"
 #include "renderer/passes/PassPlugin.h"
 #include "renderer/render-graph/RenderGraphPlugin.h"
+#include "ui/UiPlugin.h"
 
 #include <fastgltf/types.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <imgui.h>
 
 using namespace Cel;
 
@@ -46,10 +48,13 @@ spawn_asset(Resource<World>& world,
     server->add_scene_to_entity(
         world->spawn(Position{ 0, 0, 10 })
             .with_children([](ChildBuilder builder) {
-                builder.spawn(RotateMe{},
-                              Position{ 1, 0, 0 },
-                              Renderer::PointLight{ .colour = { 0, 0, 1 },
-                                                    .intensity = 1 });
+                builder.spawn(RotateMe{})
+                    .with_children([](ChildBuilder builder) {
+                        builder.spawn(
+                            Position{ 2, 0, 0 },
+                            Renderer::PointLight{ .colour = { 0, 0, 1 },
+                                                  .intensity = 2.0 });
+                    });
             })
             .get(),
         helmet);
@@ -129,6 +134,17 @@ camera_controller(
     }
 }
 
+// UI is just a system. Toggle with F1
+void
+debug_ui(Resource<Ui::DebugUi>& ui)
+{
+    if (!ui->visible) {
+        return;
+    }
+
+    ImGui::ShowDemoWindow();
+}
+
 class MyPlugin
 {
   public:
@@ -138,6 +154,7 @@ class MyPlugin
         manager.add_system(Startup::Start, spawn_asset);
         manager.add_system(MainUpdate::Update, spin_it);
         manager.add_system(MainUpdate::Last, camera_controller);
+        manager.add_system(MainUpdate::Update, debug_ui);
     }
 };
 
@@ -151,6 +168,7 @@ main()
         .add_plugin<Renderer::RenderPlugin>()
         .add_plugin<Renderer::RenderGraph::RenderGraphPlugin>()
         .add_plugin<Renderer::Passes::PassPlugin>()
+        .add_plugin<Ui::UiPlugin>()
         .add_plugin<MyPlugin>();
     ecs.start<Startup>()
         .loop<FixedSchedule<PhysicsUpdate, 50>,

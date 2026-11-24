@@ -1,6 +1,6 @@
 #include "input/Input.h"
 
-#include "renderer/Window.h"
+#include "renderer/components/Window.h"
 
 #include <SDL3/SDL_events.h>
 
@@ -61,6 +61,9 @@ Cel::Input::Input::tick_input()
 
     mouseDelta = glm::vec2(0.0f);
     mouseScroll = glm::vec2(0.0f);
+
+    // Clear last frames events
+    events.clear();
 }
 
 void
@@ -74,6 +77,8 @@ Cel::Input::process_input_events(Resource<Input>& input,
     SDL_Event event;
 
     while (SDL_PollEvent(&event)) {
+        input->events.push_back(event);
+
         switch (event.type) {
             case SDL_EVENT_QUIT:
                 isRunning->isRunning = false;

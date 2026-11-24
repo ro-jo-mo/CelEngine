@@ -1,15 +1,15 @@
 #include "renderer/render-graph/PassServer.h"
 
-#include "../../../include/renderer/asset/AssetServer.h"
-#include "../../../include/renderer/resource-management/Queues.h"
-#include "../../../include/renderer/vulkan/VulkanHelpers.h"
-#include "../../../include/renderer/vulkan/VulkanUtils.h"
 #include "core/Config.h"
 #include "core/Error.h"
 #include "core/ThreadManager.h"
-#include "renderer/SceneData.h"
+#include "renderer/asset/AssetServer.h"
+#include "renderer/components/SceneData.h"
 #include "renderer/passes/Passes.h"
 #include "renderer/resource-management/PipelineBuilder.h"
+#include "renderer/resource-management/Queues.h"
+#include "renderer/vulkan/VulkanHelpers.h"
+#include "renderer/vulkan/VulkanUtils.h"
 
 #include <ranges>
 
@@ -272,7 +272,7 @@ Cel::Renderer::RenderGraph::PassServer::get_texture_index(
                     "VK_IMAGE_USAGE_SAMPLED_BIT",
                     Passes::HandleAllocator::get_name(handle));
     }
-    
+
     return it->second;
 }
 

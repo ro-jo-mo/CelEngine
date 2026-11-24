@@ -34,6 +34,7 @@ find_package(Stb REQUIRED)
 find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 find_package(SPIRV-Headers CONFIG REQUIRED)
 find_package(mikktspace CONFIG REQUIRED)
+find_package(imgui CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME} STATIC)
 
@@ -43,6 +44,7 @@ target_link_libraries(${PROJECT_NAME}
         glm::glm
         Vulkan::Vulkan
         GPUOpen::VulkanMemoryAllocator
+        imgui::imgui
 )
 
 target_link_libraries(${PROJECT_NAME}
@@ -81,21 +83,23 @@ target_sources(${PROJECT_NAME}
 
         "input/Input.cpp"
 
-        "renderer/Vma.cpp"
-        "renderer/RenderPlugin.cpp"
-        "renderer/CleanupRenderer.cpp"
-        "renderer/Window.cpp"
-        "renderer/VulkanSetup.cpp"
-        "renderer/VulkanHelpers.cpp"
-        "renderer/VulkanUtils.cpp"
+        "ui/UiPlugin.cpp"
+
+        "renderer/resource-management/Vma.cpp"
+        "renderer/components/RenderPlugin.cpp"
+        "renderer/resource-management/CleanupRenderer.cpp"
+        "renderer/components/Window.cpp"
+        "renderer/vulkan/VulkanSetup.cpp"
+        "renderer/vulkan/VulkanHelpers.cpp"
+        "renderer/vulkan/VulkanUtils.cpp"
         "renderer/asset/AssetServer.cpp"
         "renderer/asset/GltfLoader.cpp"
         "renderer/asset/MikkTSpaceImplementation.cpp"
         "renderer/asset/ImageLoader.cpp"
         "renderer/asset/ProceduralLoader.cpp"
-        "renderer/Descriptors.cpp"
-        "renderer/Camera.cpp"
-        "renderer/SceneData.cpp"
+        "renderer/resource-management/Descriptors.cpp"
+        "renderer/components/Camera.cpp"
+        "renderer/components/SceneData.cpp"
 
 
         "renderer/render-graph/PassBuilder.cpp"
@@ -114,6 +118,7 @@ target_sources(${PROJECT_NAME}
         "renderer/passes/PassPlugin.cpp"
         "renderer/passes/StagingPool.cpp"
         "renderer/passes/Tonemap.cpp"
+        "renderer/passes/UiPass.cpp"
 
         "renderer/resource-management/ResourceTracker.cpp"
         "renderer/resource-management/VulkanResourceManager.cpp"

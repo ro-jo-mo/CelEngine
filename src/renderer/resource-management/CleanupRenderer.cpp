@@ -1,12 +1,12 @@
-#include "../../include/renderer/resource-management/CleanupRenderer.h"
-#include "renderer/RenderTypes.h"
+#include "renderer/resource-management/CleanupRenderer.h"
+#include "renderer/components/RenderTypes.h"
 
 void
 Cel::Renderer::cleanup_renderer(Resource<FinalCleanup>& cleanup,
                                 Resource<VulkanContext>& context)
 {
     vkDeviceWaitIdle(context->device);
-    
+
     cleanup->flush();
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "renderer/RenderTypes.h"
+#include "../components/RenderTypes.h"
 
 #include <deque>
 #include <map>

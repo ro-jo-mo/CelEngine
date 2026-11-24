@@ -1,4 +1,4 @@
-#include "renderer/Camera.h"
+#include "renderer/components/Camera.h"
 
 #include "core/Error.h"
 #include "core/Transform.h"

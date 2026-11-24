@@ -1,5 +1,5 @@
-#include "../../include/renderer/resource-management/Descriptors.h"
-#include "../../include/renderer/vulkan/VulkanHelpers.h"
+#include "renderer/resource-management/Descriptors.h"
+#include "renderer/vulkan/VulkanHelpers.h"
 #include "core/Config.h"
 
 #include <cassert>

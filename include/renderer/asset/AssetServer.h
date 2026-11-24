@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../../core/World.h"
-#include "../RenderTypes.h"
+#include "../components/RenderTypes.h"
 #include "../resource-management/Descriptors.h"
 #include "../resource-management/MegaBuffer.h"
 #include "AssetTypes.h"

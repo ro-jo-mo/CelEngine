@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../RenderTypes.h"
+#include "../components/RenderTypes.h"
 
 #include <filesystem>
 #include <ktx.h>

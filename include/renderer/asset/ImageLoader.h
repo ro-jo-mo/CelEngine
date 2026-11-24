@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../components/RenderTypes.h"
 #include "AssetTypes.h"
-#include "renderer/RenderTypes.h"
 #include "renderer/passes/StagingPool.h"
 #include "renderer/render-graph/PassServer.h"
 

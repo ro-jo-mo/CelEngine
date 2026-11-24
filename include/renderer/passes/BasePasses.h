@@ -1,9 +1,9 @@
 #pragma once
+#include "../components/RenderComponents.h"
 #include "common/Handle.h"
 #include "core/App.h"
 #include "ecs/Query.h"
 #include "ecs/Resource.h"
-#include "renderer/RenderComponents.h"
 #include "renderer/asset/AssetTypes.h"
 
 namespace Cel {

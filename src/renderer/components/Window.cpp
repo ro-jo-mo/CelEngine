@@ -1,4 +1,4 @@
-#include "renderer/Window.h"
+#include "../../../include/renderer/components/Window.h"
 #include <SDL3/SDL_vulkan.h>
 
 using namespace Cel;
