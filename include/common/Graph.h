@@ -49,6 +49,8 @@ class Graph<Key>
     std::unordered_set<Key>& get_dependencies(Key key);
     std::unordered_set<Key>& get_dependents(Key key);
 
+    void clear();
+
     std::unordered_map<Key, std::unordered_set<Key>> adjacencyList{};
     std::unordered_map<Key, std::unordered_set<Key>> reverseAdjacencyList{};
 };
@@ -82,6 +84,14 @@ std::unordered_set<Key>&
 Graph<Key>::get_dependents(Key key)
 {
     return adjacencyList[key];
+}
+
+template<typename Key>
+void
+Graph<Key>::clear()
+{
+    adjacencyList.clear();
+    reverseAdjacencyList.clear();
 }
 
 template<typename Key>

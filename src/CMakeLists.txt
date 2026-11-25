@@ -83,7 +83,7 @@ target_sources(${PROJECT_NAME}
 
         "input/Input.cpp"
 
-        "ui/UiPlugin.cpp"
+        "ui/DebugUi.cpp"
 
         "renderer/resource-management/Vma.cpp"
         "renderer/components/RenderPlugin.cpp"

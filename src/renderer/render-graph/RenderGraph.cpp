@@ -112,6 +112,7 @@ Graph::reset()
     perFrameBuffers.clear();
     perFrameImages.clear();
     finalPlan.clear();
+    graph.clear();
     bestCost = UINT32_MAX;
 }
 

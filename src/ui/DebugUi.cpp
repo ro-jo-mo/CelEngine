@@ -64,16 +64,74 @@ Cel::Ui::init_imgui(Resource<Renderer::VulkanContext>& context,
     ImGui_ImplVulkan_Init(&info);
 }
 
+namespace {
+
+bool
+is_mouse_event(const SDL_Event& event)
+{
+    switch (event.type) {
+        case SDL_EVENT_MOUSE_MOTION:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+        case SDL_EVENT_MOUSE_WHEEL:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool
+is_keyboard_event(const SDL_Event& event)
+{
+    switch (event.type) {
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+        case SDL_EVENT_TEXT_INPUT:
+        case SDL_EVENT_TEXT_EDITING:
+            return true;
+        default:
+            return false;
+    }
+}
+
+}
+
 void
 Cel::Ui::debug_ui_begin(Resource<DebugUi>& ui, Resource<Input::Input>& input)
 {
-    if (input->key_down(ui->toggleKey)) {
-        ui->visible = !ui->visible;
+    // Runs before input state is applied, so look for the toggle in the raw
+    // events. The toggle key is consumed
+    for (Input::InputEvent& inputEvent : input->events()) {
+        const SDL_Event& event = inputEvent.event;
+        if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat &&
+            event.key.scancode == ui->toggleKey) {
+            ui->visible = !ui->visible;
+            inputEvent.consumed = true;
+        }
+    }
+
+    // Always feed ImGui so its internal key/mouse state stays consistent
+    for (const Input::InputEvent& inputEvent : input->events()) {
+        ImGui_ImplSDL3_ProcessEvent(&inputEvent.event);
     }
 
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
+
+    if (!ui->visible) {
+        return;
+    }
+
+    // ImGui updates its capture flags in NewFrame from the events above, so
+    // these reflect whether this frame's input landed on an ImGui window
+    const ImGuiIO& io = ImGui::GetIO();
+    for (Input::InputEvent& inputEvent : input->events()) {
+        if ((io.WantCaptureMouse && is_mouse_event(inputEvent.event)) ||
+            (io.WantCaptureKeyboard && is_keyboard_event(inputEvent.event))) {
+            inputEvent.consumed = true;
+        }
+    }
 }
 
 void
@@ -124,13 +182,16 @@ Cel::Ui::DebugUiPlugin::build(PluginManager& manager)
         .after(Renderer::initialise_renderer);
 
     manager.add_system(MainUpdate::First, debug_ui_begin)
-        .after(Input::process_input_events);
+        .after(Input::poll_input_events)
+        .before(Input::apply_input_events);
 
     manager.add_system(Render::First, debug_ui_end)
         .after(Renderer::set_render_extent);
 
-    manager.add_system(Render::PreUpdate, Renderer::Passes::register_debug_ui_pass);
-    manager.add_system(Render::PostUpdate, Renderer::Passes::record_debug_ui_pass);
+    manager.add_system(Render::PreUpdate,
+                       Renderer::Passes::register_debug_ui_pass);
+    manager.add_system(Render::PostUpdate,
+                       Renderer::Passes::record_debug_ui_pass);
 
     // Before the renderer is destroyed
     manager.add_system(TearDown::First, teardown_imgui);

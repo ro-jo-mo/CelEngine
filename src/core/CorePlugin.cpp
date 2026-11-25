@@ -8,7 +8,10 @@ Cel::CorePlugin::build(PluginManager& manager)
 {
     manager.insert_resource<Input::Input>();
 
-    manager.add_system(MainUpdate::First, Input::process_input_events);
+    manager.add_system(MainUpdate::First, Input::poll_input_events);
+    // UI systems slot in between these two to consume events
+    manager.add_system(MainUpdate::First, Input::apply_input_events)
+        .after(Input::poll_input_events);
 
     // There are several places we need to propagate the hierarchy
     // Effectively anyplace where we expect changes to a transform to be

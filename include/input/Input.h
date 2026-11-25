@@ -3,12 +3,24 @@
 #include "ecs/Resource.h"
 #include "renderer/components/Window.h"
 
+#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_mouse.h>
 #include <SDL3/SDL_scancode.h>
 #include <array>
 #include <glm/glm.hpp>
+#include <span>
+#include <vector>
 
 namespace Cel::Input {
+
+// A raw SDL event for this frame. UI layers (ImGui, RmlUi, ...) run between
+// poll_input_events and apply_input_events and set `consumed` on any event
+// they handled. Consumed events do not affect the gameplay facing state
+struct InputEvent
+{
+    SDL_Event event;
+    bool consumed = false;
+};
 
 class Input
 {
@@ -64,18 +76,20 @@ class Input
      */
     [[nodiscard]] bool mouse_button_held(uint32_t button) const;
 
-    // Mark an SDL event as already been consumed by the UI
-    // This does make the assumption that the same input is not repeated several
-    // times in a single tick
-    void mark_consumed_by_ui(const SDL_Event& event);
+    /**
+     * @brief This frame's raw events. Mainly for UI layers
+     */
+    [[nodiscard]] std::span<InputEvent> events();
 
   private:
     void tick_input();
 
     // Whether the key is currently down, as of the last event this frame
     std::array<bool, SDL_SCANCODE_COUNT> keyState{};
-    // Edges seen this frame. Tracked separately from keyState so a key pressed
-    // and released within one frame still reports both key_down and key_up
+
+    // Edges seen this frame.
+    // The same key can be pressed and released in a single frame so we must
+    // track both
     std::array<bool, SDL_SCANCODE_COUNT> keyPressedThisFrame{};
     std::array<bool, SDL_SCANCODE_COUNT> keyReleasedThisFrame{};
 
@@ -85,16 +99,20 @@ class Input
     glm::vec2 mouseScroll;
     glm::vec2 mouseDelta;
 
-    std::vector<SDL_Event> events;
+    std::vector<InputEvent> frameEvents;
 
-    friend void process_input_events(Resource<Input>& input,
-                                     Resource<Running>& isRunning,
-                                     Resource<Renderer::Window>& window);
+    friend void poll_input_events(Resource<Input>& input,
+                                  Resource<Running>& isRunning,
+                                  Resource<Renderer::Window>& window);
+    friend void apply_input_events(Resource<Input>& input);
 };
 
 void
-process_input_events(Resource<Input>& input,
-                     Resource<Running>& isRunning,
-                     Resource<Renderer::Window>& window);
+poll_input_events(Resource<Input>& input,
+                  Resource<Running>& isRunning,
+                  Resource<Renderer::Window>& window);
+
+void
+apply_input_events(Resource<Input>& input);
 
 }
